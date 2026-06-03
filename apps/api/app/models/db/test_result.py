@@ -84,7 +84,7 @@ class TestResult(Base):
     attack_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # ---- Extra Data ----
-    metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
+    meta_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
 
     # ---- Timestamps ----
     executed_at: Mapped[datetime] = mapped_column(

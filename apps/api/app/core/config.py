@@ -34,9 +34,8 @@ class Settings(BaseSettings):
     ]
 
     # ---- Database ----
-    # PostgreSQL connection string
-    # Format: postgresql+asyncpg://user:password@host:port/database
-    DATABASE_URL: str = "postgresql+asyncpg://ayzo:ayzo_dev_password@localhost:5432/ayzo"
+    # SQLite connection string for easy local demonstration
+    DATABASE_URL: str = "sqlite+aiosqlite:///./ayzo_demo.db"
 
     # ---- Redis ----
     # Used by Celery for background job queue
@@ -69,6 +68,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "ignore"
 
 
 # Create a single settings instance used throughout the app

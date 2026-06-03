@@ -71,16 +71,16 @@ def load_all_payloads() -> list[dict]:
                     },
                 })
 
-            print(f"✅ Loaded {len(data['attacks'])} attacks from {yaml_file.name}")
+            print(f"Loaded {len(data['attacks'])} attacks from {yaml_file.name}")
 
         except yaml.YAMLError as e:
-            print(f"❌ YAML parse error in {yaml_file.name}: {e}")
+            print(f"YAML parse error in {yaml_file.name}: {e}")
         except KeyError as e:
-            print(f"❌ Missing required field in {yaml_file.name}: {e}")
+            print(f"Missing required field in {yaml_file.name}: {e}")
         except Exception as e:
-            print(f"❌ Error loading {yaml_file.name}: {e}")
+            print(f"Error loading {yaml_file.name}: {e}")
 
-    print(f"\n📦 Total attacks loaded: {len(all_attacks)}")
+    print(f"\nTotal attacks loaded: {len(all_attacks)}")
     return all_attacks
 
 

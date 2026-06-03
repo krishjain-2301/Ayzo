@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     attacks,
     auth,
     campaigns,
+    dummy,
     reports,
     targets,
 )
@@ -16,3 +17,4 @@ api_router.include_router(targets.router, prefix="/targets", tags=["Targets"])
 api_router.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
 api_router.include_router(attacks.router, prefix="/attacks", tags=["Attack Library"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
+api_router.include_router(dummy.router, prefix="/dummy", tags=["Dummy Target"])

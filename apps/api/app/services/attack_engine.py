@@ -144,7 +144,7 @@ class AttackEngine:
                 "risk_score": 0,
             }
 
-        print(f"📋 Selected {len(selected_attacks)} base attacks across {len(categories)} categories")
+        print(f" Selected {len(selected_attacks)} base attacks across {len(categories)} categories")
 
         # ---- Step 2: Build the full test list (originals + mutations) ----
         test_list = []
@@ -183,10 +183,10 @@ class AttackEngine:
                     current_prompts = new_mutations  # Next generation mutates these
 
         total_tests = len(test_list)
-        print(f"🧬 Total tests after mutation: {total_tests}")
+        print(f" Total tests after mutation: {total_tests}")
 
         # ---- Step 3: Execute all tests ----
-        print(f"⚡ Starting test execution against {target_model}...")
+        print(f" Starting test execution against {target_model}...")
 
         all_results = await test_runner.run_batch(
             tests=test_list,
@@ -212,7 +212,7 @@ class AttackEngine:
         errors = sum(1 for r in all_results if r.get("result") == "error")
 
         print(f"\n{'='*50}")
-        print(f"📊 Campaign Complete!")
+        print(f" Campaign Complete!")
         print(f"   Total Tests: {total_tests}")
         print(f"   Passed: {passed}")
         print(f"   Failed: {failed}")

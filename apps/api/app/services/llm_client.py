@@ -81,6 +81,30 @@ class LLMClient:
         start_time = time.time()
 
         try:
+            # Special case for our internal Dummy Target
+            if model == "dummy":
+                import httpx
+                from app.main import app
+                transport = httpx.ASGITransport(app=app)
+                async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+                    resp = await client.post(
+                        "/api/v1/dummy/chat",
+                        json={"prompt": user_message},
+                        timeout=timeout
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                
+                elapsed_ms = (time.time() - start_time) * 1000
+                return {
+                    "success": True,
+                    "response_text": data["response"],
+                    "model": "dummy",
+                    "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    "response_time_ms": round(elapsed_ms, 2),
+                    "finish_reason": "stop",
+                }
+
             # LiteLLM handles all the provider-specific formatting
             response = await litellm.acompletion(
                 model=model,

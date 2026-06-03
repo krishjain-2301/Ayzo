@@ -74,7 +74,7 @@ class Attack(Base):
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Extra data (tags, references, MITRE ATT&CK mapping, etc.)
-    metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
+    meta_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
 
     # ---- Timestamps ----
     created_at: Mapped[datetime] = mapped_column(

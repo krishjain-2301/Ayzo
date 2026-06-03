@@ -93,6 +93,7 @@ class TestRunner:
         )
 
         if not model_result["success"]:
+            print(f"Error targeting model {model}: {model_result.get('error')}")
             # The model couldn't be reached — record as error
             return {
                 "id": str(uuid.uuid4()),
