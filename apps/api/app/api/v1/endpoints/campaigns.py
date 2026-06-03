@@ -78,7 +78,7 @@ async def run_campaign_background(campaign_id: uuid.UUID):
                     eval_reasoning=res_data.get("eval_reasoning"),
                     attack_category=res_data.get("attack_category"),
                     mutation_generation=res_data.get("mutation_generation", 0),
-                    metadata=res_data.get("metadata", {}),
+                    meta_data=res_data.get("metadata", {}),
                 )
                 db.add(tr)
                 
@@ -125,7 +125,7 @@ async def create_campaign(
     Create a new campaign and start it in the background.
     """
     # Verify the target exists and belongs to the user
-    target_id = uuid.UUID(campaign_in.target_id)
+    target_id = campaign_in.target_id
     query = select(Target).where(Target.id == target_id)
     result = await db.execute(query)
     target = result.scalar_one_or_none()

@@ -10,6 +10,7 @@ a TargetCreate request. The API validates it and returns a TargetResponse.
 from datetime import datetime
 from typing import Optional
 
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -55,7 +56,7 @@ class TargetUpdate(BaseModel):
 
 class TargetResponse(BaseModel):
     """What the API returns for target data. Notice: api_key is NOT included!"""
-    id: str
+    id: UUID
     name: str
     description: Optional[str] = None
     provider: str

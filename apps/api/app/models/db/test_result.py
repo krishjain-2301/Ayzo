@@ -17,8 +17,7 @@ It's like recording every HTTP request/response in Burp Suite's history.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text, Integer, Float, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, DateTime, Text, Integer, Float, ForeignKey, JSON, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -28,20 +27,20 @@ class TestResult(Base):
     __tablename__ = "test_results"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
     )
 
     # ---- Links ----
     campaign_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("campaigns.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     attack_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("attacks.id", ondelete="SET NULL"),
         nullable=True,  # Mutated prompts might not have a direct attack_id
     )

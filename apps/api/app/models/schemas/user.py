@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
-
+from uuid import UUID
 
 class UserBase(BaseModel):
     """Fields shared between create and response."""
@@ -35,12 +35,21 @@ class UserCreate(UserBase):
     avatar_url: Optional[str] = Field(None, description="Google profile picture URL")
 
 
+class GoogleTokenRequest(BaseModel):
+    """
+    Used when logging in with Google.
+    The frontend sends the Google JWT (ID token), which the backend securely verifies.
+    """
+    credential: str = Field(..., description="Google ID Token JWT")
+
+
+
 class UserResponse(UserBase):
     """
     What the API returns when you request user info.
     Notice: NO password hash, NO google_id (those are private).
     """
-    id: str = Field(..., description="User UUID")
+    id: UUID = Field(..., description="User UUID")
     role: str = Field(..., description="User role: admin, analyst, or viewer")
     avatar_url: Optional[str] = None
     created_at: datetime

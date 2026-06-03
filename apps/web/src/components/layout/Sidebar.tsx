@@ -1,6 +1,19 @@
+"use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export function Sidebar() {
+  const [user, setUser] = useState<{name?: string, email?: string, avatar_url?: string, role?: string} | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        setUser(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, []);
+
   return (
     <aside className="sidebar glass-panel">
       <div className="sidebar-header">
@@ -41,13 +54,26 @@ export function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="user-profile">
-          <div className="avatar">A</div>
-          <div className="user-info">
-            <p className="user-name">Analyst</p>
-            <p className="user-role">Security Team</p>
+        {user ? (
+          <div className="user-profile">
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt="Avatar" className="avatar" />
+            ) : (
+              <div className="avatar">{user.name ? user.name[0] : 'U'}</div>
+            )}
+            <div className="user-info">
+              <p className="user-name">{user.name || 'User'}</p>
+              <p className="user-role">{user.role === 'admin' ? 'Administrator' : 'Analyst'}</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="user-profile">
+            <div className="avatar">U</div>
+            <div className="user-info">
+              <p className="user-name">Loading...</p>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );

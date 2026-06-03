@@ -17,8 +17,7 @@ Example campaign:
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text, Integer, Float, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, DateTime, Text, Integer, Float, ForeignKey, JSON, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -28,21 +27,21 @@ class Campaign(Base):
     __tablename__ = "campaigns"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
     )
 
     # ---- Who started this campaign ----
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
 
     # ---- Which model are we testing ----
     target_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("targets.id", ondelete="CASCADE"),
         nullable=False,
     )

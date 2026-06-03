@@ -15,10 +15,10 @@ export default function LandingPage() {
           <a href="#features" className="nav-link" style={{ background: 'transparent' }}>Features</a>
           <a href="#how-it-works" className="nav-link" style={{ background: 'transparent' }}>How it Works</a>
           <a href="#library" className="nav-link" style={{ background: 'transparent' }}>Attack Library</a>
-          <Link href="/dashboard">
+          <Link href="/login">
             <button className="btn-secondary">Log In</button>
           </Link>
-          <Link href="/dashboard">
+          <Link href="/login">
             <button className="btn-primary">Start Testing &rarr;</button>
           </Link>
         </div>
@@ -45,7 +45,7 @@ export default function LandingPage() {
           </p>
           
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <Link href="/dashboard">
+            <Link href="/login">
               <button className="btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.125rem' }}>
                 Run Free Assessment
               </button>

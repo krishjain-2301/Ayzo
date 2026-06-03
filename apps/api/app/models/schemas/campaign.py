@@ -9,6 +9,7 @@ A campaign = "test this model with these attack categories"
 from datetime import datetime
 from typing import Optional
 
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -27,7 +28,7 @@ class CampaignCreate(BaseModel):
     """
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    target_id: str = Field(..., description="UUID of the target model to test")
+    target_id: UUID = Field(..., description="UUID of the target model to test")
     attack_categories: list[str] = Field(
         ...,
         min_length=1,
@@ -49,10 +50,10 @@ class CampaignCreate(BaseModel):
 
 class CampaignResponse(BaseModel):
     """Campaign data returned by the API."""
-    id: str
+    id: UUID
     name: str
     description: Optional[str] = None
-    target_id: str
+    target_id: UUID
     status: str
     attack_categories: list[str]
     mutation_depth: int
@@ -79,7 +80,7 @@ class CampaignResponse(BaseModel):
 
 class CampaignSummary(BaseModel):
     """Lightweight campaign data for list views."""
-    id: str
+    id: UUID
     name: str
     target_name: str  # Denormalized for convenience
     status: str

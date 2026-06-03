@@ -10,12 +10,13 @@ security assessment document.
 from datetime import datetime
 from typing import Optional
 
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
 class FindingResponse(BaseModel):
     """A single vulnerability finding in a report."""
-    id: str
+    id: UUID
     category: str
     title: str
     description: str
@@ -48,8 +49,8 @@ class ReportResponse(BaseModel):
     
     This is what gets exported as PDF/HTML.
     """
-    id: str
-    campaign_id: str
+    id: UUID
+    campaign_id: UUID
     campaign_name: str
     target_name: str
     target_model: str
@@ -78,7 +79,7 @@ class ReportResponse(BaseModel):
 
 class TestResultResponse(BaseModel):
     """Individual test result (the raw attack/response pair)."""
-    id: str
+    id: UUID
     prompt_sent: str
     model_response: Optional[str] = None
     result: str  # pass | fail | error | inconclusive

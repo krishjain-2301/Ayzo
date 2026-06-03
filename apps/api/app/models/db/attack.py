@@ -25,8 +25,7 @@ Example attack:
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text, Boolean, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, DateTime, Text, Boolean, JSON, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -36,7 +35,7 @@ class Attack(Base):
     __tablename__ = "attacks"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
     )

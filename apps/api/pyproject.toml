@@ -7,35 +7,29 @@ dependencies = [
     # ---- Web Framework ----
     "fastapi>=0.115.0",          # The API framework (handles HTTP requests)
     "uvicorn[standard]>=0.32.0", # ASGI server (actually runs the FastAPI app)
-
     # ---- Database ----
     "sqlalchemy[asyncio]>=2.0.0", # ORM - talk to PostgreSQL with Python objects
     "asyncpg>=0.30.0",            # Async PostgreSQL driver (fast!)
     "alembic>=1.14.0",            # Database migrations (like git for your schema)
-
     # ---- Auth & Security ----
     "python-jose[cryptography]>=3.3.0",  # JWT token creation/verification
     "passlib[bcrypt]>=1.7.4",            # Password hashing (not needed with Google OAuth, but useful)
     "python-multipart>=0.0.9",           # Form data parsing
-
     # ---- AI / LLM ----
     "litellm>=1.50.0",           # Unified API for ALL LLMs (Ollama, OpenAI, etc.)
     "httpx>=0.28.0",             # Async HTTP client (for calling LLM APIs)
-
     # ---- Task Queue ----
     "celery[redis]>=5.4.0",      # Background job processing
     "redis>=5.2.0",              # Redis client for Python
-
     # ---- Data & Validation ----
     "pydantic>=2.10.0",          # Data validation & serialization
     "pydantic-settings>=2.6.0",  # Load settings from .env files
     "pyyaml>=6.0",               # Parse YAML attack payload files
-
     # ---- Reporting ----
     "jinja2>=3.1.0",             # HTML template engine (for reports)
-
     # ---- Utilities ----
     "python-dotenv>=1.0.0",      # Load .env files
+    "google-auth>=2.53.0",
 ]
 
 [project.optional-dependencies]

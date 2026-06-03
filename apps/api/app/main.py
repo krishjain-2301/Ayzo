@@ -15,13 +15,15 @@ Key things happening here:
 """
 
 from contextlib import asynccontextmanager
+import os
+from dotenv import load_dotenv
+load_dotenv(override=True)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.database import engine
-
+from app.core.database import engine, Base
 
 # ---- Lifespan Events ----
 # This runs code when the server starts and stops.
@@ -34,15 +36,18 @@ async def lifespan(app: FastAPI):
     Startup: Verify database connection is working
     Shutdown: Close database connection pool
     """
-    # --- STARTUP ---
-    print(f"🛡️  AYZO API v{settings.APP_VERSION} starting...")
-    print(f"📊 Debug mode: {settings.DEBUG}")
-    print(f"🗄️  Database: {settings.DATABASE_URL.split('@')[-1]}")  # Don't log password!
+    print(f"[*] AYZO API v{settings.APP_VERSION} starting...")
+    print(f"[*] Debug mode: {settings.DEBUG}")
+    print(f"[*] Database: {settings.DATABASE_URL.split('@')[-1]}")  # Don't log password!
     
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("[*] Database tables verified/created.")
+
     yield  # App runs here
     
     # --- SHUTDOWN ---
-    print("🛡️  AYZO API shutting down...")
+    print("[*] AYZO API shutting down...")
     await engine.dispose()  # Close all database connections
 
 

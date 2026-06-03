@@ -18,8 +18,7 @@ Columns:
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, DateTime, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -33,7 +32,7 @@ class User(Base):
     # UUID is better than auto-increment IDs for security
     # (attackers can't guess other user IDs by incrementing)
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
     )

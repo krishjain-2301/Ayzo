@@ -25,8 +25,7 @@ Think of it like this:
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text, Integer, Float, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, DateTime, Text, Integer, Float, ForeignKey, JSON, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -36,14 +35,14 @@ class Finding(Base):
     __tablename__ = "findings"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
     )
 
     # ---- Which campaign found this ----
     campaign_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("campaigns.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

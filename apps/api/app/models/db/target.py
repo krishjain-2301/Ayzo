@@ -21,8 +21,7 @@ Or an OpenAI model:
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, DateTime, Text, ForeignKey, JSON, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -32,14 +31,14 @@ class Target(Base):
     __tablename__ = "targets"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
     )
 
     # ---- Who owns this target ----
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id", ondelete="CASCADE"),  # Delete targets if user is deleted
         nullable=False,
     )
