@@ -1,0 +1,73 @@
+# ========================
+# Node.js / Next.js
+# ========================
+node_modules/
+.next/
+out/
+.turbo/
+dist/
+*.tsbuildinfo
+
+# ========================
+# Python / FastAPI
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+.eggs/
+*.egg
+
+# ========================
+# Environment Variables
+# (NEVER commit secrets!)
+# ========================
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ========================
+# Database
+# ========================
+*.db
+*.sqlite3
+
+# ========================
+# IDE / Editor
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Docker
+# ========================
+docker-compose.override.yml
+
+# ========================
+# Logs
+# ========================
+*.log
+logs/
+
+# ========================
+# Coverage / Testing
+# ========================
+coverage/
+htmlcov/
+.pytest_cache/
+.coverage

@@ -1,0 +1,9 @@
+# pnpm Workspace Configuration
+# ============================
+# This tells pnpm that this is a monorepo with multiple packages.
+# Each folder matched by these globs is treated as a separate project
+# with its own package.json, but they share a single node_modules.
+
+packages:
+  - "apps/*"      # Frontend (web) and Backend (api) live here
+  - "packages/*"  # Shared configs and types live here

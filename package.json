@@ -1,0 +1,19 @@
+{
+  "name": "ayzo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Red Team & Vulnerability Assessment Platform",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "clean": "turbo clean",
+    "dev:web": "turbo dev --filter=@ayzo/web",
+    "dev:api": "cd apps/api && python -m uvicorn app.main:app --reload --port 8000",
+    "db:up": "docker-compose up -d postgres redis",
+    "db:down": "docker-compose down"
+  },
+  "keywords": ["ai", "security", "red-team", "llm", "vulnerability"],
+  "author": "Krish Jain",
+  "license": "MIT"
+}
