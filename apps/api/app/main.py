@@ -112,6 +112,8 @@ async def root():
 
 
 # ---- API Routes ----
-# These will be registered as we build each feature.
-# Example: app.include_router(auth_router, prefix="/api/v1/auth")
-# For now, we have the health check and root endpoints.
+# Import the main API router that bundles all our endpoints
+from app.api.v1.router import api_router
+
+# Mount all our routes under the /api/v1 prefix
+app.include_router(api_router, prefix="/api/v1")
