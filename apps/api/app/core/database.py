@@ -15,12 +15,15 @@ We use ASYNC here because:
 - This is critical when running thousands of attack tests.
 """
 
+from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 
@@ -28,12 +31,19 @@ from app.core.config import settings
 # ---- Create the async engine (connection pool) ----
 # `echo=True` in debug mode prints all SQL queries to the console
 # (helpful for learning what's happening under the hood!)
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_size=20,        # Keep 20 connections ready
-    max_overflow=10,     # Allow 10 extra connections during spikes
-)
+# SQLite (aiosqlite) does NOT support pool_size/max_overflow, so only
+# pass those kwargs when using a real database like PostgreSQL.
+_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+_engine_kwargs: dict = {"echo": settings.DEBUG}
+if _is_sqlite:
+    # SQLite needs check_same_thread=False in connect_args and uses StaticPool
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+    _engine_kwargs["poolclass"] = StaticPool
+else:
+    _engine_kwargs["pool_size"] = 20
+    _engine_kwargs["max_overflow"] = 10
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 # ---- Session factory ----
 # Each API request gets its own session (isolated database conversation)
@@ -55,7 +65,7 @@ class Base(DeclarativeBase):
 # automatically for any endpoint that needs database access.
 # The `yield` means: create a session, give it to the endpoint,
 # and when the endpoint is done, close the session cleanly.
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Provides a database session to API endpoints.
     

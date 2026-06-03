@@ -127,6 +127,12 @@ class AttackEngine:
         """
         started_at = datetime.now(timezone.utc)
         all_results = []
+        config = config or {}
+        # Allow system_message to be stored in config dict as a convenience
+        if system_message is None:
+            system_message = config.pop("system_message", None)
+        else:
+            config.pop("system_message", None)
 
         # ---- Step 1: Load relevant attacks from the library ----
         all_payloads = load_all_payloads()

@@ -80,6 +80,13 @@ async def get_campaign_report(
         {
             "result": r.result,
             "attack_category": r.attack_category,
+            "severity": r.severity,
+            "confidence": r.confidence,
+            "prompt_sent": r.prompt_sent,
+            "model_response": r.model_response,
+            "eval_reasoning": r.eval_reasoning,
+            "mutation_generation": r.mutation_generation,
+            "executed_at": r.executed_at,
         } for r in test_results
     ]
     

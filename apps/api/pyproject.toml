@@ -10,6 +10,7 @@ dependencies = [
     # ---- Database ----
     "sqlalchemy[asyncio]>=2.0.0", # ORM - talk to PostgreSQL with Python objects
     "asyncpg>=0.30.0",            # Async PostgreSQL driver (fast!)
+    "aiosqlite>=0.20.0",          # Async SQLite driver (for local dev without Docker)
     "alembic>=1.14.0",            # Database migrations (like git for your schema)
     # ---- Auth & Security ----
     "python-jose[cryptography]>=3.3.0",  # JWT token creation/verification

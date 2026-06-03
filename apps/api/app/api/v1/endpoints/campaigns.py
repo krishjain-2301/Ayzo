@@ -10,6 +10,7 @@ runs in the background.
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
@@ -47,6 +48,7 @@ async def run_campaign_background(campaign_id: uuid.UUID):
             
         # Update status to running
         campaign.status = "running"
+        campaign.started_at = datetime.now(timezone.utc)
         await db.commit()
         
         target = campaign.target
@@ -100,6 +102,7 @@ async def run_campaign_background(campaign_id: uuid.UUID):
                 
             # Update campaign final stats
             campaign.status = "completed"
+            campaign.completed_at = datetime.now(timezone.utc)
             campaign.total_tests = results.get("total_tests", 0)
             campaign.completed_tests = results.get("completed_tests", 0)
             campaign.passed_tests = results.get("passed_tests", 0)

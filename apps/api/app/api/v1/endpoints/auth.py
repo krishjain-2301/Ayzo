@@ -95,6 +95,7 @@ async def google_login(
         user.avatar_url = avatar_url
         user.google_id = google_id
         await db.commit()
+        await db.refresh(user)
 
     # 4. Generate the JWT access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

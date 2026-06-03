@@ -29,9 +29,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err: any) {
       console.error(err);
-      // Try to set error state if it's a real hook, wait this is a functional component
-      // We need to move useState outside of handleSuccess. I'll just use basic state.
-      alert("Login failed: " + err.message);
+      setError("Login failed: " + (err.message || "Unknown error"));
     }
   };
 
@@ -49,11 +47,17 @@ export default function LoginPage() {
           <p className="text-secondary" style={{ fontSize: '0.875rem' }}>Log in to your dashboard to continue</p>
         </div>
 
+        {error && (
+          <div className="badge danger" style={{ width: '100%', textAlign: 'center', padding: '0.75rem' }}>
+            {error}
+          </div>
+        )}
+
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
           <GoogleLogin
             onSuccess={handleSuccess}
             onError={() => {
-              alert('Login Failed');
+              setError('Google login failed. Please try again.');
             }}
             useOneTap
             theme="filled_black"

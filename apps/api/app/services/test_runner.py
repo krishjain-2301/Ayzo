@@ -21,8 +21,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.services.llm_client import llm_client
 from app.services.eval_engine import eval_engine
 from app.models.db.test_result import TestResult

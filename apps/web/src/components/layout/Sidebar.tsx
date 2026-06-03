@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export function Sidebar() {
   const [user, setUser] = useState<{name?: string, email?: string, avatar_url?: string, role?: string} | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     try {
@@ -13,6 +15,9 @@ export function Sidebar() {
       }
     } catch (e) {}
   }, []);
+
+  const navClass = (href: string) =>
+    `nav-link${pathname === href || pathname.startsWith(href + '/') ? ' active' : ''}`;
 
   return (
     <aside className="sidebar glass-panel">
@@ -26,11 +31,11 @@ export function Sidebar() {
       <nav className="sidebar-nav">
         <div className="nav-group">
           <p className="nav-group-title">Overview</p>
-          <Link href="/dashboard" className="nav-link active">
+          <Link href="/dashboard" className={navClass("/dashboard")}>
             <span className="nav-icon">📊</span>
             Dashboard
           </Link>
-          <Link href="/targets" className="nav-link">
+          <Link href="/targets" className={navClass("/targets")}>
             <span className="nav-icon">🎯</span>
             AI Targets
           </Link>
@@ -38,15 +43,15 @@ export function Sidebar() {
 
         <div className="nav-group">
           <p className="nav-group-title">Testing</p>
-          <Link href="/campaigns" className="nav-link">
+          <Link href="/campaigns" className={navClass("/campaigns")}>
             <span className="nav-icon">⚔️</span>
             Campaigns
           </Link>
-          <Link href="/reports" className="nav-link">
+          <Link href="/reports" className={navClass("/reports")}>
             <span className="nav-icon">📄</span>
             Reports
           </Link>
-          <Link href="/library" className="nav-link">
+          <Link href="/library" className={navClass("/library")}>
             <span className="nav-icon">📚</span>
             Attack Library
           </Link>

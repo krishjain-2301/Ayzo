@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import { RunAssessmentModal } from '@/components/RunAssessmentModal';
 
@@ -9,7 +9,7 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       // 1. Ensure Dummy Target exists
       let targets = await apiFetch('/targets');
@@ -38,14 +38,14 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
     // Auto refresh every 3 seconds while campaigns might be running
     const interval = setInterval(loadData, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadData]);
 
   return (
     <div className="animate-fade-in">
