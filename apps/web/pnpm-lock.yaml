@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@paper-design/shaders-react':
+        specifier: ^0.0.76
+        version: 0.0.76(@types/react@19.2.16)(react@19.2.4)
       '@react-oauth/google':
         specifier: ^0.13.5
         version: 0.13.5(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -427,6 +430,18 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@paper-design/shaders-react@0.0.76':
+    resolution: {integrity: sha512-uPJWrYRf6cJdO2H+fuXlahaqz0QjYglNAyUTaRfIInpzCa/d6guxBIK003soAZQFuQ035yg9FhtfFzKNWm+a5A==}
+    peerDependencies:
+      '@types/react': ^18 || ^19
+      react: ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
+  '@paper-design/shaders@0.0.76':
+    resolution: {integrity: sha512-AcNDY4J66YQHUfQYFInkCP7M9VOje0od7wLpOR7LtCmc532opJy6ll+h1W9zBovz8tt9U7OADUmJ/qKEXyOX/A==}
 
   '@react-oauth/google@0.13.5':
     resolution: {integrity: sha512-xQWri2s/3nNekZJ4uuov2aAfQYu83bN3864KcFqw2pK1nNbFurQIjPFDXhWaKH3IjYJ2r/9yyIIpsn5lMqrheQ==}
@@ -2137,6 +2152,15 @@ snapshots:
       fastq: 1.20.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@paper-design/shaders-react@0.0.76(@types/react@19.2.16)(react@19.2.4)':
+    dependencies:
+      '@paper-design/shaders': 0.0.76
+      react: 19.2.4
+    optionalDependencies:
+      '@types/react': 19.2.16
+
+  '@paper-design/shaders@0.0.76': {}
 
   '@react-oauth/google@0.13.5(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:

@@ -1,6 +1,7 @@
 "use client";
-import React, { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
+import React, { useEffect, useState, useCallback } from "react";
+import { apiFetch } from "@/lib/api";
+import { Check } from "lucide-react";
 
 interface AttackCategory {
   id: string;
@@ -35,7 +36,7 @@ export default function LibraryPage() {
 
   const loadCategories = useCallback(async () => {
     try {
-      const data = await apiFetch('/attacks/categories');
+      const data = await apiFetch("/attacks/categories");
       setCategories(data);
       if (data.length > 0 && !selectedCategory) {
         setSelectedCategory(data[0].id);
@@ -73,46 +74,110 @@ export default function LibraryPage() {
 
   const getSeverityBadge = (sev: string) => {
     switch (sev) {
-      case 'critical': case 'high': return 'danger';
-      case 'medium': return 'warning';
-      case 'low': return 'success';
-      default: return 'info';
+      case "critical":
+      case "high":
+        return "danger";
+      case "medium":
+        return "warning";
+      case "low":
+        return "success";
+      default:
+        return "info";
     }
   };
 
+  const totalPayloads = categories.reduce(
+    (acc, c) => acc + c.attack_count,
+    0
+  );
+
   return (
-    <div className="animate-fade-in">
+    <div className="animate-in">
       <div className="page-header">
         <div>
           <h1 className="page-title">Attack Library</h1>
-          <p className="page-description">Browse the collection of security test payloads used by AYZO.</p>
+          <p className="page-description">
+            Browse the collection of security test payloads used by AYZO.
+          </p>
         </div>
-        <div className="badge info py-2 px-4 text-sm">
-          {categories.reduce((acc, c) => acc + c.attack_count, 0)} total payloads
-        </div>
+        <span className="badge neutral" style={{ fontSize: "12px", padding: "6px 14px" }}>
+          {totalPayloads} payloads
+        </span>
       </div>
 
       {loading ? (
-        <p className="text-muted p-8">Loading attack library...</p>
+        <p
+          style={{ color: "var(--text-tertiary)", padding: "40px 0" }}
+          className="animate-pulse"
+        >
+          Loading attack library...
+        </p>
       ) : (
-        <div className="grid gap-8" style={{ gridTemplateColumns: '250px 1fr' }}>
-          
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "220px 1fr",
+            gap: "24px",
+          }}
+        >
           {/* Categories Sidebar */}
-          <div className="glass-panel p-4 self-start">
-            <h3 className="text-sm uppercase text-muted mb-4 pl-2">Categories</h3>
-            <div className="flex flex-col gap-1">
+          <div
+            className="surface"
+            style={{ padding: "16px", alignSelf: "start" }}
+          >
+            <h3
+              style={{
+                fontSize: "11px",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--text-tertiary)",
+                padding: "0 10px",
+                marginBottom: "10px",
+              }}
+            >
+              Categories
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+              }}
+            >
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`text-left py-2 px-3 rounded-sm transition-all flex justify-between cursor-pointer ${
-                    selectedCategory === cat.id 
-                      ? 'bg-glass-dark text-primary font-medium border border-accent-primary/20' 
-                      : 'bg-transparent text-secondary font-normal border border-transparent'
-                  }`}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "8px 10px",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "13px",
+                    textAlign: "left",
+                    background:
+                      selectedCategory === cat.id
+                        ? "var(--accent-soft)"
+                        : "transparent",
+                    color:
+                      selectedCategory === cat.id
+                        ? "var(--text-primary)"
+                        : "var(--text-secondary)",
+                    fontWeight: selectedCategory === cat.id ? 500 : 400,
+                    transition: "all 150ms",
+                    cursor: "pointer",
+                  }}
                 >
                   <span>{cat.name}</span>
-                  <span className="text-muted">{cat.attack_count}</span>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    {cat.attack_count}
+                  </span>
                 </button>
               ))}
             </div>
@@ -121,50 +186,129 @@ export default function LibraryPage() {
           {/* Payload List */}
           <div>
             {selectedCat && (
-              <div className="mb-6 flex justify-between items-center">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "20px",
+                }}
+              >
                 <div>
-                  <h2 className="text-2xl">{selectedCat.name}</h2>
-                  <p className="text-secondary text-sm mt-1">{selectedCat.owasp_id || 'OWASP LLM Top 10'}</p>
+                  <h2 style={{ fontSize: "18px", fontWeight: 600 }}>
+                    {selectedCat.name}
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--text-tertiary)",
+                      marginTop: "4px",
+                    }}
+                  >
+                    {selectedCat.owasp_id || "OWASP LLM Top 10"}
+                  </p>
                 </div>
-                {selectedCat.description && (
-                  <div className="badge warning">High Risk Category</div>
-                )}
               </div>
             )}
 
             {payloadsLoading ? (
-              <p className="text-muted">Loading payloads...</p>
+              <p
+                style={{ color: "var(--text-tertiary)" }}
+                className="animate-pulse"
+              >
+                Loading payloads...
+              </p>
             ) : payloads.length === 0 ? (
-              <div className="glass-panel p-12 text-center">
-                <p className="text-muted">No payloads found for this category.</p>
+              <div
+                className="surface"
+                style={{ textAlign: "center", padding: "60px 0" }}
+              >
+                <p style={{ color: "var(--text-tertiary)", fontSize: "14px" }}>
+                  No payloads found for this category.
+                </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
                 {payloads.map((payload, idx) => (
-                  <div key={idx} className="glass-panel p-6">
-                    <div className="flex justify-between items-start mb-4">
+                  <div
+                    key={idx}
+                    className="surface"
+                    style={{ padding: "24px" }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: "12px",
+                      }}
+                    >
                       <div>
-                        <h3 className="text-lg font-semibold">{payload.name}</h3>
+                        <h3 style={{ fontSize: "15px", fontWeight: 600 }}>
+                          {payload.name}
+                        </h3>
                         {payload.subcategory && (
-                          <p className="text-muted text-xs mt-1">{payload.subcategory}</p>
+                          <p
+                            style={{
+                              fontSize: "11px",
+                              color: "var(--text-tertiary)",
+                              marginTop: "4px",
+                            }}
+                          >
+                            {payload.subcategory}
+                          </p>
                         )}
                       </div>
-                      <span className={`badge ${getSeverityBadge(payload.severity)}`}>{payload.severity}</span>
+                      <span
+                        className={`badge ${getSeverityBadge(payload.severity)}`}
+                      >
+                        {payload.severity}
+                      </span>
                     </div>
 
                     {payload.description && (
-                      <p className="text-secondary text-sm mb-4">
+                      <p
+                        style={{
+                          fontSize: "13px",
+                          color: "var(--text-secondary)",
+                          lineHeight: 1.6,
+                          marginBottom: "14px",
+                        }}
+                      >
                         {payload.description}
                       </p>
                     )}
-                    
-                    <div className="bg-glass-dark p-4 rounded-sm border border-subtle font-mono text-sm text-primary mb-4 overflow-y-auto whitespace-pre-wrap" style={{ maxHeight: '120px' }}>
+
+                    <div
+                      className="code-block"
+                      style={{ maxHeight: "120px", overflowY: "auto", marginBottom: "12px" }}
+                    >
                       {payload.original_prompt}
                     </div>
-                    
+
                     {payload.success_indicators && (
-                      <div className="flex items-center gap-2 text-xs text-muted">
-                        <span className="text-success">✓ Success indicator:</span> {payload.success_indicators}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          fontSize: "12px",
+                          color: "var(--text-tertiary)",
+                        }}
+                      >
+                        <Check
+                          size={13}
+                          style={{ color: "var(--green)" }}
+                        />
+                        <span>
+                          Success indicator: {payload.success_indicators}
+                        </span>
                       </div>
                     )}
                   </div>

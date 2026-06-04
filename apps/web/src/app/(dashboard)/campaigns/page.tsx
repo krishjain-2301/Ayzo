@@ -1,7 +1,8 @@
 "use client";
-import React, { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
-import Link from 'next/link';
+import React, { useEffect, useState, useCallback } from "react";
+import { apiFetch } from "@/lib/api";
+import Link from "next/link";
+import { Plus, Trash2, ExternalLink } from "lucide-react";
 
 interface CampaignSummary {
   id: string;
@@ -21,7 +22,7 @@ export default function CampaignsPage() {
 
   const loadCampaigns = useCallback(async () => {
     try {
-      const data = await apiFetch('/campaigns');
+      const data = await apiFetch("/campaigns");
       setCampaigns(data);
     } catch (e) {
       console.error("Failed to load campaigns", e);
@@ -37,9 +38,14 @@ export default function CampaignsPage() {
   }, [loadCampaigns]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this campaign? This action cannot be undone.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this campaign? This action cannot be undone."
+      )
+    )
+      return;
     try {
-      await apiFetch(`/campaigns/${id}`, { method: 'DELETE' });
+      await apiFetch(`/campaigns/${id}`, { method: "DELETE" });
       setCampaigns(campaigns.filter((c) => c.id !== id));
     } catch (e) {
       console.error("Failed to delete campaign", e);
@@ -47,115 +53,222 @@ export default function CampaignsPage() {
     }
   };
 
-  const getRiskColor = (score: number | null) => {
-    if (score === null || score === undefined) return 'text-muted';
-    if (score >= 61) return 'text-danger'; // Requires adding text-danger/warning/success if missing, or use inline for dynamic
-    if (score >= 41) return 'text-warning';
-    return 'text-success';
+  const getRiskLabel = (score: number | null) => {
+    if (score === null || score === undefined) return "--";
+    if (score >= 81) return "Critical";
+    if (score >= 61) return "High";
+    if (score >= 41) return "Medium";
+    if (score >= 21) return "Low";
+    return "Info";
   };
 
-  const getRiskLabel = (score: number | null) => {
-    if (score === null || score === undefined) return '--';
-    if (score >= 81) return 'Critical';
-    if (score >= 61) return 'High';
-    if (score >= 41) return 'Medium';
-    if (score >= 21) return 'Low';
-    return 'Info';
+  const getRiskColor = (score: number | null) => {
+    if (score === null || score === undefined) return "var(--text-tertiary)";
+    if (score >= 61) return "var(--red)";
+    if (score >= 41) return "var(--amber)";
+    return "var(--green)";
   };
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch { return dateStr; }
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-in">
       <div className="page-header">
         <div>
           <h1 className="page-title">Campaigns</h1>
-          <p className="page-description">Run and monitor automated security tests against your AI targets.</p>
+          <p className="page-description">
+            Run and monitor automated security tests against your AI targets.
+          </p>
         </div>
         <Link href="/dashboard">
-          <button className="btn-primary">+ New Campaign</button>
+          <button className="btn-primary">
+            <Plus size={15} />
+            New Campaign
+          </button>
         </Link>
       </div>
 
-      <div className="glass-panel" style={{ overflow: 'hidden' }}>
-        <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+      <div className="surface" style={{ overflow: "hidden" }}>
+        <table className="data-table">
           <thead>
-            <tr className="bg-glass-dark" style={{ borderBottom: '1px solid var(--border-strong)' }}>
-              <th className="p-4 font-semibold text-secondary text-sm">Campaign Name</th>
-              <th className="p-4 font-semibold text-secondary text-sm">Target</th>
-              <th className="p-4 font-semibold text-secondary text-sm">Status</th>
-              <th className="p-4 font-semibold text-secondary text-sm">Progress</th>
-              <th className="p-4 font-semibold text-secondary text-sm">Risk Score</th>
-              <th className="p-4 font-semibold text-secondary text-sm">Actions</th>
+            <tr>
+              <th>Campaign</th>
+              <th>Target</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Risk</th>
+              <th style={{ textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading && campaigns.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted">
-                  Loading campaigns...
+                <td
+                  colSpan={6}
+                  style={{
+                    textAlign: "center",
+                    padding: "40px 16px",
+                    color: "var(--text-tertiary)",
+                  }}
+                >
+                  <span className="animate-pulse">Loading campaigns...</span>
                 </td>
               </tr>
             ) : campaigns.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted">
-                  No campaigns found. <Link href="/dashboard" className="text-gradient">Run your first assessment!</Link>
+                <td
+                  colSpan={6}
+                  style={{
+                    textAlign: "center",
+                    padding: "40px 16px",
+                    color: "var(--text-tertiary)",
+                  }}
+                >
+                  No campaigns found.{" "}
+                  <Link
+                    href="/dashboard"
+                    style={{ color: "var(--accent)", fontWeight: 500 }}
+                  >
+                    Run your first assessment
+                  </Link>
                 </td>
               </tr>
             ) : (
               campaigns.map((c) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <td className="p-4">
-                    <div className="font-medium">{c.name}</div>
-                    <div className="text-xs text-muted mt-2">
+                <tr key={c.id}>
+                  <td>
+                    <div style={{ fontWeight: 500 }}>{c.name}</div>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--text-tertiary)",
+                        marginTop: "4px",
+                      }}
+                    >
                       {formatDate(c.created_at)}
                     </div>
                   </td>
-                  <td className="p-4 text-secondary">{c.target_name}</td>
-                  <td className="p-4">
-                    <span className={`badge ${c.status === 'completed' ? 'success' : c.status === 'failed' ? 'danger' : c.status === 'running' ? 'info' : 'warning'} ${c.status === 'running' ? 'animate-pulse-glow' : ''}`}>
-                      {c.status}
-                    </span>
+                  <td style={{ color: "var(--text-secondary)" }}>
+                    {c.target_name}
                   </td>
-                  <td className="p-4">
-                    {c.status === 'running' || c.status === 'pending' ? (
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-glass-dark rounded-full overflow-hidden" style={{ height: '6px' }}>
-                          <div className="bg-accent-primary rounded-full transition-all" style={{ width: `${c.progress_percent}%`, height: '100%', background: 'var(--accent-primary)' }}></div>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <div
+                        className={`status-dot ${c.status}`}
+                        style={
+                          c.status === "running"
+                            ? { animation: "pulse 2s ease infinite" }
+                            : {}
+                        }
+                      />
+                      <span
+                        style={{
+                          fontSize: "13px",
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {c.status}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    {c.status === "running" || c.status === "pending" ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                        }}
+                      >
+                        <div
+                          className="progress-bar"
+                          style={{ flex: 1, maxWidth: "120px" }}
+                        >
+                          <div
+                            className="progress-bar-fill"
+                            style={{
+                              width: `${c.progress_percent}%`,
+                            }}
+                          />
                         </div>
-                        <span className="text-sm text-secondary">{Math.round(c.progress_percent)}%</span>
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {Math.round(c.progress_percent)}%
+                        </span>
                       </div>
                     ) : (
-                      <span className="text-secondary">
-                        100% ({c.total_tests} tests)
+                      <span style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
+                        {c.total_tests} tests
                       </span>
                     )}
                   </td>
-                  <td className="p-4">
+                  <td>
                     {c.risk_score !== null && c.risk_score !== undefined ? (
-                      <>
-                        <span className="font-bold" style={{ color: c.risk_score >= 61 ? 'var(--status-danger)' : c.risk_score >= 41 ? 'var(--status-warning)' : 'var(--status-success)' }}>
-                          {Math.round(c.risk_score)}
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: getRiskColor(c.risk_score),
+                        }}
+                      >
+                        {Math.round(c.risk_score)}{" "}
+                        <span
+                          style={{
+                            fontWeight: 400,
+                            fontSize: "12px",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {getRiskLabel(c.risk_score)}
                         </span>
-                        {' '}({getRiskLabel(c.risk_score)})
-                      </>
+                      </span>
                     ) : (
-                      <span className="text-muted">--</span>
+                      <span style={{ color: "var(--text-tertiary)" }}>--</span>
                     )}
                   </td>
-                  <td className="p-4 flex gap-2">
-                    {c.status === 'completed' || c.status === 'failed' ? (
-                      <Link href={`/reports?campaign=${c.id}`}>
-                        <button className="btn-secondary py-2 px-4 text-sm">View Report</button>
-                      </Link>
-                    ) : (
-                      <span className="text-muted text-sm">In progress...</span>
-                    )}
-                    <button className="btn-danger py-2 px-4 text-sm" onClick={() => handleDelete(c.id)}>Delete</button>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      {(c.status === "completed" || c.status === "failed") && (
+                        <Link href={`/reports?campaign=${c.id}`}>
+                          <button className="btn-ghost btn-sm">
+                            <ExternalLink size={13} />
+                            Report
+                          </button>
+                        </Link>
+                      )}
+                      <button
+                        className="btn-ghost btn-sm"
+                        style={{ color: "var(--red)" }}
+                        onClick={() => handleDelete(c.id)}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

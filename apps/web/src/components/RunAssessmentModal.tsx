@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '@/lib/api';
+import React, { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface RunAssessmentModalProps {
   isOpen: boolean;
@@ -17,25 +17,29 @@ interface AttackCategory {
   attack_count: number;
 }
 
-export function RunAssessmentModal({ isOpen, onClose, targetId, targetName, onSuccess }: RunAssessmentModalProps) {
-  const [name, setName] = useState('');
+export function RunAssessmentModal({
+  isOpen,
+  onClose,
+  targetId,
+  targetName,
+  onSuccess,
+}: RunAssessmentModalProps) {
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [categories, setCategories] = useState<AttackCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [mutationDepth, setMutationDepth] = useState(1);
 
   useEffect(() => {
     if (isOpen) {
-      apiFetch('/attacks/categories')
+      apiFetch("/attacks/categories")
         .then((cats: AttackCategory[]) => {
           setCategories(cats);
-          // Select all by default
           setSelectedCategories(cats.map((c) => c.id));
         })
         .catch(() => {
-          // Fallback categories if API fails
-          setSelectedCategories(['prompt_injection']);
+          setSelectedCategories(["prompt_injection"]);
         });
     }
   }, [isOpen]);
@@ -44,7 +48,9 @@ export function RunAssessmentModal({ isOpen, onClose, targetId, targetName, onSu
 
   const toggleCategory = (catId: string) => {
     setSelectedCategories((prev) =>
-      prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]
+      prev.includes(catId)
+        ? prev.filter((c) => c !== catId)
+        : [...prev, catId]
     );
   };
 
@@ -58,26 +64,26 @@ export function RunAssessmentModal({ isOpen, onClose, targetId, targetName, onSu
       setError("Please select at least one attack category.");
       return;
     }
-    
+
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     try {
-      await apiFetch('/campaigns', {
-        method: 'POST',
+      await apiFetch("/campaigns", {
+        method: "POST",
         body: JSON.stringify({
           name: name || "Quick Assessment",
           description: "Automated scan from dashboard",
           target_id: targetId,
           attack_categories: selectedCategories,
           mutation_depth: mutationDepth,
-          mutations_per_prompt: mutationDepth > 0 ? 3 : 1
-        })
+          mutations_per_prompt: mutationDepth > 0 ? 3 : 1,
+        }),
       });
-      
+
       onSuccess();
       onClose();
-      setName('');
+      setName("");
     } catch (err: any) {
       setError(err.message || "Failed to start campaign");
     } finally {
@@ -86,108 +92,144 @@ export function RunAssessmentModal({ isOpen, onClose, targetId, targetName, onSu
   };
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-    }}>
-      <div className="glass-panel" style={{ width: '500px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Run Assessment</h2>
-        
-        {error && <div className="badge danger" style={{ marginBottom: '1rem', display: 'block' }}>{error}</div>}
-        
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <h2 className="modal-title">Run Assessment</h2>
+
+        {error && (
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--red-soft)",
+              color: "var(--red)",
+              fontSize: "13px",
+              marginBottom: "20px",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Campaign Name
-            </label>
-            <input 
-              type="text" 
+          <div style={{ marginBottom: "20px" }}>
+            <label className="input-label">Campaign Name</label>
+            <input
+              type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Weekly Security Scan"
-              style={{
-                width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)',
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'white', outline: 'none'
-              }}
+              className="input-field"
             />
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Target
-            </label>
-            <div style={{
-                width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)',
-                background: 'rgba(255,255,255,0.1)', border: '1px solid var(--primary-dark)',
-                color: 'white'
-              }}>
-              🤖 {targetName || 'Selected Target'}
+          <div style={{ marginBottom: "20px" }}>
+            <label className="input-label">Target</label>
+            <div
+              className="surface-inset"
+              style={{
+                padding: "10px 14px",
+                fontSize: "14px",
+              }}
+            >
+              {targetName || "Selected Target"}
             </div>
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Attack Categories
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {categories.length > 0 ? categories.map((cat) => (
-                <label
-                  key={cat.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.75rem',
-                    padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)',
-                    background: selectedCategories.includes(cat.id) ? 'rgba(139, 92, 246, 0.1)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${selectedCategories.includes(cat.id) ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255,255,255,0.05)'}`,
-                    cursor: 'pointer', transition: 'all 150ms',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(cat.id)}
-                    onChange={() => toggleCategory(cat.id)}
-                    style={{ accentColor: 'var(--accent-primary)' }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{cat.name}</span>
-                    <span className="text-muted" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>
-                      ({cat.attack_count} attacks)
+          <div style={{ marginBottom: "20px" }}>
+            <label className="input-label">Attack Categories</label>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+              }}
+            >
+              {categories.length > 0 ? (
+                categories.map((cat) => (
+                  <label
+                    key={cat.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      background: selectedCategories.includes(cat.id)
+                        ? "var(--accent-soft)"
+                        : "var(--bg-inset)",
+                      border: `1px solid ${
+                        selectedCategories.includes(cat.id)
+                          ? "hsla(262, 83%, 58%, 0.2)"
+                          : "var(--border)"
+                      }`,
+                      cursor: "pointer",
+                      transition: "all 150ms",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(cat.id)}
+                      onChange={() => toggleCategory(cat.id)}
+                      style={{ accentColor: "var(--accent)" }}
+                    />
+                    <span style={{ flex: 1, fontWeight: 450 }}>
+                      {cat.name}
                     </span>
-                  </div>
-                </label>
-              )) : (
-                <p className="text-muted" style={{ fontSize: '0.875rem' }}>Loading categories...</p>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--text-tertiary)",
+                      }}
+                    >
+                      {cat.attack_count} attacks
+                    </span>
+                  </label>
+                ))
+              ) : (
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "var(--text-tertiary)",
+                  }}
+                  className="animate-pulse"
+                >
+                  Loading categories...
+                </p>
               )}
             </div>
           </div>
 
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Mutation Depth
-            </label>
+          <div style={{ marginBottom: "24px" }}>
+            <label className="input-label">Mutation Depth</label>
             <select
               value={mutationDepth}
               onChange={(e) => setMutationDepth(Number(e.target.value))}
-              style={{
-                width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)',
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'white', outline: 'none'
-              }}
+              className="input-field"
             >
-              <option value={0} style={{ background: '#1a1a1a' }}>0 — Original prompts only (fastest)</option>
-              <option value={1} style={{ background: '#1a1a1a' }}>1 — One round of mutations</option>
-              <option value={2} style={{ background: '#1a1a1a' }}>2 — Two rounds (thorough)</option>
-              <option value={3} style={{ background: '#1a1a1a' }}>3 — Maximum depth (slowest)</option>
+              <option value={0}>0 — Original prompts only (fastest)</option>
+              <option value={1}>1 — One round of mutations</option>
+              <option value={2}>2 — Two rounds (thorough)</option>
+              <option value={3}>3 — Maximum depth (slowest)</option>
             </select>
           </div>
-          
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Launching...' : 'Launch Attack'}
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading}
+            >
+              {loading ? "Launching..." : "Launch Attack"}
             </button>
           </div>
         </form>
