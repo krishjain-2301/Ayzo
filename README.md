@@ -65,18 +65,22 @@ ayzo/
 git clone https://github.com/krishjain-2301/Ayzo.git
 cd Ayzo
 
+# Install Node dependencies
+pnpm install
+
+# Install Python dependencies
+cd apps/api
+pip install .
+cd ../..
+
 # Start infrastructure (PostgreSQL, Redis) - Optional if using local SQLite
-docker-compose up -d
+pnpm run db:up
 
 # Terminal 1: Start Frontend
-cd apps/web
-pnpm install
-pnpm dev
+pnpm run dev:web
 
 # Terminal 2: Start Backend
-cd apps/api
-pip install -e .
-uvicorn app.main:app --reload --port 8000
+pnpm run dev:api
 ```
 
 ## License
