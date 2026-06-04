@@ -1,8 +1,10 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
-import { Check } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import clsx from "clsx";
+
+import { CustomPayloadModal } from "@/components/CustomPayloadModal";
 
 interface AttackCategory {
   id: string;
@@ -34,6 +36,7 @@ export default function LibraryPage() {
   const [payloads, setPayloads] = useState<AttackPayload[]>([]);
   const [loading, setLoading] = useState(true);
   const [payloadsLoading, setPayloadsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadCategories = useCallback(async () => {
     try {
@@ -89,9 +92,31 @@ export default function LibraryPage() {
 
   return (
     <div className="max-w-6xl">
-      <div className="mb-8">
-        <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Attack Library</h1>
-        <p className="text-zinc-400 text-sm mt-1">Browse adversarial payloads categorized by OWASP Top 10 for LLMs.</p>
+      <CustomPayloadModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          loadCategories();
+          if (selectedCategory === "custom") {
+            loadPayloads("custom");
+          } else {
+            setSelectedCategory("custom");
+          }
+        }}
+      />
+      
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Attack Library</h1>
+          <p className="text-zinc-400 text-sm mt-1">Browse adversarial payloads categorized by OWASP Top 10 for LLMs.</p>
+        </div>
+        <button
+          className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <Plus size={16} /> New Custom Payload
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start">

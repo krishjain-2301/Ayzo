@@ -1,0 +1,11 @@
+category: custom
+display_name: Custom User Payloads
+owasp_id: LLM01:2025
+description: User-defined custom payloads created via the Dashboard UI.
+attacks:
+- name: hehaaa
+  subcategory: user_defined
+  description: eqwfre
+  prompt: 23rf 23efwe4rqaw
+  success_indicators: rfq2rf q2
+  severity: medium

@@ -41,7 +41,16 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    # Verify the token signature and expiration
+    # Check if this is a static API key (CI/CD) instead of a JWT
+    if token.startswith("ayzo_"):
+        query = select(User).where(User.api_key == token)
+        result = await db.execute(query)
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise credentials_exception
+        return user
+
+    # Otherwise, verify the JWT token signature and expiration
     payload = verify_token(token)
     if payload is None:
         raise credentials_exception

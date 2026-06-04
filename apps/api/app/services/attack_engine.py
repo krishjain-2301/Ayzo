@@ -292,6 +292,7 @@ class AttackEngine:
                     "prompt": f.get("prompt_sent", "")[:200],
                     "response": (f.get("model_response") or "")[:200],
                     "reasoning": f.get("eval_reasoning", ""),
+                    "generation": f.get("mutation_generation", 0),
                 }
                 for f in failures[:5]
             ]

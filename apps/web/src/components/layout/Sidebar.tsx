@@ -43,6 +43,13 @@ export function Sidebar() {
         { label: "Attack Library", href: "/library", icon: Library },
       ],
     },
+    {
+      label: "System",
+      items: [
+        { label: "Live Proxy", href: "/proxy", icon: LayoutDashboard },
+        { label: "Settings", href: "/settings", icon: LayoutDashboard },
+      ],
+    },
   ];
 
   return (

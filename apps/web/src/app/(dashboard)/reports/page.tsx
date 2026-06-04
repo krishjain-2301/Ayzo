@@ -233,8 +233,8 @@ function ReportsContent() {
           </p>
         </div>
         <button
-          className="border border-zinc-700 hover:border-zinc-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all"
-          onClick={() => window.print()}
+          className="border border-zinc-700 hover:border-zinc-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2"
+          onClick={() => window.open(`/report-export/${report.campaign_id}`, '_blank')}
         >
           Export PDF
         </button>
@@ -348,20 +348,30 @@ function ReportsContent() {
                     {finding.evidence && finding.evidence.length > 0 && (
                       <div>
                         <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Evidence (Sample)</h4>
-                        <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden text-sm">
-                          <div className="p-4 border-b border-zinc-800">
-                            <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Input Prompt</span>
-                            <p className="font-mono text-zinc-300 whitespace-pre-wrap">
-                              {finding.evidence[0].prompt || "N/A"}
-                            </p>
+                        {finding.evidence.map((ev, i) => (
+                          <div key={i} className="bg-black border border-zinc-800 rounded-lg overflow-hidden text-sm mb-4 last:mb-0 relative">
+                            {ev.generation !== undefined && (
+                              <div className="absolute top-4 right-4 flex items-center gap-2">
+                                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Evolution Depth</span>
+                                <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-mono font-bold">
+                                  Gen {ev.generation}
+                                </span>
+                              </div>
+                            )}
+                            <div className="p-4 border-b border-zinc-800">
+                              <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Input Prompt</span>
+                              <p className="font-mono text-zinc-300 whitespace-pre-wrap pr-32">
+                                {ev.prompt || "N/A"}
+                              </p>
+                            </div>
+                            <div className="p-4">
+                              <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Model Response</span>
+                              <p className="font-mono text-red-400 whitespace-pre-wrap">
+                                {ev.response || "N/A"}
+                              </p>
+                            </div>
                           </div>
-                          <div className="p-4">
-                            <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Model Response</span>
-                            <p className="font-mono text-red-400 whitespace-pre-wrap">
-                              {finding.evidence[0].response || "N/A"}
-                            </p>
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     )}
                   </div>

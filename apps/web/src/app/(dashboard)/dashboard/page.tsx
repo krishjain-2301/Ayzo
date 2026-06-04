@@ -114,6 +114,57 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 className="font-heading text-lg font-bold text-white mb-6">Historical Risk Trend</h3>
+          <div className="h-48 flex items-end gap-2 pb-6 border-b border-zinc-800/50">
+            {campaigns.filter(c => c.status === "completed" && c.risk_score !== null).slice(-15).map((c, i) => {
+              const score = c.risk_score || 0;
+              const height = `${Math.max(5, score)}%`;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                  <div 
+                    className={clsx(
+                      "w-full rounded-t-sm transition-all duration-500 ease-out",
+                      score >= 61 ? "bg-red-500/80 hover:bg-red-400" : 
+                      score >= 41 ? "bg-amber-500/80 hover:bg-amber-400" : 
+                      "bg-green-500/80 hover:bg-green-400"
+                    )}
+                    style={{ height }}
+                  />
+                  <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 bg-black text-white text-xs py-1 px-2 rounded whitespace-nowrap z-10 transition-opacity pointer-events-none">
+                    Score: {Math.round(score)}
+                  </div>
+                </div>
+              );
+            })}
+            {campaigns.filter(c => c.status === "completed").length === 0 && (
+              <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm">
+                No completed campaigns yet
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between mt-4">
+            <span className="text-xs text-zinc-500">Older</span>
+            <span className="text-xs text-zinc-500">Newer</span>
+          </div>
+        </div>
+
+        <div className="md:col-span-1 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 className="font-heading text-lg font-bold text-white mb-6">Action Items</h3>
+          <div className="flex flex-col gap-4">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <p className="text-sm font-semibold text-red-400 mb-1">Critical Vulnerabilities</p>
+              <p className="text-xs text-zinc-400">Review the 3 critical Prompt Injections found in the last scan.</p>
+            </div>
+            <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-4">
+              <p className="text-sm font-semibold text-violet-400 mb-1">Agentic Test Recommended</p>
+              <p className="text-xs text-zinc-400">Run a multi-turn Crescendo attack against your latest target.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
         <h3 className="font-heading text-lg font-bold text-white mb-6">Recent Campaigns</h3>
 

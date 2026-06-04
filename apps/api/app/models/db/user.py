@@ -64,6 +64,13 @@ class User(Base):
         nullable=True,
     )
 
+    # ---- CI/CD API Key ----
+    api_key: Mapped[str | None] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=True,
+    )
+
     # ---- Timestamps ----
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -11,6 +11,13 @@ This means:
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from typing import Optional
+from dotenv import load_dotenv
+import os
+
+# Force loading .env into os.environ, overriding any existing system environment variables.
+# This prevents expired global keys from breaking the local app.
+load_dotenv(".env", override=True)
+
 
 
 class Settings(BaseSettings):
