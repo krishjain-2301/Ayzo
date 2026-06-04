@@ -125,41 +125,40 @@ export default function ReportsPage() {
   if (!selectedCampaignId || !report) {
     return (
       <div className="animate-fade-in">
-        <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+        <div className="page-header mb-6">
           <div>
             <h1 className="page-title">Reports</h1>
             <p className="page-description">Select a completed campaign to view its vulnerability report.</p>
           </div>
         </div>
 
-        {reportLoading && <p className="text-muted" style={{ padding: '2rem' }}>Loading report...</p>}
-        {reportError && <div className="badge danger" style={{ padding: '1rem', marginBottom: '1rem', display: 'block' }}>{reportError}</div>}
+        {reportLoading && <p className="text-muted p-8">Loading report...</p>}
+        {reportError && <div className="badge danger p-4 mb-4 block">{reportError}</div>}
 
         {loading ? (
-          <p className="text-muted" style={{ padding: '2rem' }}>Loading campaigns...</p>
+          <p className="text-muted p-8">Loading campaigns...</p>
         ) : campaigns.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
+          <div className="glass-panel p-8 text-center">
             <p className="text-muted">No completed campaigns yet. Run a campaign first to generate a report.</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="flex flex-col gap-4">
             {campaigns.map((c) => (
               <div
                 key={c.id}
-                className="glass-panel"
-                style={{ padding: '1.5rem', cursor: 'pointer', transition: 'all 150ms' }}
+                className="glass-panel p-6 cursor-pointer hover:-translate-y-1 transition-all"
                 onClick={() => setSelectedCampaignId(c.id)}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="flex justify-between items-center">
                   <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{c.name}</h3>
-                    <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                    <h3 className="text-lg font-semibold">{c.name}</h3>
+                    <p className="text-muted text-sm mt-2">
                       Target: {c.target_name} • {new Date(c.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="flex items-center gap-4">
                     {c.risk_score !== null && (
-                      <span style={{ fontSize: '1.5rem', fontWeight: 700, color: getRiskColor(c.risk_score >= 61 ? 'high' : c.risk_score >= 41 ? 'medium' : 'low') }}>
+                      <span className="text-2xl font-bold" style={{ color: getRiskColor(c.risk_score >= 61 ? 'high' : c.risk_score >= 41 ? 'medium' : 'low') }}>
                         {Math.round(c.risk_score)}
                       </span>
                     )}
@@ -177,78 +176,77 @@ export default function ReportsPage() {
   // Show the full report
   return (
     <div className="animate-fade-in">
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+      <div className="page-header mb-6">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-            <h1 className="page-title" style={{ fontSize: '1.75rem' }}>Security Assessment Report</h1>
+          <div className="flex items-center gap-4 mb-2">
+            <h1 className="page-title text-3xl">Security Assessment Report</h1>
             <span className="badge warning">Confidential</span>
           </div>
           <p className="page-description">{report.target_name} ({report.target_model}) • {report.campaign_name}</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div className="flex gap-4">
           <button className="btn-secondary" onClick={() => { setSelectedCampaignId(null); setReport(null); }}>← Back to Reports</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div className="grid grid-2-cols gap-6 mb-8">
         {/* Main Exec Summary */}
-        <div className="glass-panel" style={{ padding: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Executive Summary</h2>
-          <p className="text-secondary" style={{ lineHeight: 1.7, marginBottom: '1.5rem' }}>
-            The target model <strong style={{ color: 'white' }}>{report.target_name}</strong> underwent automated security testing.
-            A total of <strong style={{ color: 'white' }}>{report.total_failures} vulnerabilities</strong> were identified out of {report.total_tests} executed tests
+        <div className="glass-panel p-8">
+          <h2 className="text-xl mb-4">Executive Summary</h2>
+          <p className="text-secondary mb-6" style={{ lineHeight: 1.7 }}>
+            The target model <strong className="text-primary font-bold">{report.target_name}</strong> underwent automated security testing.
+            A total of <strong className="text-primary font-bold">{report.total_failures} vulnerabilities</strong> were identified out of {report.total_tests} executed tests
             ({report.overall_failure_rate}% failure rate).
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-            <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Total Tests</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{report.total_tests.toLocaleString()}</p>
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="bg-glass-dark p-4 rounded-sm">
+              <p className="text-muted text-xs uppercase mb-2">Total Tests</p>
+              <p className="text-2xl font-semibold">{report.total_tests.toLocaleString()}</p>
             </div>
-            <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Failed (Vulnerable)</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--status-danger)' }}>
-                {report.total_failures} <span style={{ fontSize: '0.875rem', fontWeight: 400 }}>({report.overall_failure_rate}%)</span>
+            <div className="bg-glass-dark p-4 rounded-sm">
+              <p className="text-muted text-xs uppercase mb-2">Failed (Vulnerable)</p>
+              <p className="text-2xl font-semibold text-danger" style={{ color: 'var(--status-danger)' }}>
+                {report.total_failures} <span className="text-sm font-normal">({report.overall_failure_rate}%)</span>
               </p>
             </div>
-            <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Passed (Secure)</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--status-success)' }}>
-                {report.total_passes} <span style={{ fontSize: '0.875rem', fontWeight: 400 }}>({report.total_tests > 0 ? (100 - report.overall_failure_rate).toFixed(1) : 0}%)</span>
+            <div className="bg-glass-dark p-4 rounded-sm">
+              <p className="text-muted text-xs uppercase mb-2">Passed (Secure)</p>
+              <p className="text-2xl font-semibold text-success" style={{ color: 'var(--status-success)' }}>
+                {report.total_passes} <span className="text-sm font-normal">({report.total_tests > 0 ? (100 - report.overall_failure_rate).toFixed(1) : 0}%)</span>
               </p>
             </div>
           </div>
         </div>
 
         {/* Risk Score */}
-        <div className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <p className="text-secondary" style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>Overall Risk Score</p>
-          <div style={{
-            width: '150px', height: '150px', borderRadius: '50%',
+        <div className="glass-panel p-8 flex flex-col items-center justify-center text-center">
+          <p className="text-secondary text-sm uppercase tracking-wide mb-4">Overall Risk Score</p>
+          <div className="flex items-center justify-center mb-4 rounded-full" style={{
+            width: '150px', height: '150px',
             background: `radial-gradient(circle, ${getRiskColor(report.risk_level)}15 0%, transparent 70%)`,
             border: `8px solid ${getRiskColor(report.risk_level)}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem',
             boxShadow: `0 0 30px ${getRiskColor(report.risk_level)}33`
           }}>
-            <span style={{ fontSize: '4rem', fontWeight: 700, color: 'white' }}>{Math.round(report.overall_risk_score)}</span>
+            <span className="text-5xl font-bold text-primary" style={{ color: 'white' }}>{Math.round(report.overall_risk_score)}</span>
           </div>
-          <h3 style={{ color: getRiskColor(report.risk_level), fontSize: '1.25rem', fontWeight: 600 }}>{report.risk_level} Risk</h3>
+          <h3 className="text-xl font-semibold" style={{ color: getRiskColor(report.risk_level) }}>{report.risk_level} Risk</h3>
         </div>
       </div>
 
       {/* Category Breakdown */}
       {report.category_scores.length > 0 && (
-        <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Category Breakdown</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+        <div className="glass-panel p-8 mb-8">
+          <h2 className="text-xl mb-6">Category Breakdown</h2>
+          <div className="grid grid-auto-fit gap-4">
             {report.category_scores.map((cs) => (
-              <div key={cs.category} style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)', borderLeft: `3px solid ${getRiskColor(cs.severity)}` }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>{cs.display_name}</h4>
-                <p className="text-muted" style={{ fontSize: '0.75rem' }}>
+              <div key={cs.category} className="bg-glass-dark p-4 rounded-sm" style={{ borderLeft: `3px solid ${getRiskColor(cs.severity)}` }}>
+                <h4 className="text-sm font-semibold mb-2">{cs.display_name}</h4>
+                <p className="text-muted text-xs">
                   {cs.failures}/{cs.total_tests} failed ({cs.failure_rate}%)
                 </p>
-                <div style={{ marginTop: '0.5rem', height: '4px', background: 'var(--bg-surface-elevated)', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{ width: `${cs.failure_rate}%`, height: '100%', background: getRiskColor(cs.severity), borderRadius: '2px' }}></div>
+                <div className="mt-2 bg-glass-dark rounded-sm overflow-hidden" style={{ height: '4px' }}>
+                  <div className="h-full rounded-sm" style={{ width: `${cs.failure_rate}%`, background: getRiskColor(cs.severity) }}></div>
                 </div>
               </div>
             ))}
@@ -259,36 +257,36 @@ export default function ReportsPage() {
       {/* Detailed Findings */}
       {report.findings.length > 0 && (
         <>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Detailed Findings</h2>
+          <h2 className="text-2xl mb-4">Detailed Findings</h2>
           {report.findings.map((f) => (
-            <div key={f.id} className="glass-panel" style={{ padding: '2rem', marginBottom: '1.5rem', borderLeft: `4px solid ${getRiskColor(f.severity)}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div key={f.id} className="glass-panel p-8 mb-6" style={{ borderLeft: `4px solid ${getRiskColor(f.severity)}` }}>
+              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.25rem' }}>{f.title}</h3>
-                  <p className="text-secondary" style={{ fontSize: '0.875rem' }}>
+                  <h3 className="text-xl font-semibold mb-2">{f.title}</h3>
+                  <p className="text-secondary text-sm">
                     Category: {f.category.replace(/_/g, ' ')} • Confidence: {Math.round(f.confidence * 100)}% • {f.occurrence_count}/{f.total_tests_in_category} tests failed
                   </p>
                 </div>
                 <span className={`badge ${getSeverityBadge(f.severity)}`}>{f.severity} Severity</span>
               </div>
               
-              <p className="text-primary" style={{ marginBottom: '1.5rem', lineHeight: 1.6 }}>{f.description}</p>
+              <p className="text-primary mb-6 leading-relaxed">{f.description}</p>
 
               {/* Evidence */}
               {f.evidence && f.evidence.length > 0 && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Evidence (Sample)</h4>
+                <div className="bg-glass-dark p-6 rounded-sm mb-6">
+                  <h4 className="text-sm uppercase text-muted mb-3">Evidence (Sample)</h4>
                   {f.evidence.slice(0, 2).map((ev: any, i: number) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: i < 1 ? '1rem' : 0 }}>
+                    <div key={i} className={`grid grid-2-cols gap-4 ${i < 1 ? 'mb-4' : ''}`}>
                       <div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', fontWeight: 600, marginBottom: '0.5rem' }}>ATTACK PROMPT</p>
-                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: '#e4e4e7', maxHeight: '100px', overflowY: 'auto' }}>
+                        <p className="text-xs font-semibold mb-2" style={{ color: 'var(--accent-primary)' }}>ATTACK PROMPT</p>
+                        <div className="p-3 rounded-sm text-xs font-mono overflow-y-auto" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', color: '#e4e4e7', maxHeight: '100px' }}>
                           {ev.prompt || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--status-danger)', fontWeight: 600, marginBottom: '0.5rem' }}>MODEL RESPONSE</p>
-                        <div style={{ background: 'rgba(239,68,68,0.05)', padding: '0.75rem', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.2)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: '#e4e4e7', maxHeight: '100px', overflowY: 'auto' }}>
+                        <p className="text-xs font-semibold mb-2" style={{ color: 'var(--status-danger)' }}>MODEL RESPONSE</p>
+                        <div className="p-3 rounded-sm text-xs font-mono overflow-y-auto" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', color: '#e4e4e7', maxHeight: '100px' }}>
                           {ev.response || 'N/A'}
                         </div>
                       </div>
@@ -299,8 +297,8 @@ export default function ReportsPage() {
 
               {f.remediation && (
                 <>
-                  <h4 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Remediation</h4>
-                  <div style={{ paddingLeft: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+                  <h4 className="text-sm uppercase text-muted mb-3">Remediation</h4>
+                  <div className="pl-2 text-secondary text-sm whitespace-pre-line" style={{ lineHeight: 1.8 }}>
                     {f.remediation}
                   </div>
                 </>
@@ -311,8 +309,8 @@ export default function ReportsPage() {
       )}
 
       {report.findings.length === 0 && (
-        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-          <h3 style={{ color: 'var(--status-success)', marginBottom: '0.5rem' }}>✅ No Vulnerabilities Found</h3>
+        <div className="glass-panel p-8 text-center">
+          <h3 className="mb-2" style={{ color: 'var(--status-success)' }}>✅ No Vulnerabilities Found</h3>
           <p className="text-muted">The model passed all tests with no detected weaknesses.</p>
         </div>
       )}

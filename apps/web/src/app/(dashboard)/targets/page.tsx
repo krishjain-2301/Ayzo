@@ -114,65 +114,59 @@ export default function TargetsPage() {
       {/* Test Result Toast */}
       {testResult && (
         <div
-          className={`glass-panel`}
-          style={{
-            padding: '1rem 1.5rem', marginBottom: '1.5rem',
-            borderLeft: `4px solid ${testResult.success ? 'var(--status-success)' : 'var(--status-danger)'}`,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}
+          className="glass-panel px-6 py-4 mb-6 flex justify-between items-center"
+          style={{ borderLeft: `4px solid ${testResult.success ? 'var(--status-success)' : 'var(--status-danger)'}` }}
         >
           <span>
             <strong>{testResult.success ? '✅ Connected!' : '❌ Failed:'}</strong>{' '}
             {testResult.message}
           </span>
-          <button className="btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setTestResult(null)}>
+          <button className="btn-secondary py-2 px-4 text-xs" onClick={() => setTestResult(null)}>
             Dismiss
           </button>
         </div>
       )}
 
       {loading ? (
-        <p className="text-muted" style={{ padding: '2rem' }}>Loading targets...</p>
+        <p className="text-muted p-8">Loading targets...</p>
       ) : targets.length === 0 ? (
-        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-          <p className="text-muted" style={{ marginBottom: '1rem' }}>No targets found. Add a target to start testing!</p>
+        <div className="glass-panel p-8 text-center">
+          <p className="text-muted mb-4">No targets found. Add a target to start testing!</p>
           <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add Your First Target</button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div className="grid grid-auto-fit-lg gap-6">
           {targets.map((t) => (
-            <div key={t.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div key={t.id} className="glass-panel p-6 flex flex-col h-full">
+              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{t.name}</h3>
-                  <p className="text-muted" style={{ fontSize: '0.875rem' }}>{t.provider} • {t.model_name}</p>
+                  <h3 className="text-xl font-semibold">{t.name}</h3>
+                  <p className="text-muted text-sm">{t.provider} • {t.model_name}</p>
                 </div>
                 <span className={`badge ${t.status === 'active' ? 'success' : t.status === 'error' ? 'danger' : 'warning'}`}>
                   {t.status}
                 </span>
               </div>
               
-              <div style={{ flex: 1, marginBottom: '1.5rem' }}>
-                <p className="text-secondary" style={{ fontSize: '0.875rem', lineHeight: 1.6 }}>
+              <div className="flex-1 mb-6">
+                <p className="text-secondary text-sm leading-none" style={{ lineHeight: 1.6 }}>
                   {t.description || 'No description provided.'}
                 </p>
               </div>
 
-              <div style={{ display: 'flex', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <div className="flex justify-between items-center pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <div className="text-xs text-muted">
                   Added {formatDate(t.created_at)}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="flex gap-2">
                   <button
-                    className="btn-danger"
-                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                    className="btn-danger py-2 px-4 text-xs"
                     onClick={() => handleDelete(t.id)}
                   >
                     Delete
                   </button>
                   <button
-                    className="btn-primary"
-                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+                    className="btn-primary py-2 px-4 text-sm"
                     onClick={() => handleTest(t.id)}
                     disabled={testingId === t.id}
                   >
@@ -187,30 +181,29 @@ export default function TargetsPage() {
 
       {/* Add Target Modal */}
       {showAddModal && (
-        <div style={{
+        <div className="flex items-center justify-center" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+          backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1000
         }}>
-          <div className="glass-panel" style={{ width: '500px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Add New Target</h2>
+          <div className="glass-panel p-8" style={{ width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 className="text-2xl mb-6">Add New Target</h2>
             
-            {formError && <div className="badge danger" style={{ marginBottom: '1rem', display: 'block' }}>{formError}</div>}
+            {formError && <div className="badge danger mb-4 flex">{formError}</div>}
             
             <form onSubmit={handleAddTarget}>
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Name *</label>
-                <input type="text" required value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="e.g., My ChatBot" style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', outline: 'none' }} />
+              <div className="mb-6">
+                <label className="block mb-2 text-sm text-secondary">Name *</label>
+                <input type="text" required value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="e.g., My ChatBot" className="input-field" />
               </div>
 
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Description</label>
-                <input type="text" value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} placeholder="What does this model do?" style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', outline: 'none' }} />
+              <div className="mb-6">
+                <label className="block mb-2 text-sm text-secondary">Description</label>
+                <input type="text" value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} placeholder="What does this model do?" className="input-field" />
               </div>
 
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Provider *</label>
-                <select required value={form.provider} onChange={(e) => setForm({...form, provider: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', outline: 'none' }}>
+              <div className="mb-6">
+                <label className="block mb-2 text-sm text-secondary">Provider *</label>
+                <select required value={form.provider} onChange={(e) => setForm({...form, provider: e.target.value})} className="input-field">
                   <option value="ollama" style={{ background: '#1a1a1a' }}>Ollama (Local)</option>
                   <option value="openai" style={{ background: '#1a1a1a' }}>OpenAI</option>
                   <option value="anthropic" style={{ background: '#1a1a1a' }}>Anthropic</option>
@@ -220,22 +213,22 @@ export default function TargetsPage() {
                 </select>
               </div>
 
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Model Name *</label>
-                <input type="text" required value={form.model_name} onChange={(e) => setForm({...form, model_name: e.target.value})} placeholder="e.g., llama3.2, gpt-4" style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', outline: 'none' }} />
+              <div className="mb-6">
+                <label className="block mb-2 text-sm text-secondary">Model Name *</label>
+                <input type="text" required value={form.model_name} onChange={(e) => setForm({...form, model_name: e.target.value})} placeholder="e.g., llama3.2, gpt-4" className="input-field" />
               </div>
 
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Endpoint URL</label>
-                <input type="text" value={form.endpoint_url} onChange={(e) => setForm({...form, endpoint_url: e.target.value})} placeholder="http://localhost:11434 (for Ollama)" style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', outline: 'none' }} />
+              <div className="mb-6">
+                <label className="block mb-2 text-sm text-secondary">Endpoint URL</label>
+                <input type="text" value={form.endpoint_url} onChange={(e) => setForm({...form, endpoint_url: e.target.value})} placeholder="http://localhost:11434 (for Ollama)" className="input-field" />
               </div>
 
-              <div style={{ marginBottom: '2rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>API Key</label>
-                <input type="password" value={form.api_key} onChange={(e) => setForm({...form, api_key: e.target.value})} placeholder="sk-... (for OpenAI/Anthropic)" style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', outline: 'none' }} />
+              <div className="mb-8">
+                <label className="block mb-2 text-sm text-secondary">API Key</label>
+                <input type="password" value={form.api_key} onChange={(e) => setForm({...form, api_key: e.target.value})} placeholder="sk-... (for OpenAI/Anthropic)" className="input-field" />
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <div className="flex justify-end gap-4">
                 <button type="button" className="btn-secondary" onClick={() => { setShowAddModal(false); setFormError(''); }} disabled={formLoading}>Cancel</button>
                 <button type="submit" className="btn-primary" disabled={formLoading}>{formLoading ? 'Adding...' : 'Add Target'}</button>
               </div>

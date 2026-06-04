@@ -224,3 +224,25 @@ async def get_campaign(
         raise HTTPException(status_code=403, detail="Not authorized to view this campaign")
 
     return campaign
+
+
+@router.delete("/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_campaign(
+    campaign_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a campaign and all its associated results."""
+    query = select(Campaign).where(Campaign.id == campaign_id)
+    result = await db.execute(query)
+    campaign = result.scalar_one_or_none()
+
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if campaign.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to delete this campaign")
+
+    await db.delete(campaign)
+    await db.commit()
+    return None
