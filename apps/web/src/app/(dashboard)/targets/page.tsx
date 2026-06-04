@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
-import { Plus, Trash2, Play } from "lucide-react";
+import { Plus, Trash2, Play, AlertCircle, CheckCircle2 } from "lucide-react";
+import clsx from "clsx";
 
 interface Target {
   id: string;
@@ -33,6 +34,10 @@ export default function TargetsPage() {
     model_name: "",
     endpoint_url: "",
     api_key: "",
+    config: {
+      payload_template: { prompt: "{{prompt}}" },
+      response_json_path: "response"
+    },
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
@@ -59,14 +64,7 @@ export default function TargetsPage() {
     try {
       await apiFetch("/targets", {
         method: "POST",
-        body: JSON.stringify({
-          name: form.name,
-          description: form.description || null,
-          provider: form.provider,
-          model_name: form.model_name,
-          endpoint_url: form.endpoint_url || null,
-          api_key: form.api_key || null,
-        }),
+        body: JSON.stringify(form),
       });
       setShowAddModal(false);
       setForm({
@@ -76,8 +74,12 @@ export default function TargetsPage() {
         model_name: "",
         endpoint_url: "",
         api_key: "",
+        config: {
+          payload_template: { prompt: "{{prompt}}" },
+          response_json_path: "response"
+        },
       });
-      await loadTargets();
+      loadTargets();
     } catch (err: any) {
       setFormError(err.message || "Failed to add target");
     } finally {
@@ -85,83 +87,68 @@ export default function TargetsPage() {
     }
   };
 
-  const handleTest = async (targetId: string) => {
-    setTestingId(targetId);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this target?")) return;
+    try {
+      await apiFetch(`/targets/${id}`, { method: "DELETE" });
+      loadTargets();
+    } catch (e) {
+      alert("Failed to delete target.");
+    }
+  };
+
+  const handleTestConnection = async (id: string) => {
+    setTestingId(id);
     setTestResult(null);
     try {
-      const result = await apiFetch(`/targets/${targetId}/test`, {
+      const res = await apiFetch(`/targets/${id}/test-connection`, {
         method: "POST",
       });
-      setTestResult({ id: targetId, ...result });
-      await loadTargets();
-    } catch (err: any) {
-      setTestResult({ id: targetId, success: false, message: err.message });
+      setTestResult({ id, success: res.success, message: res.message });
+      loadTargets();
+    } catch (e: any) {
+      setTestResult({ id, success: false, message: e.message || "Connection failed" });
+      loadTargets();
     } finally {
       setTestingId(null);
     }
   };
 
-  const handleDelete = async (targetId: string) => {
-    if (!confirm("Are you sure you want to delete this target?")) return;
-    try {
-      await apiFetch(`/targets/${targetId}`, { method: "DELETE" });
-      await loadTargets();
-    } catch (err: any) {
-      alert("Failed to delete: " + err.message);
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
   return (
-    <div className="animate-in">
-      <div className="page-header">
+    <div className="max-w-6xl">
+      <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="page-title">AI Targets</h1>
-          <p className="page-description">
-            Manage the AI models you want to test for vulnerabilities.
-          </p>
+          <h1 className="font-heading text-2xl font-bold text-white tracking-tight">AI Targets</h1>
+          <p className="text-zinc-400 text-sm mt-1">Manage the LLMs and agents you want to assess.</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-          <Plus size={15} />
-          Add Target
+        <button
+          className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+          onClick={() => setShowAddModal(true)}
+        >
+          <Plus size={16} /> Add Target
         </button>
       </div>
 
-      {/* Test Result Toast */}
       {testResult && (
-        <div
-          className="surface animate-in"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "14px 20px",
-            marginBottom: "24px",
-            borderLeft: `3px solid ${testResult.success ? "var(--green)" : "var(--red)"}`,
-          }}
-        >
-          <span style={{ fontSize: "14px" }}>
-            <strong
-              style={{
-                color: testResult.success ? "var(--green)" : "var(--red)",
-              }}
-            >
-              {testResult.success ? "Connected" : "Failed"}:
-            </strong>{" "}
-            {testResult.message}
-          </span>
+        <div className={clsx(
+          "mb-6 p-4 rounded-xl flex items-center justify-between border",
+          testResult.success ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20"
+        )}>
+          <div className="flex items-center gap-3">
+            {testResult.success ? (
+              <CheckCircle2 className="text-green-500 w-5 h-5" />
+            ) : (
+              <AlertCircle className="text-red-500 w-5 h-5" />
+            )}
+            <span className="text-sm">
+              <strong className={testResult.success ? "text-green-400" : "text-red-400"}>
+                {testResult.success ? "Connected" : "Failed"}:
+              </strong>{" "}
+              <span className="text-zinc-300">{testResult.message}</span>
+            </span>
+          </div>
           <button
-            className="btn-ghost btn-sm"
+            className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
             onClick={() => setTestResult(null)}
           >
             Dismiss
@@ -170,263 +157,195 @@ export default function TargetsPage() {
       )}
 
       {loading ? (
-        <p
-          style={{ color: "var(--text-tertiary)", padding: "40px 0" }}
-          className="animate-pulse"
-        >
-          Loading targets...
-        </p>
+        <p className="text-zinc-500 py-10 animate-pulse text-center">Loading targets...</p>
       ) : targets.length === 0 ? (
-        <div
-          className="surface"
-          style={{ textAlign: "center", padding: "60px 0" }}
-        >
-          <p
-            style={{
-              color: "var(--text-tertiary)",
-              marginBottom: "16px",
-              fontSize: "14px",
-            }}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl text-center py-16">
+          <p className="text-zinc-500 mb-6 text-sm">No targets found. Add a target to start testing.</p>
+          <button
+            className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 mx-auto transition-all"
+            onClick={() => setShowAddModal(true)}
           >
-            No targets found. Add a target to start testing.
-          </p>
-          <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-            <Plus size={15} />
-            Add Your First Target
+            <Plus size={16} /> Add Your First Target
           </button>
         </div>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: "20px",
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {targets.map((t) => (
             <div
               key={t.id}
-              className="surface"
-              style={{
-                padding: "24px",
-                display: "flex",
-                flexDirection: "column",
-              }}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col group hover:border-violet-500/30 transition-colors"
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: "12px",
-                }}
-              >
+              <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600 }}>
-                    {t.name}
-                  </h3>
-                  <p
-                    style={{
-                      color: "var(--text-tertiary)",
-                      fontSize: "12px",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {t.provider} · {t.model_name}
-                  </p>
+                  <h3 className="font-heading text-lg font-bold text-white group-hover:text-violet-400 transition-colors">{t.name}</h3>
+                  <p className="text-xs text-zinc-500 mt-1 uppercase tracking-wider">{t.provider} &middot; {t.model_name}</p>
                 </div>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                >
-                  <div className={`status-dot ${t.status}`} />
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "var(--text-secondary)",
-                      textTransform: "capitalize",
-                    }}
-                  >
-                    {t.status}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className={clsx(
+                    "w-2 h-2 rounded-full",
+                    t.status === "active" ? "bg-green-500" : t.status === "error" ? "bg-red-500" : "bg-amber-500"
+                  )} />
+                  <span className="text-xs text-zinc-400 capitalize">{t.status}</span>
                 </div>
               </div>
-
-              <p
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: "13px",
-                  lineHeight: 1.6,
-                  flex: 1,
-                  marginBottom: "16px",
-                }}
-              >
+              
+              <p className="text-sm text-zinc-400 flex-1 mb-6">
                 {t.description || "No description provided."}
               </p>
 
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingTop: "14px",
-                  borderTop: "1px solid var(--border)",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--text-tertiary)",
-                  }}
+              <div className="flex justify-between items-center pt-4 border-t border-zinc-800/50">
+                <button
+                  className="flex items-center gap-2 text-xs font-medium text-zinc-400 hover:text-white transition-colors"
+                  onClick={() => handleTestConnection(t.id)}
+                  disabled={testingId === t.id}
                 >
-                  Added {formatDate(t.created_at)}
-                </span>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    className="btn-danger btn-sm"
-                    onClick={() => handleDelete(t.id)}
-                  >
-                    <Trash2 size={13} />
-                    Delete
-                  </button>
-                  <button
-                    className="btn-primary btn-sm"
-                    onClick={() => handleTest(t.id)}
-                    disabled={testingId === t.id}
-                  >
-                    <Play size={13} />
-                    {testingId === t.id ? "Testing..." : "Test"}
-                  </button>
-                </div>
+                  <Play size={14} className={testingId === t.id ? "animate-pulse text-violet-400" : ""} />
+                  {testingId === t.id ? "Testing..." : "Test Connection"}
+                </button>
+                <button
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  onClick={() => handleDelete(t.id)}
+                  title="Delete Target"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Add Target Modal */}
       {showAddModal && (
-        <div className="modal-backdrop">
-          <div className="modal-panel">
-            <h2 className="modal-title">Add New Target</h2>
-
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl">
+            <h2 className="font-heading text-xl font-bold text-white mb-6">Add New Target</h2>
+            
             {formError && (
-              <div
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--red-soft)",
-                  color: "var(--red)",
-                  fontSize: "13px",
-                  marginBottom: "20px",
-                }}
-              >
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={handleAddTarget}>
-              <div style={{ marginBottom: "20px" }}>
-                <label className="input-label">Name *</label>
+            <form onSubmit={handleAddTarget} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Target Name</label>
                 <input
                   type="text"
                   required
+                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g., My ChatBot"
-                  className="input-field"
+                  placeholder="e.g. Production Support Bot"
                 />
               </div>
 
-              <div style={{ marginBottom: "20px" }}>
-                <label className="input-label">Description</label>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Description</label>
                 <input
                   type="text"
+                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                   value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  placeholder="What does this model do?"
-                  className="input-field"
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Optional details"
                 />
               </div>
 
-              <div style={{ marginBottom: "20px" }}>
-                <label className="input-label">Provider *</label>
-                <select
-                  required
-                  value={form.provider}
-                  onChange={(e) =>
-                    setForm({ ...form, provider: e.target.value })
-                  }
-                  className="input-field"
-                >
-                  <option value="ollama">Ollama (Local)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic</option>
-                  <option value="mistral">Mistral</option>
-                  <option value="dummy">Dummy (Built-in)</option>
-                  <option value="custom">Custom API</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Provider</label>
+                  <select
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
+                    value={form.provider}
+                    onChange={(e) => setForm({ ...form, provider: e.target.value })}
+                  >
+                    <option value="ollama">Ollama (Local)</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="custom">Custom Endpoint</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Model Name / Alias</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
+                    value={form.model_name}
+                    onChange={(e) => setForm({ ...form, model_name: e.target.value })}
+                    placeholder={form.provider === "custom" ? "e.g. My Webhook Target" : "e.g. llama3, gpt-4"}
+                  />
+                </div>
               </div>
 
-              <div style={{ marginBottom: "20px" }}>
-                <label className="input-label">Model Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={form.model_name}
-                  onChange={(e) =>
-                    setForm({ ...form, model_name: e.target.value })
-                  }
-                  placeholder="e.g., llama3.2, gpt-4"
-                  className="input-field"
-                />
-              </div>
+              {form.provider === "custom" && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Payload Template (JSON)</label>
+                    <textarea
+                      rows={3}
+                      className="w-full font-mono bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
+                      value={JSON.stringify(form.config.payload_template, null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const parsed = JSON.parse(e.target.value);
+                          setForm({ ...form, config: { ...form.config, payload_template: parsed } });
+                        } catch(err) {
+                          // Allow invalid json while typing, we'll just not update the internal state 
+                        }
+                      }}
+                      placeholder={`{\n  "prompt": "{{prompt}}"\n}`}
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">Use <code>{`{{prompt}}`}</code> as the injection variable.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Response JSON Path</label>
+                    <input
+                      type="text"
+                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
+                      value={form.config.response_json_path}
+                      onChange={(e) => setForm({ ...form, config: { ...form.config, response_json_path: e.target.value } })}
+                      placeholder="response"
+                    />
+                  </div>
+                </>
+              )}
 
-              <div style={{ marginBottom: "20px" }}>
-                <label className="input-label">Endpoint URL</label>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Endpoint URL</label>
                 <input
                   type="text"
+                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                   value={form.endpoint_url}
-                  onChange={(e) =>
-                    setForm({ ...form, endpoint_url: e.target.value })
-                  }
-                  placeholder="http://localhost:11434 (for Ollama)"
-                  className="input-field"
+                  onChange={(e) => setForm({ ...form, endpoint_url: e.target.value })}
+                  placeholder="e.g. http://localhost:11434"
                 />
               </div>
 
-              <div style={{ marginBottom: "24px" }}>
-                <label className="input-label">API Key</label>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">API Key (Optional)</label>
                 <input
                   type="password"
+                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                   value={form.api_key}
-                  onChange={(e) =>
-                    setForm({ ...form, api_key: e.target.value })
-                  }
-                  placeholder="sk-... (for OpenAI/Anthropic)"
-                  className="input-field"
+                  onChange={(e) => setForm({ ...form, api_key: e.target.value })}
+                  placeholder="sk-..."
                 />
               </div>
 
-              <div className="modal-actions">
+              <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setFormError("");
-                  }}
-                  disabled={formLoading}
+                  className="px-5 py-2 rounded-full text-sm font-medium text-zinc-400 hover:text-white transition-colors"
+                  onClick={() => setShowAddModal(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
                   disabled={formLoading}
+                  className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-full text-sm font-semibold transition-all disabled:opacity-50"
                 >
-                  {formLoading ? "Adding..." : "Add Target"}
+                  {formLoading ? "Saving..." : "Save Target"}
                 </button>
               </div>
             </form>

@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { RunAssessmentModal } from "@/components/RunAssessmentModal";
 import { Activity, Zap, TrendingUp } from "lucide-react";
+import clsx from "clsx";
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -51,214 +52,121 @@ export default function Dashboard() {
     (acc, c) => acc + (c.total_tests || 0),
     0
   );
-  const latestRisk =
-    campaigns.length > 0 ? Math.round(campaigns[0].risk_score || 0) : 0;
+  const totalFailed = campaigns.reduce(
+    (acc, c) => acc + (c.failed_tests || 0),
+    0
+  );
 
   return (
-    <div className="animate-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Overview</h1>
-          <p className="page-description">
-            Your AI security posture and recent testing activity.
-          </p>
-        </div>
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-          Run Assessment
-        </button>
-      </div>
-
+    <div className="max-w-6xl">
       <RunAssessmentModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         targetId={targetId}
         targetName={targetName}
-        onSuccess={loadData}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          loadData();
+        }}
       />
 
-      {/* Metrics */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "20px",
-          marginBottom: "32px",
-        }}
-      >
-        <div className="surface" style={{ padding: "28px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "16px",
-            }}
-          >
-            <p className="metric-label">Risk Score</p>
-            <TrendingUp size={16} style={{ color: "var(--text-tertiary)" }} />
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Overview</h1>
+          <p className="text-zinc-400 text-sm mt-1">Welcome back. Here is your security posture.</p>
+        </div>
+        <button
+          className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+          onClick={() => setIsModalOpen(true)}
+        >
+          Run Assessment
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Total Tests</p>
+            <Zap size={16} className="text-zinc-500" />
           </div>
-          <p
-            className="metric-value"
-            style={{
-              color:
-                latestRisk >= 61
-                  ? "var(--red)"
-                  : latestRisk >= 41
-                    ? "var(--amber)"
-                    : "var(--green)",
-            }}
-          >
-            {latestRisk}
-          </p>
-          <p
-            style={{
-              fontSize: "13px",
-              color: "var(--text-tertiary)",
-              marginTop: "8px",
-            }}
-          >
-            Based on {campaigns.length} campaign{campaigns.length !== 1 && "s"}
-          </p>
+          <p className="font-heading text-4xl font-bold text-white">{totalTests}</p>
+          <p className="text-sm text-zinc-500 mt-2">Executed across targets</p>
         </div>
 
-        <div className="surface" style={{ padding: "28px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "16px",
-            }}
-          >
-            <p className="metric-label">Tests Executed</p>
-            <Zap size={16} style={{ color: "var(--text-tertiary)" }} />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Vulnerabilities</p>
+            <TrendingUp size={16} className="text-red-500/50" />
           </div>
-          <p className="metric-value">{totalTests.toLocaleString()}</p>
-          <p
-            style={{
-              fontSize: "13px",
-              color: "var(--text-tertiary)",
-              marginTop: "8px",
-            }}
-          >
-            Total prompts sent to models
-          </p>
+          <p className="font-heading text-4xl font-bold text-white">{totalFailed}</p>
+          <p className="text-sm text-zinc-500 mt-2">Failed assertions</p>
         </div>
 
-        <div className="surface" style={{ padding: "28px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "16px",
-            }}
-          >
-            <p className="metric-label">Active Campaigns</p>
-            <Activity size={16} style={{ color: "var(--text-tertiary)" }} />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Active Campaigns</p>
+            <Activity size={16} className="text-zinc-500" />
           </div>
-          <p className="metric-value">
+          <p className="font-heading text-4xl font-bold text-white">
             {campaigns.filter((c) => c.status === "running").length}
           </p>
-          <p
-            style={{
-              fontSize: "13px",
-              color: "var(--text-tertiary)",
-              marginTop: "8px",
-            }}
-          >
-            Currently in progress
-          </p>
+          <p className="text-sm text-zinc-500 mt-2">Currently in progress</p>
         </div>
       </div>
 
-      {/* Recent Campaigns */}
-      <div className="surface" style={{ padding: "28px" }}>
-        <h3
-          style={{
-            fontSize: "16px",
-            fontWeight: 600,
-            marginBottom: "20px",
-          }}
-        >
-          Recent Campaigns
-        </h3>
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+        <h3 className="font-heading text-lg font-bold text-white mb-6">Recent Campaigns</h3>
 
         {loading && campaigns.length === 0 ? (
-          <p
-            style={{ color: "var(--text-tertiary)", padding: "20px 0" }}
-            className="animate-pulse"
-          >
-            Loading campaigns...
-          </p>
+          <p className="text-zinc-500 py-4 animate-pulse">Loading campaigns...</p>
         ) : campaigns.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <p
-              style={{
-                color: "var(--text-tertiary)",
-                marginBottom: "16px",
-                fontSize: "14px",
-              }}
-            >
-              No campaigns yet. Run your first assessment to get started.
-            </p>
+          <div className="text-center py-10">
+            <p className="text-zinc-500 mb-4 text-sm">No campaigns yet. Run your first assessment to get started.</p>
             <button
-              className="btn-secondary btn-sm"
+              className="border border-zinc-700 hover:border-zinc-500 text-white px-4 py-2 rounded-full text-sm transition-all"
               onClick={() => setIsModalOpen(true)}
             >
               Run your first test
             </button>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {campaigns.map((c) => (
+          <div className="flex flex-col">
+            {campaigns.map((c, i) => (
               <div
                 key={c.id}
-                className="surface-inset"
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "14px 16px",
-                }}
+                className={clsx(
+                  "flex justify-between items-center py-4 px-4 hover:bg-zinc-800/30 transition-colors rounded-lg group",
+                  i !== campaigns.length - 1 && "border-b border-zinc-800/50"
+                )}
               >
                 <div>
-                  <p style={{ fontWeight: 500, fontSize: "14px" }}>{c.name}</p>
-                  <p
-                    style={{
-                      color: "var(--text-tertiary)",
-                      fontSize: "12px",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {c.target_name}
-                  </p>
+                  <p className="font-medium text-sm text-white group-hover:text-violet-400 transition-colors">{c.name}</p>
+                  <p className="text-xs text-zinc-500 mt-1">{c.target_name}</p>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "16px",
-                  }}
-                >
-                  <div style={{ textAlign: "right" }}>
-                    <p style={{ fontSize: "13px", fontWeight: 500 }}>
-                      {c.status === "running"
-                        ? "Running..."
-                        : `${c.failed_tests || 0} Failed`}
+                <div className="flex items-center gap-6">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-medium text-zinc-300">
+                      {c.status === "running" ? "Running..." : `${c.failed_tests || 0} Failed`}
                     </p>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <div className={`status-dot ${c.status}`} />
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--text-secondary)",
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {c.status}
-                    </span>
+                  <div className="w-24 flex justify-end">
+                    {c.status === "running" ? (
+                      <span className="text-xs text-blue-400 bg-blue-400/10 rounded-full px-2.5 py-1 font-medium border border-blue-400/20">
+                        Running
+                      </span>
+                    ) : c.status === "completed" ? (
+                      <span className="text-xs text-green-400 bg-green-400/10 rounded-full px-2.5 py-1 font-medium border border-green-400/20">
+                        Completed
+                      </span>
+                    ) : c.status === "failed" ? (
+                      <span className="text-xs text-red-400 bg-red-400/10 rounded-full px-2.5 py-1 font-medium border border-red-400/20">
+                        Failed
+                      </span>
+                    ) : (
+                      <span className="text-xs text-zinc-400 bg-zinc-800 rounded-full px-2.5 py-1 font-medium border border-zinc-700">
+                        {c.status}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

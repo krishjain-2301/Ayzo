@@ -54,36 +54,20 @@ class LLMClient:
         temperature: float = 0.7,
         max_tokens: int = 1024,
         timeout: int = 60,
+        config: Optional[dict] = None,
     ) -> dict:
         """
         Send a message to an LLM and get a response.
-        
-        Args:
-            model: Model identifier (e.g., "ollama/llama3.2", "gpt-4")
-            user_message: The user's message (this is the attack prompt)
-            system_message: Optional system prompt for the target
-            api_key: API key for paid providers (OpenAI, etc.)
-            api_base: Custom API endpoint URL (for Ollama, self-hosted)
-            temperature: Creativity level (0=deterministic, 1=creative)
-            max_tokens: Maximum response length
-            timeout: Seconds before giving up
-            
-        Returns:
-            Dict with: response_text, model, usage, response_time_ms
         """
-        # Build the messages array (standard chat format)
         messages = []
         if system_message:
             messages.append({"role": "system", "content": system_message})
         messages.append({"role": "user", "content": user_message})
 
-        # Track response time
         start_time = time.time()
 
         try:
-            # Special case for our internal Dummy Target
             if model == "dummy":
-                # Directly invoke the dummy endpoint logic to avoid circular HTTP import
                 from app.api.v1.endpoints.dummy import chat_with_dummy_ai, ChatRequest
                 dummy_req = ChatRequest(prompt=user_message)
                 dummy_resp = await chat_with_dummy_ai(dummy_req)
@@ -97,7 +81,39 @@ class LLMClient:
                     "finish_reason": "stop",
                 }
 
-            # LiteLLM handles all the provider-specific formatting
+            if model == "custom_webhook":
+                if not api_base:
+                    raise ValueError("api_base (URL) is required for custom_webhook")
+                
+                cfg = config or {}
+                headers = cfg.get("headers", {})
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                
+                payload_template = cfg.get("payload_template", {"prompt": "{{prompt}}"})
+                import json
+                payload_str = json.dumps(payload_template).replace("{{prompt}}", user_message)
+                payload = json.loads(payload_str)
+
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.post(api_base, json=payload, headers=headers)
+                    resp.raise_for_status()
+                    resp_data = resp.json()
+
+                # Extract response based on json_path
+                json_path = cfg.get("response_json_path", "response")
+                response_text = resp_data.get(json_path, str(resp_data))
+
+                elapsed_ms = (time.time() - start_time) * 1000
+                return {
+                    "success": True,
+                    "response_text": str(response_text),
+                    "model": "custom_webhook",
+                    "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    "response_time_ms": round(elapsed_ms, 2),
+                    "finish_reason": "stop",
+                }
+
             response = await litellm.acompletion(
                 model=model,
                 messages=messages,

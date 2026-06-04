@@ -1,6 +1,5 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { WaveBackground } from "@/components/WaveBackground";
 
 export default function DashboardLayout({
   children,
@@ -8,15 +7,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
-      <WaveBackground opacity={0.6} />
-      <div className="layout-wrapper" style={{ position: "relative", zIndex: 1 }}>
-        <Sidebar />
-        <div className="layout-main">
-          <Header />
-          <main className="layout-content">{children}</main>
-        </div>
+    <div className="flex h-screen overflow-hidden bg-black text-zinc-400 font-sans selection:bg-violet-500/30 selection:text-white">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-8 pb-24 bg-black">
+          {children}
+        </main>
       </div>
-    </>
+    </div>
   );
 }

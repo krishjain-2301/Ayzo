@@ -30,9 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
-        <meta name="theme-color" content="#0a0a0a" />
+        <meta name="theme-color" content="#000000" />
       </head>
-      <body>
+      <body className="bg-black text-zinc-400 font-sans antialiased selection:bg-violet-500/30 selection:text-white">
         <Providers>{children}</Providers>
       </body>
     </html>

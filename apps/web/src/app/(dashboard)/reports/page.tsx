@@ -1,16 +1,15 @@
 "use client";
 import React, { Suspense, useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
-import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ShieldCheck, AlertTriangle } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { ArrowLeft, ShieldCheck, AlertTriangle, AlertCircle, TrendingUp } from "lucide-react";
+import clsx from "clsx";
 
 export default function ReportsPage() {
   return (
     <Suspense
       fallback={
-        <p style={{ color: "var(--text-tertiary)", padding: "40px 0" }} className="animate-pulse">
-          Loading reports...
-        </p>
+        <p className="text-zinc-500 py-10 animate-pulse text-center">Loading reports...</p>
       }
     >
       <ReportsContent />
@@ -71,8 +70,9 @@ interface Report {
 }
 
 function ReportsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const campaignIdParam = searchParams.get("campaign");
+  const campaignIdParam = searchParams.get("campaign_id");
 
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(
@@ -126,156 +126,84 @@ function ReportsContent() {
     switch (level.toLowerCase()) {
       case "critical":
       case "high":
-        return "var(--red)";
+        return "text-red-500";
       case "medium":
-        return "var(--amber)";
+        return "text-amber-500";
       case "low":
-        return "var(--green)";
+        return "text-green-500";
       default:
-        return "var(--text-tertiary)";
+        return "text-zinc-500";
     }
   };
 
-  const getSeverityBadge = (sev: string) => {
+  const getSeverityBadgeColor = (sev: string) => {
     switch (sev) {
       case "critical":
       case "high":
-        return "danger";
+        return "bg-red-500/10 text-red-400 border-red-500/20";
       case "medium":
-        return "warning";
+        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
       case "low":
-        return "success";
+        return "bg-green-500/10 text-green-400 border-green-500/20";
       default:
-        return "info";
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     }
   };
 
-  // Campaign selector view
   if (!selectedCampaignId || !report) {
     return (
-      <div className="animate-in">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Reports</h1>
-            <p className="page-description">
-              Select a completed campaign to view its vulnerability report.
-            </p>
-          </div>
+      <div className="max-w-4xl">
+        <div className="mb-8">
+          <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Reports</h1>
+          <p className="text-zinc-400 text-sm mt-1">Select a completed campaign to view its vulnerability report.</p>
         </div>
 
         {reportLoading && (
-          <p
-            style={{ color: "var(--text-tertiary)", padding: "20px 0" }}
-            className="animate-pulse"
-          >
-            Loading report...
-          </p>
+          <p className="text-zinc-500 py-10 animate-pulse text-center">Loading report...</p>
         )}
+        
         {reportError && (
-          <div
-            style={{
-              padding: "10px 14px",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--red-soft)",
-              color: "var(--red)",
-              fontSize: "13px",
-              marginBottom: "20px",
-            }}
-          >
-            {reportError}
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <span className="text-sm text-red-400">{reportError}</span>
           </div>
         )}
 
         {loading ? (
-          <p
-            style={{ color: "var(--text-tertiary)", padding: "40px 0" }}
-            className="animate-pulse"
-          >
-            Loading campaigns...
-          </p>
+          <p className="text-zinc-500 py-10 animate-pulse text-center">Loading campaigns...</p>
         ) : campaigns.length === 0 ? (
-          <div
-            className="surface"
-            style={{ textAlign: "center", padding: "60px 0" }}
-          >
-            <p style={{ color: "var(--text-tertiary)", fontSize: "14px" }}>
-              No completed campaigns yet. Run a campaign first to generate a
-              report.
-            </p>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl text-center py-16">
+            <p className="text-zinc-500 text-sm">No completed campaigns yet. Run a campaign first to generate a report.</p>
           </div>
         ) : (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-          >
+          <div className="flex flex-col gap-3">
             {campaigns.map((c) => (
               <div
                 key={c.id}
-                className="surface surface-hover"
-                style={{
-                  padding: "20px 24px",
-                  cursor: "pointer",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex justify-between items-center cursor-pointer hover:border-violet-500/30 hover:bg-zinc-800/30 transition-colors group"
+                onClick={() => {
+                  setSelectedCampaignId(c.id);
+                  router.push(`/reports?campaign_id=${c.id}`);
                 }}
-                onClick={() => setSelectedCampaignId(c.id)}
               >
                 <div>
-                  <h3 style={{ fontSize: "15px", fontWeight: 600 }}>
-                    {c.name}
-                  </h3>
-                  <p
-                    style={{
-                      color: "var(--text-tertiary)",
-                      fontSize: "12px",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {c.target_name} ·{" "}
-                    {new Date(c.created_at).toLocaleDateString()}
+                  <h3 className="font-heading text-lg font-bold text-white group-hover:text-violet-400 transition-colors">{c.name}</h3>
+                  <p className="text-xs text-zinc-500 mt-1 uppercase tracking-wider">
+                    {c.target_name} &middot; {new Date(c.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}
-                >
+                <div className="flex items-center gap-6">
                   {c.risk_score !== null && (
-                    <span
-                      style={{
-                        fontSize: "22px",
-                        fontWeight: 700,
-                        color: getRiskColor(
-                          c.risk_score >= 61
-                            ? "high"
-                            : c.risk_score >= 41
-                              ? "medium"
-                              : "low"
-                        ),
-                      }}
-                    >
+                    <span className={clsx(
+                      "font-heading text-2xl font-bold",
+                      c.risk_score >= 61 ? "text-red-500" : c.risk_score >= 41 ? "text-amber-500" : "text-green-500"
+                    )}>
                       {Math.round(c.risk_score)}
                     </span>
                   )}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <div className={`status-dot ${c.status}`} />
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--text-secondary)",
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {c.status}
-                    </span>
+                  <div className="flex items-center gap-2 w-20 justify-end">
+                    <div className={clsx("w-2 h-2 rounded-full", c.status === "completed" ? "bg-green-500" : "bg-red-500")} />
+                    <span className="text-xs text-zinc-400 capitalize">{c.status}</span>
                   </div>
                 </div>
               </div>
@@ -286,423 +214,162 @@ function ReportsContent() {
     );
   }
 
-  // Full report view
   return (
-    <div className="animate-in">
-      <div className="page-header">
+    <div className="max-w-6xl">
+      <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="page-title">Security Assessment Report</h1>
-          <p className="page-description">
-            {report.target_name} ({report.target_model}) · {report.campaign_name}
+          <button
+            className="flex items-center gap-2 text-zinc-500 hover:text-white text-sm font-medium transition-colors mb-4"
+            onClick={() => {
+              setSelectedCampaignId(null);
+              router.push("/reports");
+            }}
+          >
+            <ArrowLeft size={16} /> Back to Reports
+          </button>
+          <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Security Assessment Report</h1>
+          <p className="text-zinc-400 text-sm mt-1">
+            {report.target_name} ({report.target_model}) &middot; {report.campaign_name}
           </p>
         </div>
         <button
-          className="btn-secondary"
-          onClick={() => {
-            setSelectedCampaignId(null);
-            setReport(null);
-          }}
+          className="border border-zinc-700 hover:border-zinc-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all"
+          onClick={() => window.print()}
         >
-          <ArrowLeft size={15} />
-          Back to Reports
+          Export PDF
         </button>
       </div>
 
-      {/* Summary + Risk Score */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr",
-          gap: "20px",
-          marginBottom: "28px",
-        }}
-      >
-        <div className="surface" style={{ padding: "28px" }}>
-          <h2
-            style={{
-              fontSize: "16px",
-              fontWeight: 600,
-              marginBottom: "16px",
-            }}
-          >
-            Executive Summary
-          </h2>
-          <p
-            style={{
-              color: "var(--text-secondary)",
-              fontSize: "14px",
-              lineHeight: 1.7,
-              marginBottom: "24px",
-            }}
-          >
-            The target model{" "}
-            <strong style={{ color: "var(--text-primary)" }}>
-              {report.target_name}
-            </strong>{" "}
-            underwent automated security testing.{" "}
-            <strong style={{ color: "var(--text-primary)" }}>
-              {report.total_failures} vulnerabilities
-            </strong>{" "}
-            were identified out of {report.total_tests} executed tests (
-            {report.overall_failure_rate}% failure rate).
-          </p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "12px",
-            }}
-          >
-            <div className="surface-inset" style={{ padding: "16px" }}>
-              <p className="metric-label">Total Tests</p>
-              <p style={{ fontSize: "22px", fontWeight: 600 }}>
-                {report.total_tests.toLocaleString()}
-              </p>
-            </div>
-            <div className="surface-inset" style={{ padding: "16px" }}>
-              <p className="metric-label">Failed</p>
-              <p
-                style={{
-                  fontSize: "22px",
-                  fontWeight: 600,
-                  color: "var(--red)",
-                }}
-              >
-                {report.total_failures}{" "}
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 400,
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  ({report.overall_failure_rate}%)
-                </span>
-              </p>
-            </div>
-            <div className="surface-inset" style={{ padding: "16px" }}>
-              <p className="metric-label">Passed</p>
-              <p
-                style={{
-                  fontSize: "22px",
-                  fontWeight: 600,
-                  color: "var(--green)",
-                }}
-              >
-                {report.total_passes}{" "}
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 400,
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  (
-                  {report.total_tests > 0
-                    ? (100 - report.overall_failure_rate).toFixed(1)
-                    : 0}
-                  %)
-                </span>
-              </p>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="md:col-span-1 bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col justify-center items-center text-center">
+          <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Overall Risk</p>
+          <div className={clsx("font-heading text-5xl font-black mb-1", getRiskColor(report.risk_level))}>
+            {report.overall_risk_score}
           </div>
+          <p className={clsx("text-sm font-bold uppercase tracking-widest", getRiskColor(report.risk_level))}>
+            {report.risk_level}
+          </p>
         </div>
 
-        {/* Risk Score */}
-        <div
-          className="surface"
-          style={{
-            padding: "28px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-          }}
-        >
-          <p className="metric-label" style={{ marginBottom: "16px" }}>
-            Overall Risk Score
-          </p>
-          <p
-            style={{
-              fontSize: "56px",
-              fontWeight: 700,
-              letterSpacing: "-0.04em",
-              lineHeight: 1,
-              color: getRiskColor(report.risk_level),
-              marginBottom: "12px",
-            }}
-          >
-            {Math.round(report.overall_risk_score)}
-          </p>
-          <span
-            className={`badge ${getSeverityBadge(report.risk_level.toLowerCase())}`}
-          >
-            {report.risk_level} Risk
-          </span>
+        <div className="md:col-span-3 grid grid-cols-3 gap-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Tests Run</p>
+            <p className="font-heading text-3xl font-bold text-white">{report.total_tests}</p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Vulnerabilities</p>
+            <p className="font-heading text-3xl font-bold text-red-500">{report.total_failures}</p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Pass Rate</p>
+            <p className="font-heading text-3xl font-bold text-green-500">
+              {Math.round(((report.total_passes) / (report.total_tests || 1)) * 100)}%
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Category Breakdown */}
-      {report.category_scores.length > 0 && (
-        <div
-          className="surface"
-          style={{ padding: "28px", marginBottom: "28px" }}
-        >
-          <h2
-            style={{
-              fontSize: "16px",
-              fontWeight: 600,
-              marginBottom: "20px",
-            }}
-          >
-            Category Breakdown
-          </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-              gap: "12px",
-            }}
-          >
-            {report.category_scores.map((cs) => (
-              <div
-                key={cs.category}
-                className="surface-inset"
-                style={{
-                  padding: "16px",
-                  borderLeft: `3px solid ${getRiskColor(cs.severity)}`,
-                }}
-              >
-                <h4
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    marginBottom: "8px",
-                  }}
-                >
-                  {cs.display_name}
-                </h4>
-                <p
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--text-tertiary)",
-                    marginBottom: "8px",
-                  }}
-                >
-                  {cs.failures}/{cs.total_tests} failed ({cs.failure_rate}%)
-                </p>
-                <div className="progress-bar">
-                  <div
-                    className="progress-bar-fill"
-                    style={{
-                      width: `${cs.failure_rate}%`,
-                      background: getRiskColor(cs.severity),
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+      {report.total_failures === 0 ? (
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-8 flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 mb-4">
+            <ShieldCheck size={32} />
           </div>
+          <h2 className="font-heading text-xl font-bold text-green-400 mb-2">Secure</h2>
+          <p className="text-green-500/80 max-w-lg">
+            No vulnerabilities were detected during this assessment. The target model demonstrated robust defenses against all tested attack vectors.
+          </p>
         </div>
-      )}
-
-      {/* Findings */}
-      {report.findings.length > 0 && (
-        <div>
-          <h2
-            style={{
-              fontSize: "18px",
-              fontWeight: 600,
-              marginBottom: "16px",
-            }}
-          >
-            Detailed Findings
-          </h2>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-          >
-            {report.findings.map((f) => (
-              <div
-                key={f.id}
-                className="surface"
-                style={{
-                  padding: "28px",
-                  borderLeft: `3px solid ${getRiskColor(f.severity)}`,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: "16px",
-                  }}
-                >
+      ) : (
+        <>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8">
+            <h2 className="font-heading text-lg font-bold text-white mb-6">Attack Vectors</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {report.category_scores.map((cs) => (
+                <div key={cs.category} className="bg-black border border-zinc-800/50 rounded-lg p-4 flex justify-between items-center">
                   <div>
-                    <h3 style={{ fontSize: "16px", fontWeight: 600 }}>
-                      {f.title}
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--text-tertiary)",
-                        marginTop: "4px",
-                      }}
-                    >
-                      {f.category.replace(/_/g, " ")} · Confidence:{" "}
-                      {Math.round(f.confidence * 100)}% ·{" "}
-                      {f.occurrence_count}/{f.total_tests_in_category} tests
-                      failed
+                    <h4 className="font-semibold text-white text-sm">{cs.display_name}</h4>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      {cs.failures} vulnerabilities / {cs.total_tests} tests
                     </p>
                   </div>
-                  <span className={`badge ${getSeverityBadge(f.severity)}`}>
-                    {f.severity}
-                  </span>
+                  <div className="text-right">
+                    <span className={clsx(
+                      "inline-block px-2.5 py-1 rounded-full text-xs font-bold border uppercase tracking-wider",
+                      getSeverityBadgeColor(cs.severity)
+                    )}>
+                      {cs.severity}
+                    </span>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <p
-                  style={{
-                    fontSize: "14px",
-                    color: "var(--text-secondary)",
-                    lineHeight: 1.7,
-                    marginBottom: "20px",
-                  }}
-                >
-                  {f.description}
-                </p>
-
-                {/* Evidence */}
-                {f.evidence && f.evidence.length > 0 && (
-                  <div
-                    className="surface-inset"
-                    style={{ padding: "20px", marginBottom: "16px" }}
-                  >
-                    <h4
-                      style={{
-                        fontSize: "11px",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        color: "var(--text-tertiary)",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      Evidence
-                    </h4>
-                    {f.evidence.slice(0, 2).map((ev: any, i: number) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "12px",
-                          marginBottom: i < 1 ? "12px" : 0,
-                        }}
-                      >
-                        <div>
-                          <p
-                            style={{
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              color: "var(--accent)",
-                              marginBottom: "6px",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.04em",
-                            }}
-                          >
-                            Attack Prompt
-                          </p>
-                          <div className="code-block" style={{ maxHeight: "100px", overflowY: "auto" }}>
-                            {ev.prompt || "N/A"}
-                          </div>
+          <div>
+            <h2 className="font-heading text-xl font-bold text-white mb-6">Detailed Findings</h2>
+            <div className="flex flex-col gap-6">
+              {report.findings.map((finding) => (
+                <div key={finding.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative overflow-hidden">
+                  <div className={clsx(
+                    "absolute top-0 left-0 w-1 h-full",
+                    finding.severity === "critical" || finding.severity === "high" ? "bg-red-500" :
+                    finding.severity === "medium" ? "bg-amber-500" : "bg-blue-500"
+                  )} />
+                  
+                  <div className="pl-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={clsx(
+                            "px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-widest",
+                            getSeverityBadgeColor(finding.severity)
+                          )}>
+                            {finding.severity}
+                          </span>
+                          <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">{finding.category.replace("_", " ")}</span>
                         </div>
-                        <div>
-                          <p
-                            style={{
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              color: "var(--red)",
-                              marginBottom: "6px",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.04em",
-                            }}
-                          >
-                            Model Response
-                          </p>
-                          <div
-                            className="code-block"
-                            style={{
-                              maxHeight: "100px",
-                              overflowY: "auto",
-                              borderColor: "rgba(239,68,68,0.15)",
-                            }}
-                          >
-                            {ev.response || "N/A"}
+                        <h3 className="font-heading text-lg font-bold text-white">{finding.title}</h3>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold mb-1">Occurrences</p>
+                        <p className="text-lg font-bold text-white">{finding.occurrence_count}</p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-zinc-400 mb-6 leading-relaxed">{finding.description}</p>
+
+                    {finding.remediation && (
+                      <div className="mb-6 p-4 bg-violet-500/10 border border-violet-500/20 rounded-lg">
+                        <h4 className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-2">Recommended Remediation</h4>
+                        <p className="text-sm text-zinc-300">{finding.remediation}</p>
+                      </div>
+                    )}
+
+                    {finding.evidence && finding.evidence.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Evidence (Sample)</h4>
+                        <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden text-sm">
+                          <div className="p-4 border-b border-zinc-800">
+                            <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Input Prompt</span>
+                            <p className="font-mono text-zinc-300 whitespace-pre-wrap">
+                              {finding.evidence[0].prompt || "N/A"}
+                            </p>
+                          </div>
+                          <div className="p-4">
+                            <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Model Response</span>
+                            <p className="font-mono text-red-400 whitespace-pre-wrap">
+                              {finding.evidence[0].response || "N/A"}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-
-                {/* Remediation */}
-                {f.remediation && (
-                  <div>
-                    <h4
-                      style={{
-                        fontSize: "11px",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        color: "var(--text-tertiary)",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      Remediation
-                    </h4>
-                    <p
-                      style={{
-                        fontSize: "13px",
-                        color: "var(--text-secondary)",
-                        lineHeight: 1.7,
-                        whiteSpace: "pre-line",
-                      }}
-                    >
-                      {f.remediation}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {report.findings.length === 0 && (
-        <div
-          className="surface"
-          style={{
-            textAlign: "center",
-            padding: "48px 0",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <ShieldCheck size={32} style={{ color: "var(--green)" }} />
-          <h3 style={{ fontSize: "16px", color: "var(--green)" }}>
-            No Vulnerabilities Found
-          </h3>
-          <p
-            style={{
-              color: "var(--text-tertiary)",
-              fontSize: "14px",
-            }}
-          >
-            The model passed all tests with no detected weaknesses.
-          </p>
-        </div>
+        </>
       )}
     </div>
   );

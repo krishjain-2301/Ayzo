@@ -88,6 +88,7 @@ class TestRunner:
             temperature=config.get("temperature", 0.7),
             max_tokens=config.get("max_tokens", 1024),
             timeout=config.get("timeout", 60),
+            config=config,
         )
 
         if not model_result["success"]:

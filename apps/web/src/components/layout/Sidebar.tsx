@@ -1,133 +1,106 @@
 "use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Crosshair,
   Swords,
   FileText,
   Library,
-  LogOut,
 } from "lucide-react";
-
-const navItems = [
-  {
-    group: "Overview",
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/targets", label: "AI Targets", icon: Crosshair },
-    ],
-  },
-  {
-    group: "Testing",
-    items: [
-      { href: "/campaigns", label: "Campaigns", icon: Swords },
-      { href: "/reports", label: "Reports", icon: FileText },
-      { href: "/library", label: "Attack Library", icon: Library },
-    ],
-  },
-];
+import clsx from "clsx";
 
 export function Sidebar() {
-  const [user, setUser] = useState<{
-    name?: string;
-    email?: string;
-    avatar_url?: string;
-    role?: string;
-  } | null>(null);
   const pathname = usePathname();
-  const router = useRouter();
+  const [user, setUser] = useState<{ name: string; email: string; picture?: string } | null>(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("user");
-      if (stored) setUser(JSON.parse(stored));
-    } catch {}
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }, []);
 
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + "/");
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
-  };
+  const navGroups = [
+    {
+      label: "Overview",
+      items: [
+        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { label: "AI Targets", href: "/targets", icon: Crosshair },
+      ],
+    },
+    {
+      label: "Testing",
+      items: [
+        { label: "Campaigns", href: "/campaigns", icon: Swords },
+        { label: "Reports", href: "/reports", icon: FileText },
+        { label: "Attack Library", href: "/library", icon: Library },
+      ],
+    },
+  ];
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <span className="logo-wordmark">AYZO</span>
+    <aside className="w-56 h-screen flex flex-col px-4 py-6 bg-zinc-950 border-r border-zinc-800 shrink-0">
+      <div className="px-2 mb-8">
+        <Link href="/" className="font-heading font-bold text-lg text-white tracking-widest">
+          AYZO
+        </Link>
       </div>
 
-      <nav className="sidebar-nav">
-        {navItems.map((group) => (
-          <div key={group.group}>
-            <p className="nav-group-label">{group.group}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              {group.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`nav-item ${isActive(item.href) ? "active" : ""}`}
-                >
-                  <item.icon size={18} />
-                  {item.label}
-                </Link>
-              ))}
+      <nav className="flex-1 flex flex-col gap-6">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 px-3 mb-2">
+              {group.label}
+            </div>
+            <div className="flex flex-col gap-1">
+              {group.items.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={clsx(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-violet-600/20 text-violet-400"
+                        : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+                    )}
+                  >
+                    <item.icon size={16} className={clsx("shrink-0", isActive ? "opacity-100" : "opacity-70")} />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        {user ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div className="user-profile">
-              <div className="avatar">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.name || "User"}
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  user.name ? user.name[0].toUpperCase() : "U"
-                )}
-              </div>
-              <div>
-                <p className="user-name">{user.name || "User"}</p>
-                <p className="user-role">
-                  {user.role === "admin" ? "Administrator" : "Analyst"}
-                </p>
-              </div>
-            </div>
-            <button
-              className="icon-btn"
-              onClick={handleLogout}
-              title="Sign out"
-              style={{ flexShrink: 0 }}
-            >
-              <LogOut size={16} />
-            </button>
+      <div className="mt-auto pt-4 border-t border-zinc-800">
+        <div className="flex items-center gap-3 px-2">
+          <div className="w-8 h-8 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden">
+            {user?.picture ? (
+              <img src={user.picture} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              user?.name?.charAt(0) || "U"
+            )}
           </div>
-        ) : (
-          <div className="user-profile">
-            <div className="avatar">U</div>
-            <div>
-              <p className="user-name" style={{ color: "var(--text-tertiary)" }}>
-                Loading...
-              </p>
+          <div className="min-w-0 overflow-hidden text-ellipsis">
+            <div className="font-medium text-xs text-white truncate">
+              {user?.name || "User"}
+            </div>
+            <div className="text-[10px] text-zinc-500 truncate">
+              {user?.email || "user@example.com"}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </aside>
   );

@@ -152,12 +152,11 @@ class AttackEngine:
 
         print(f" Selected {len(selected_attacks)} base attacks across {len(categories)} categories")
 
-        # ---- Step 2: Build the full test list (originals + mutations) ----
-        test_list = []
+        # ---- Step 2: Build Generation 0 (Base Attacks) ----
+        current_generation_tests = []
 
         for attack in selected_attacks:
-            # Add the original attack
-            test_list.append({
+            current_generation_tests.append({
                 "prompt": attack["original_prompt"],
                 "category": attack["category"],
                 "success_indicators": attack.get("success_indicators", ""),
@@ -165,44 +164,49 @@ class AttackEngine:
                 "mutation_generation": 0,
             })
 
-            # Generate mutations if requested
-            if mutation_depth > 0:
-                current_prompts = [attack["original_prompt"]]
+        print(f" Starting evolutionary fuzzing loop for {target_model}...")
 
-                for generation in range(1, mutation_depth + 1):
-                    new_mutations = []
-                    for base_prompt in current_prompts:
-                        mutations = await mutation_engine.mutate(
-                            prompt=base_prompt,
-                            count=mutations_per_prompt,
-                        )
-                        for m in mutations:
-                            test_list.append({
-                                "prompt": m["prompt"],
-                                "category": attack["category"],
-                                "success_indicators": attack.get("success_indicators", ""),
-                                "attack_id": None,
-                                "mutation_generation": generation,
-                            })
-                            new_mutations.append(m["prompt"])
+        # ---- Step 3: Evolutionary Fuzzing Loop ----
+        for generation in range(mutation_depth + 1):
+            if not current_generation_tests:
+                break
+                
+            print(f"   -> Running Generation {generation} ({len(current_generation_tests)} tests)")
+            
+            gen_results = await test_runner.run_batch(
+                tests=current_generation_tests,
+                model=target_model,
+                api_key=api_key,
+                api_base=api_base,
+                system_message=system_message,
+                config=config,
+                progress_callback=progress_callback,
+            )
+            all_results.extend(gen_results)
 
-                    current_prompts = new_mutations  # Next generation mutates these
+            # If we haven't reached the max depth, generate the next generation
+            if generation < mutation_depth:
+                # We only want to mutate prompts that FAILED (the model blocked the attack).
+                # If an attack PASSED (it bypassed the model), we don't need to mutate it further.
+                failed_results = [r for r in gen_results if r.get("result") == "fail"]
+                
+                next_generation_tests = []
+                for res in failed_results:
+                    mutations = await mutation_engine.mutate(
+                        prompt=res["prompt_sent"],
+                        count=mutations_per_prompt,
+                    )
+                    for m in mutations:
+                        next_generation_tests.append({
+                            "prompt": m["prompt"],
+                            "category": res.get("attack_category", "unknown"),
+                            "success_indicators": "", # We lose the indicator here, but eval_engine mostly uses category
+                            "attack_id": res.get("attack_id"),
+                            "mutation_generation": generation + 1,
+                        })
+                current_generation_tests = next_generation_tests
 
-        total_tests = len(test_list)
-        print(f" Total tests after mutation: {total_tests}")
-
-        # ---- Step 3: Execute all tests ----
-        print(f" Starting test execution against {target_model}...")
-
-        all_results = await test_runner.run_batch(
-            tests=test_list,
-            model=target_model,
-            api_key=api_key,
-            api_base=api_base,
-            system_message=system_message,
-            config=config,
-            progress_callback=progress_callback,
-        )
+        total_tests = len(all_results)
 
         # ---- Step 4: Generate findings ----
         findings = self._generate_findings(all_results, categories)

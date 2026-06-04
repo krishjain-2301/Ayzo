@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { Check } from "lucide-react";
+import clsx from "clsx";
 
 interface AttackCategory {
   id: string;
@@ -70,254 +71,118 @@ export default function LibraryPage() {
     }
   }, [selectedCategory, loadPayloads]);
 
-  const selectedCat = categories.find((c) => c.id === selectedCategory);
-
-  const getSeverityBadge = (sev: string) => {
-    switch (sev) {
+  const getSeverityBadgeColor = (sev: string) => {
+    switch (sev.toLowerCase()) {
       case "critical":
       case "high":
-        return "danger";
+        return "bg-red-500/10 text-red-400 border-red-500/20";
       case "medium":
-        return "warning";
+        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
       case "low":
-        return "success";
+        return "bg-green-500/10 text-green-400 border-green-500/20";
       default:
-        return "info";
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     }
   };
 
-  const totalPayloads = categories.reduce(
-    (acc, c) => acc + c.attack_count,
-    0
-  );
+  const selectedCat = categories.find((c) => c.id === selectedCategory);
 
   return (
-    <div className="animate-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Attack Library</h1>
-          <p className="page-description">
-            Browse the collection of security test payloads used by AYZO.
-          </p>
-        </div>
-        <span className="badge neutral" style={{ fontSize: "12px", padding: "6px 14px" }}>
-          {totalPayloads} payloads
-        </span>
+    <div className="max-w-6xl">
+      <div className="mb-8">
+        <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Attack Library</h1>
+        <p className="text-zinc-400 text-sm mt-1">Browse adversarial payloads categorized by OWASP Top 10 for LLMs.</p>
       </div>
 
-      {loading ? (
-        <p
-          style={{ color: "var(--text-tertiary)", padding: "40px 0" }}
-          className="animate-pulse"
-        >
-          Loading attack library...
-        </p>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "220px 1fr",
-            gap: "24px",
-          }}
-        >
-          {/* Categories Sidebar */}
-          <div
-            className="surface"
-            style={{ padding: "16px", alignSelf: "start" }}
-          >
-            <h3
-              style={{
-                fontSize: "11px",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "var(--text-tertiary)",
-                padding: "0 10px",
-                marginBottom: "10px",
-              }}
-            >
-              Categories
-            </h3>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "2px",
-              }}
-            >
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "8px 10px",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: "13px",
-                    textAlign: "left",
-                    background:
-                      selectedCategory === cat.id
-                        ? "var(--accent-soft)"
-                        : "transparent",
-                    color:
-                      selectedCategory === cat.id
-                        ? "var(--text-primary)"
-                        : "var(--text-secondary)",
-                    fontWeight: selectedCategory === cat.id ? 500 : 400,
-                    transition: "all 150ms",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span>{cat.name}</span>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
-                    {cat.attack_count}
-                  </span>
-                </button>
-              ))}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
+        {/* Sidebar */}
+        <div className="md:col-span-1 flex flex-col gap-2 sticky top-8">
+          <div className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 px-2">Categories</div>
+          {loading ? (
+            <p className="text-zinc-500 px-2 animate-pulse text-sm">Loading...</p>
+          ) : (
+            categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={clsx(
+                  "flex justify-between items-center px-4 py-2.5 rounded-lg text-sm text-left transition-all",
+                  selectedCategory === cat.id
+                    ? "bg-violet-600/20 text-violet-400 font-semibold"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+                )}
+              >
+                <span>{cat.name}</span>
+                <span className={clsx(
+                  "text-xs px-2 py-0.5 rounded-full bg-black/50 border",
+                  selectedCategory === cat.id ? "border-violet-500/30 text-violet-300" : "border-zinc-800 text-zinc-500"
+                )}>
+                  {cat.attack_count}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Payload List */}
+        <div className="md:col-span-3">
+          {selectedCat && (
+            <div className="mb-6 pb-4 border-b border-zinc-800/50">
+              <h2 className="font-heading text-xl font-bold text-white">{selectedCat.name}</h2>
+              <p className="text-sm text-zinc-500 mt-1 uppercase tracking-widest font-semibold">{selectedCat.owasp_id || "OWASP LLM Top 10"}</p>
             </div>
-          </div>
+          )}
 
-          {/* Payload List */}
-          <div>
-            {selectedCat && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "20px",
-                }}
-              >
-                <div>
-                  <h2 style={{ fontSize: "18px", fontWeight: 600 }}>
-                    {selectedCat.name}
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: "12px",
-                      color: "var(--text-tertiary)",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {selectedCat.owasp_id || "OWASP LLM Top 10"}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {payloadsLoading ? (
-              <p
-                style={{ color: "var(--text-tertiary)" }}
-                className="animate-pulse"
-              >
-                Loading payloads...
-              </p>
-            ) : payloads.length === 0 ? (
-              <div
-                className="surface"
-                style={{ textAlign: "center", padding: "60px 0" }}
-              >
-                <p style={{ color: "var(--text-tertiary)", fontSize: "14px" }}>
-                  No payloads found for this category.
-                </p>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                }}
-              >
-                {payloads.map((payload, idx) => (
-                  <div
-                    key={idx}
-                    className="surface"
-                    style={{ padding: "24px" }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      <div>
-                        <h3 style={{ fontSize: "15px", fontWeight: 600 }}>
-                          {payload.name}
-                        </h3>
-                        {payload.subcategory && (
-                          <p
-                            style={{
-                              fontSize: "11px",
-                              color: "var(--text-tertiary)",
-                              marginTop: "4px",
-                            }}
-                          >
-                            {payload.subcategory}
-                          </p>
+          {payloadsLoading ? (
+            <p className="text-zinc-500 animate-pulse">Loading payloads...</p>
+          ) : payloads.length === 0 ? (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl text-center py-16">
+              <p className="text-zinc-500 text-sm">No payloads found for this category.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {payloads.map((payload, idx) => (
+                <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-violet-500/30 transition-colors">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-heading text-lg font-bold text-white mb-1">{payload.name}</h3>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">
+                          {payload.subcategory.replace("_", " ")}
+                        </span>
+                        {payload.is_builtin && (
+                          <span className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20">
+                            <Check size={10} /> Built-in
+                          </span>
                         )}
                       </div>
-                      <span
-                        className={`badge ${getSeverityBadge(payload.severity)}`}
-                      >
-                        {payload.severity}
-                      </span>
                     </div>
-
-                    {payload.description && (
-                      <p
-                        style={{
-                          fontSize: "13px",
-                          color: "var(--text-secondary)",
-                          lineHeight: 1.6,
-                          marginBottom: "14px",
-                        }}
-                      >
-                        {payload.description}
-                      </p>
-                    )}
-
-                    <div
-                      className="code-block"
-                      style={{ maxHeight: "120px", overflowY: "auto", marginBottom: "12px" }}
-                    >
-                      {payload.original_prompt}
-                    </div>
-
-                    {payload.success_indicators && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          fontSize: "12px",
-                          color: "var(--text-tertiary)",
-                        }}
-                      >
-                        <Check
-                          size={13}
-                          style={{ color: "var(--green)" }}
-                        />
-                        <span>
-                          Success indicator: {payload.success_indicators}
-                        </span>
-                      </div>
-                    )}
+                    <span className={clsx(
+                      "px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-widest",
+                      getSeverityBadgeColor(payload.severity)
+                    )}>
+                      {payload.severity}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+
+                  <p className="text-sm text-zinc-400 mb-6 leading-relaxed">{payload.description}</p>
+
+                  <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden text-sm">
+                    <div className="p-4 border-b border-zinc-800">
+                      <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Original Prompt Template</span>
+                      <p className="font-mono text-zinc-300 whitespace-pre-wrap">{payload.original_prompt}</p>
+                    </div>
+                    <div className="p-4">
+                      <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Success Indicators (Regex)</span>
+                      <p className="font-mono text-red-400 whitespace-pre-wrap">{payload.success_indicators}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

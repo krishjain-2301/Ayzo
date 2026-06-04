@@ -55,6 +55,8 @@ async def run_campaign_background(campaign_id: uuid.UUID):
         model_identifier = target.model_name
         if target.provider == "dummy":
             model_identifier = "dummy"
+        elif target.provider == "custom":
+            model_identifier = "custom_webhook"
         elif target.provider == "ollama" and not model_identifier.startswith("ollama/"):
             model_identifier = f"ollama/{target.model_name}"
             

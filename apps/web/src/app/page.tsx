@@ -1,300 +1,190 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { WaveBackground } from "@/components/WaveBackground";
+import { motion } from "framer-motion";
 import {
-  Swords,
-  Dna,
-  BrainCircuit,
-  Shield,
-  ArrowRight,
-  Zap,
-  FileSearch,
-  BarChart3,
+  ShieldAlert,
+  Database,
+  UserX,
+  Target,
+  Cpu,
+  FileText,
 } from "lucide-react";
-
-function useInView() {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("visible");
-          }
-        });
-      },
-      { threshold: 0.15, rootMargin: "0px 0px -60px 0px" }
-    );
-
-    const elements = ref.current?.querySelectorAll(".reveal");
-    elements?.forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
-  }, []);
-
-  return ref;
-}
+import { GridBackground } from "@/components/GridBackground";
 
 export default function LandingPage() {
-  const containerRef = useInView();
-  const [scrolled, setScrolled] = useState(false);
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+  };
 
   return (
-    <div ref={containerRef}>
-      <WaveBackground opacity={0.8} />
-      {/* ── Navigation ── */}
-      <nav className={`landing-nav ${scrolled ? "scrolled" : ""}`}>
-        <span className="logo-wordmark">AYZO</span>
-        <div className="landing-nav-links">
-          <a href="#features" className="landing-nav-link">
-            Features
-          </a>
-          <a href="#how-it-works" className="landing-nav-link">
-            How it Works
-          </a>
-          <a href="#demo" className="landing-nav-link">
-            Demo
-          </a>
-          <Link href="/login">
-            <button className="btn-primary btn-sm">
-              Get Started <ArrowRight size={14} />
-            </button>
-          </Link>
+    <div className="relative min-h-screen bg-black selection:bg-violet-500/30 selection:text-white text-zinc-400">
+      <GridBackground />
+
+      {/* Navbar */}
+      <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-zinc-800/60">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="font-heading font-bold text-xl text-white tracking-wide">
+              AYZO
+            </Link>
+            <div className="hidden md:flex gap-6 text-sm font-medium">
+              <a href="#features" className="hover:text-white transition-colors">Features</a>
+              <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
+            </div>
+          </div>
+          <div>
+            <Link 
+              href="/login" 
+              className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all"
+            >
+              Get Started &rarr;
+            </Link>
+          </div>
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <section className="hero">
-        <div className="hero-glow" />
-        <h1 className="hero-headline" style={{ animationDelay: "0.1s" }}>
-          Find what your AI{" "}
-          <span className="text-gradient">hides.</span>
-        </h1>
-        <p className="hero-sub" style={{ animationDelay: "0.2s" }}>
-          Automated adversarial testing for LLMs. Discover prompt injection,
-          data leakage, and role override vulnerabilities in minutes.
-        </p>
-        <div className="hero-cta-group" style={{ animationDelay: "0.3s" }}>
-          <Link href="/login">
-            <button className="btn-primary" style={{ padding: "12px 28px", fontSize: "15px" }}>
-              Start Free Assessment <ArrowRight size={16} />
-            </button>
-          </Link>
-          <a
-            href="https://github.com/krishjain-2301/Ayzo"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Hero Section */}
+      <main className="relative z-10 pt-40 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="flex flex-col items-center max-w-4xl"
+        >
+          <motion.div variants={itemVariants} className="mb-8 uppercase tracking-widest text-xs text-violet-400 border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 rounded-full font-semibold">
+            AI Security Testing
+          </motion.div>
+
+          <motion.h1 variants={itemVariants} className="font-heading font-black text-6xl md:text-8xl text-white tracking-tight leading-[1.1] mb-6">
+            Find what your AI <span className="text-violet-400">hides.</span>
+          </motion.h1>
+
+          <motion.p variants={itemVariants} className="text-lg md:text-xl max-w-2xl text-zinc-400 mb-10">
+            Automated adversarial testing to discover prompt injection, data leakage, and role override vulnerabilities in minutes.
+          </motion.p>
+
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
+            <Link 
+              href="/login" 
+              className="bg-violet-600 hover:bg-violet-500 text-white px-8 py-3.5 rounded-full font-semibold transition-all hover:shadow-[0_0_30px_rgba(124,58,237,0.4)] flex items-center justify-center"
+            >
+              Start Free Assessment &rarr;
+            </Link>
+          </motion.div>
+        </motion.div>
+      </main>
+
+      {/* Features Section */}
+      <section id="features" className="relative z-10 py-24 px-6 bg-black">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            className="font-heading text-4xl font-bold text-white mb-12 text-center"
           >
-            <button className="btn-secondary" style={{ padding: "12px 28px", fontSize: "15px" }}>
-              View on GitHub
-            </button>
-          </a>
-        </div>
-      </section>
+            Built for adversarial depth
+          </motion.h2>
 
-      {/* ── Social Proof ── */}
-      <div className="proof-bar">
-        Trusted by teams securing AI at scale
-      </div>
-
-      {/* ── Features ── */}
-      <section className="section" id="features">
-        <div className="reveal">
-          <h2 className="section-title">Built for modern AI security</h2>
-          <p className="section-sub">
-            Everything you need to find and fix vulnerabilities in your AI
-            models, from automated testing to detailed remediation reports.
-          </p>
-        </div>
-
-        <div className="features-grid">
-          <div className="surface feature-card reveal stagger-1">
-            <div className="feature-icon">
-              <Swords size={20} />
-            </div>
-            <h3 className="feature-title">Attack Library</h3>
-            <p className="feature-desc">
-              80+ adversarial payloads across OWASP LLM Top 10 categories.
-              Prompt injection, jailbreaks, data exfiltration, and more.
-            </p>
-          </div>
-
-          <div className="surface feature-card reveal stagger-2">
-            <div className="feature-icon">
-              <Dna size={20} />
-            </div>
-            <h3 className="feature-title">Mutation Engine</h3>
-            <p className="feature-desc">
-              Automatically generates thousands of attack variations through
-              encoding, rephrasing, and obfuscation mutations.
-            </p>
-          </div>
-
-          <div className="surface feature-card reveal stagger-3">
-            <div className="feature-icon">
-              <BrainCircuit size={20} />
-            </div>
-            <h3 className="feature-title">AI Evaluation</h3>
-            <p className="feature-desc">
-              LLM-as-Judge determines if vulnerabilities exist with
-              confidence scoring and evidence-backed findings.
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: ShieldAlert, title: "Prompt Injection Detection", desc: "Test defenses against jailbreaks, systemic overrides, and persona manipulation." },
+              { icon: Database, title: "Data Leakage Testing", desc: "Identify if your model leaks PII, system prompts, or proprietary training data." },
+              { icon: UserX, title: "Role Override Analysis", desc: "Verify strict adherence to assigned AI personas and permission boundaries." },
+              { icon: Target, title: "7 Attack Vector Categories", desc: "Comprehensive testing across industry-standard AI vulnerability frameworks." },
+              { icon: Cpu, title: "Async Execution Engine", desc: "Run thousands of adversarial tests in parallel without rate-limiting your app." },
+              { icon: FileText, title: "Actionable Security Reports", desc: "Get detailed evidence of vulnerabilities with exact prompts and responses." },
+            ].map((feature, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-violet-500/30 hover:bg-zinc-900 hover:scale-[1.01] transition-all duration-300 backdrop-blur-sm group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-300 mb-4 group-hover:text-violet-400 group-hover:bg-violet-500/10 transition-colors">
+                  <feature.icon size={20} />
+                </div>
+                <h3 className="font-heading font-semibold text-white text-lg mb-2">{feature.title}</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">{feature.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── How It Works ── */}
-      <section className="section" id="how-it-works">
-        <div className="reveal">
-          <h2 className="section-title">How it works</h2>
-          <p className="section-sub">
-            Four steps from target configuration to actionable security report.
-          </p>
-        </div>
-
-        <div className="steps-list">
-          <div className="step-item reveal stagger-1">
-            <div className="step-number">1</div>
-            <div className="step-content">
-              <h3>Connect your model</h3>
-              <p>
-                Point AYZO at any LLM — Ollama, OpenAI, Anthropic, Mistral, or
-                any custom API endpoint. Configuration takes seconds.
-              </p>
-            </div>
+      {/* How it works Section */}
+      <section id="how-it-works" className="relative z-10 py-24 px-6 border-t border-zinc-900 bg-black">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-16">
+          <div className="lg:w-1/3">
+            <motion.h2 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="font-heading text-4xl font-bold text-white mb-4"
+            >
+              How it works
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-zinc-400 text-lg"
+            >
+              Four steps from target configuration to actionable security report.
+            </motion.p>
           </div>
 
-          <div className="step-item reveal stagger-2">
-            <div className="step-number">2</div>
-            <div className="step-content">
-              <h3>Select attack vectors</h3>
-              <p>
-                Choose from 7 vulnerability categories or run the full suite.
-                Configure mutation depth for thorough coverage.
-              </p>
-            </div>
-          </div>
-
-          <div className="step-item reveal stagger-3">
-            <div className="step-number">3</div>
-            <div className="step-content">
-              <h3>Automated execution</h3>
-              <p>
-                The engine generates, mutates, and fires hundreds of adversarial
-                prompts against your model asynchronously.
-              </p>
-            </div>
-          </div>
-
-          <div className="step-item reveal stagger-4">
-            <div className="step-number">4</div>
-            <div className="step-content">
-              <h3>Review your report</h3>
-              <p>
-                Get a detailed vulnerability assessment with risk scores,
-                evidence, and actionable remediation guidance.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Terminal Demo ── */}
-      <section className="section" id="demo">
-        <div className="reveal">
-          <div className="terminal-window">
-            <div className="terminal-bar">
-              <div className="terminal-dot" style={{ background: "#ff5f57" }} />
-              <div className="terminal-dot" style={{ background: "#febc2e" }} />
-              <div className="terminal-dot" style={{ background: "#28c840" }} />
-            </div>
-            <div className="terminal-body">
-              <p>
-                <span className="cmd">ayzo</span> run --target
-                &quot;customer-bot-v2&quot; --categories &quot;all&quot;
-              </p>
-              <br />
-              <p className="dim">
-                [*] Loading Attack Library (56 payloads across 7 categories)...
-              </p>
-              <p className="dim">
-                [*] Mutating payloads (depth=1, variants=5)...
-              </p>
-              <p className="dim">[*] Generated 336 test cases.</p>
-              <p className="dim">
-                [*] Starting asynchronous attack execution...
-              </p>
-              <br />
-              <p>
-                <span className="pass">[PASS]</span> Test 1: Basic Instruction
-                Override
-              </p>
-              <p>
-                <span className="fail">[FAIL]</span> Test 2: Base64 Encoded
-                Injection{" "}
-                <span className="fail">(Vulnerable)</span>
-              </p>
-              <p>
-                <span className="pass">[PASS]</span> Test 3: Evil Twin Persona
-              </p>
-              <p>
-                <span className="fail">[FAIL]</span> Test 4: System Prompt
-                Extraction{" "}
-                <span className="fail">(Vulnerable)</span>
-              </p>
-              <p>
-                <span className="pass">[PASS]</span> Test 5: Role Escalation
-                Attempt
-              </p>
-              <br />
-              <p>
-                <span className="dim">───────────────────────────────</span>
-              </p>
-              <p>
-                Completed: 336/336 | Passed: 289 | Failed: 47 | Risk Score:{" "}
-                <span className="fail">67/100 (High)</span>
-              </p>
-            </div>
+          <div className="lg:w-2/3 flex flex-col">
+            {[
+              { num: 1, title: "Connect your model", desc: "Configure your target LLM endpoint or agent application." },
+              { num: 2, title: "Select attack vectors", desc: "Choose from our extensive library of adversarial testing categories." },
+              { num: 3, title: "Automated execution", desc: "Our engine bombards the target with mutated, contextual attacks." },
+              { num: 4, title: "Review your report", desc: "Analyze the findings, patch vulnerabilities, and re-test seamlessly." },
+            ].map((step, i, arr) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ delay: i * 0.15, type: "spring", stiffness: 100 }}
+                className="flex"
+              >
+                <div className="flex flex-col items-center mr-6">
+                  <div className="w-8 h-8 rounded-full border border-zinc-700 bg-zinc-900 text-white flex items-center justify-center text-sm font-bold shrink-0 z-10">
+                    {step.num}
+                  </div>
+                  {i !== arr.length - 1 && (
+                    <div className="w-px h-full min-h-[60px] bg-zinc-800 my-2" />
+                  )}
+                </div>
+                <div className="pb-8 pt-1">
+                  <h3 className="font-heading font-semibold text-white text-lg mb-1">{step.title}</h3>
+                  <p className="text-zinc-400">{step.desc}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="cta-section">
-        <div className="reveal">
-          <h2 className="cta-headline">
-            Secure your models before they ship.
-          </h2>
-          <Link href="/login">
-            <button className="btn-primary" style={{ padding: "14px 32px", fontSize: "16px" }}>
-              Start Free Assessment <ArrowRight size={16} />
-            </button>
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className="landing-footer">
-        <span>&copy; 2026 AYZO</span>
-        <div style={{ display: "flex", gap: "24px" }}>
-          <a
-            href="https://github.com/krishjain-2301/Ayzo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>
-          <span>Built by Krish Jain</span>
-        </div>
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-zinc-900 py-12 text-center text-zinc-600 text-sm bg-black">
+        <p>&copy; {new Date().getFullYear()} AYZO Security. All rights reserved.</p>
       </footer>
     </div>
   );
