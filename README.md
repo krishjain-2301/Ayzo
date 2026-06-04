@@ -32,11 +32,11 @@ Target AI Model → Attack Engine → Automated Testing → Response Analysis �
 |:---|:---|
 | **Frontend** | Next.js 15, TypeScript, Tailwind CSS, Recharts, Lucide Icons |
 | **Backend** | FastAPI, Python 3.12+, Pydantic |
-| **Database** | PostgreSQL 16 |
+| **Database** | PostgreSQL 16 (via Docker) or SQLite (Local default) |
 | **Task Queue** | Celery + Redis |
 | **AI Layer** | LiteLLM (Ollama, OpenAI, Anthropic, Custom endpoints) |
-| **Auth** | NextAuth.js v5 + Google OAuth |
-| **Monorepo** | Turborepo + pnpm |
+| **Auth** | Google OAuth (`@react-oauth/google`) + Custom FastAPI JWT |
+| **Monorepo** | pnpm workspaces (Turborepo compatible) |
 
 ## Project Structure
 
@@ -45,9 +45,8 @@ ayzo/
 ├── apps/
 │   ├── web/          # Next.js 15 frontend
 │   └── api/          # FastAPI backend
-├── packages/         # Shared types/configs
 ├── docker-compose.yml
-└── turbo.json
+└── package.json
 ```
 
 ## Getting Started
@@ -56,7 +55,7 @@ ayzo/
 
 - Node.js 20+
 - Python 3.12+
-- Docker & Docker Compose
+- Docker & Docker Compose (optional, for Redis/PostgreSQL)
 - pnpm (`npm install -g pnpm`)
 
 ### Quick Start
@@ -66,14 +65,18 @@ ayzo/
 git clone https://github.com/krishjain-2301/Ayzo.git
 cd Ayzo
 
-# Install dependencies
-pnpm install
-
-# Start infrastructure (PostgreSQL, Redis)
+# Start infrastructure (PostgreSQL, Redis) - Optional if using local SQLite
 docker-compose up -d
 
-# Start development
+# Terminal 1: Start Frontend
+cd apps/web
+pnpm install
 pnpm dev
+
+# Terminal 2: Start Backend
+cd apps/api
+pip install -e .
+uvicorn app.main:app --reload --port 8000
 ```
 
 ## License
