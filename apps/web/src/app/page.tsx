@@ -30,7 +30,7 @@ export default function LandingPage() {
         {/* Background decorative glow */}
         <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translate(-50%, -50%)', width: '800px', height: '600px', background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 60%)', zIndex: -1 }}></div>
 
-        <div className="animate-fade-in" style={{ maxWidth: '800px', marginTop: '-4rem' }}>
+        <div className="animate-fade-in" style={{ maxWidth: '800px' }}>
           <div className="badge warning" style={{ marginBottom: '2rem', display: 'inline-flex', padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
             <span style={{ marginRight: '0.5rem' }}>✨</span> AI Red Teaming Platform
           </div>

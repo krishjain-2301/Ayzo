@@ -59,11 +59,14 @@ async def run_campaign_background(campaign_id: uuid.UUID):
             model_identifier = f"ollama/{target.model_name}"
             
         try:
+            import asyncio
+            db_lock = asyncio.Lock()
             async def progress_cb(completed: int, total: int, result: dict | None):
-                # Update progress in DB (Throttle this in production, but fine for demo)
-                campaign.completed_tests = completed
-                campaign.total_tests = total
-                await db.commit()
+                # Update progress in DB with a lock to prevent concurrent transaction errors
+                async with db_lock:
+                    campaign.completed_tests = completed
+                    campaign.total_tests = total
+                    await db.commit()
 
             # RUN THE ATTACK ENGINE!
             results = await attack_engine.run_campaign(

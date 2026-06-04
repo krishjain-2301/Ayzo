@@ -23,7 +23,7 @@ export function RunAssessmentModal({ isOpen, onClose, targetId, targetName, onSu
   const [error, setError] = useState('');
   const [categories, setCategories] = useState<AttackCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [mutationDepth, setMutationDepth] = useState(0);
+  const [mutationDepth, setMutationDepth] = useState(1);
 
   useEffect(() => {
     if (isOpen) {

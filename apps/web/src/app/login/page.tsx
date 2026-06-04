@@ -59,7 +59,6 @@ export default function LoginPage() {
             onError={() => {
               setError('Google login failed. Please try again.');
             }}
-            useOneTap
             theme="filled_black"
           />
         </div>
