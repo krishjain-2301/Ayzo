@@ -39,9 +39,8 @@ class TestResult(Base):
         nullable=False,
         index=True,
     )
-    attack_id: Mapped[uuid.UUID] = mapped_column(
+    attack_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
-        ForeignKey("attacks.id", ondelete="SET NULL"),
         nullable=True,  # Mutated prompts might not have a direct attack_id
     )
 

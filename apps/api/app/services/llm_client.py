@@ -106,6 +106,7 @@ class LLMClient:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 timeout=timeout,
+                num_retries=1,
             )
 
             elapsed_ms = (time.time() - start_time) * 1000

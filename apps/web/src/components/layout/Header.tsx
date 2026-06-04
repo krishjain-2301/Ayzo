@@ -1,4 +1,9 @@
+"use client";
+import { useRouter } from "next/navigation";
+
 export function Header() {
+  const router = useRouter();
+
   return (
     <header className="header glass-panel">
       <div className="header-search">
@@ -18,7 +23,7 @@ export function Header() {
         <button className="icon-btn">
           <span className="icon">⚙️</span>
         </button>
-        <button className="btn-primary">
+        <button className="btn-primary" onClick={() => router.push('/dashboard')}>
           + New Campaign
         </button>
       </div>

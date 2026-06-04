@@ -135,7 +135,9 @@ async def test_target_connection(
 
     # Format model name based on provider
     model_identifier = target.model_name
-    if target.provider == "ollama" and not model_identifier.startswith("ollama/"):
+    if target.provider == "dummy":
+        model_identifier = "dummy"
+    elif target.provider == "ollama" and not model_identifier.startswith("ollama/"):
         model_identifier = f"ollama/{target.model_name}"
     elif target.provider == "anthropic" and not model_identifier.startswith("anthropic/"):
         model_identifier = f"anthropic/{target.model_name}"

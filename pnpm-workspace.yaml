@@ -5,5 +5,8 @@
 # with its own package.json, but they share a single node_modules.
 
 packages:
-  - "apps/*"      # Frontend (web) and Backend (api) live here
-  - "packages/*"  # Shared configs and types live here
+  - "apps/*" # Frontend (web) and Backend (api) live here
+  - "packages/*" # Shared configs and types live here
+allowBuilds:
+  sharp: true
+  unrs-resolver: true

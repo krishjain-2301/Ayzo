@@ -35,5 +35,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     throw new Error(errorMessage);
   }
 
+  // 204 No Content has no body (e.g. DELETE responses)
+  if (response.status === 204) {
+    return null;
+  }
+
   return response.json();
 }
