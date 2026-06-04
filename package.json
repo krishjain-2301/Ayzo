@@ -15,11 +15,5 @@
   },
   "keywords": ["ai", "security", "red-team", "llm", "vulnerability"],
   "author": "Krish Jain",
-  "license": "MIT",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "sharp",
-      "unrs-resolver"
-    ]
-  }
+  "license": "MIT"
 }
