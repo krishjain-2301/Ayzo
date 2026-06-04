@@ -53,10 +53,18 @@ async def run_campaign_background(campaign_id: uuid.UUID):
         
         target = campaign.target
         model_identifier = target.model_name
-        if target.provider == "ollama" and not model_identifier.startswith("ollama/"):
+        if target.provider == "dummy":
+            model_identifier = "dummy"
+        elif target.provider == "ollama" and not model_identifier.startswith("ollama/"):
             model_identifier = f"ollama/{target.model_name}"
             
         try:
+            async def progress_cb(completed: int, total: int, result: dict | None):
+                # Update progress in DB (Throttle this in production, but fine for demo)
+                campaign.completed_tests = completed
+                campaign.total_tests = total
+                await db.commit()
+
             # RUN THE ATTACK ENGINE!
             results = await attack_engine.run_campaign(
                 target_model=model_identifier,
@@ -66,6 +74,7 @@ async def run_campaign_background(campaign_id: uuid.UUID):
                 api_key=target.api_key,
                 api_base=target.endpoint_url,
                 config=target.config,
+                progress_callback=progress_cb,
             )
             
             # Save all the test results

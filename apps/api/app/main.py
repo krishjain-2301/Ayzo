@@ -25,6 +25,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
 
+# Import ALL models so Base.metadata.create_all() creates every table.
+# Without these imports, SQLAlchemy doesn't know about the models.
+from app.models.db import user, target, campaign, test_result, finding, attack  # noqa: F401
+
 # ---- Lifespan Events ----
 # This runs code when the server starts and stops.
 # We use it to test the database connection on startup.
@@ -38,7 +42,8 @@ async def lifespan(app: FastAPI):
     """
     print(f"[*] AYZO API v{settings.APP_VERSION} starting...")
     print(f"[*] Debug mode: {settings.DEBUG}")
-    print(f"[*] Database: {settings.DATABASE_URL.split('@')[-1]}")  # Don't log password!
+    db_display = settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL.split('///')[-1]
+    print(f"[*] Database: {db_display}")
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

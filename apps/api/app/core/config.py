@@ -54,8 +54,12 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
     # ---- LLM / AI ----
+    # API key for Gemini models (used by LiteLLM when model starts with "gemini/")
+    GEMINI_API_KEY: Optional[str] = None
     # Default model for the evaluation engine (the "judge" that checks if attacks worked)
     DEFAULT_EVAL_MODEL: str = "ollama/llama3.2"
+    # Model used by the mutation engine to generate prompt variants
+    MUTATOR_MODEL: Optional[str] = None  # Falls back to DEFAULT_EVAL_MODEL if not set
     # How many attack prompts to run at the same time
     MAX_CONCURRENT_ATTACKS: int = 5
 

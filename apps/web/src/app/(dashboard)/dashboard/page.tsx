@@ -6,6 +6,7 @@ import { RunAssessmentModal } from '@/components/RunAssessmentModal';
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [targetId, setTargetId] = useState<string | null>(null);
+  const [targetName, setTargetName] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +30,7 @@ export default function Dashboard() {
         });
       }
       setTargetId(dummy.id);
+      setTargetName(dummy.name);
 
       // 2. Fetch campaigns
       const camps = await apiFetch('/campaigns');
@@ -63,6 +65,7 @@ export default function Dashboard() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         targetId={targetId}
+        targetName={targetName}
         onSuccess={loadData}
       />
 
