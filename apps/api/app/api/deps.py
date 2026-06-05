@@ -69,20 +69,42 @@ async def get_current_user(
     result = await db.execute(query)
     user = result.scalar_one_or_none()
     
-    # Auto-sync Supabase user to local SQLite DB if they don't exist
+    # Auto-sync / Migrate Supabase user to local SQLite DB if they don't exist
     if user is None and payload.get("aud") == "authenticated":
         email = payload.get("email", "unknown@ayzo.local")
         name = payload.get("user_metadata", {}).get("full_name", email.split("@")[0])
         
-        user = User(
-            id=parsed_user_id,
-            email=email,
-            name=name,
-            role="analyst"
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        # Check if user with same email exists under a different ID
+        query_email = select(User).where(User.email == email)
+        result_email = await db.execute(query_email)
+        existing_user = result_email.scalar_one_or_none()
+        
+        if existing_user:
+            # Migrate the old user ID to the new Supabase UUID across all related tables
+            old_id = existing_user.id
+            from sqlalchemy import text
+            await db.execute(text("UPDATE users SET id = :new_id WHERE id = :old_id"), {"new_id": parsed_user_id.hex, "old_id": old_id.hex})
+            await db.execute(text("UPDATE targets SET user_id = :new_id WHERE user_id = :old_id"), {"new_id": parsed_user_id.hex, "old_id": old_id.hex})
+            await db.execute(text("UPDATE campaigns SET user_id = :new_id WHERE user_id = :old_id"), {"new_id": parsed_user_id.hex, "old_id": old_id.hex})
+            await db.commit()
+            
+            # Fetch the updated user record
+            query = select(User).where(User.id == parsed_user_id)
+            result = await db.execute(query)
+            user = result.scalar_one_or_none()
+            print(f"Successfully migrated user email={email} from old_id={old_id} to new_id={parsed_user_id}")
+        else:
+            # Create a completely new user
+            user = User(
+                id=parsed_user_id,
+                email=email,
+                name=name,
+                role="analyst"
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+            print(f"Created new user record for email={email} with id={parsed_user_id}")
 
     if user is None:
         raise credentials_exception
