@@ -1,8 +1,29 @@
+import { supabase } from './supabase';
+
 const envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 export const API_BASE_URL = envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  let token = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        token = session.access_token;
+        localStorage.setItem('token', session.access_token);
+        localStorage.setItem('user', JSON.stringify({
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "User",
+          email: session.user.email || "",
+          picture: session.user.user_metadata?.avatar_url || "",
+        }));
+      } else {
+        token = localStorage.getItem('token');
+      }
+    } catch (e) {
+      console.error("Error retrieving Supabase session:", e);
+      token = localStorage.getItem('token');
+    }
+  }
   
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
@@ -29,6 +50,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       // Unauthorized, clear token and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
       window.location.href = '/login';
     }
     

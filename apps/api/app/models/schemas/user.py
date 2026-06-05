@@ -43,6 +43,17 @@ class GoogleTokenRequest(BaseModel):
     credential: str = Field(..., description="Google ID Token JWT")
 
 
+class UserRegister(BaseModel):
+    email: EmailStr = Field(..., description="User's email address")
+    name: str = Field(..., description="Display name")
+    password: str = Field(..., description="Plaintext password")
+
+
+class UserLogin(BaseModel):
+    email: str = Field(..., description="User's email address")
+    password: str = Field(..., description="Plaintext password")
+
+
 
 class UserResponse(UserBase):
     """

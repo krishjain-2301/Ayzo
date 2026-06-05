@@ -7,7 +7,7 @@
 
 ## What is AYZO?
 
-AYZO is an advanced AI security platform that helps organizations assess the security of their large language models (LLMs) and agents by automatically running large-scale adversarial tests, analyzing responses, and generating vulnerability reports.
+AYZO is an AI security platform that helps organizations assess the security of their AI models by automatically running large-scale adversarial tests, analyzing responses, and generating vulnerability reports.
 
 ### Core Workflow
 
@@ -15,28 +15,25 @@ AYZO is an advanced AI security platform that helps organizations assess the sec
 Target AI Model → Attack Engine → Automated Testing → Response Analysis → Vulnerability Detection → Security Report
 ```
 
-## ✨ Features
+## Key Features
 
-- **📊 Interactive Dashboard Analytics** — Visualize your historical risk trends with sleek, interactive charts.
-- **🎯 Attack Library** — Browse 80+ security test cases categorized by the OWASP LLM Top 10.
-- **🛠️ Custom Payload Builder** — Write, categorize, and save your own custom prompt injections and jailbreaks directly from the browser UI.
-- **🚀 Bulk Campaigns** — Run massive, multi-payload security assessments across your models in seconds.
-- **🤖 Agentic Attacks (Crescendo)** — Spawn an Attacker LLM to conduct a multi-turn, adaptive conversation aimed at bypassing your target's safety filters.
-- **🛡️ Live Blue Team Proxy** — Monitor live firewall traffic as the AYZO Proxy evaluates and blocks malicious prompts in real-time.
-- **🎯 Target Management** — Seamlessly connect to and manage local Ollama instances, OpenAI/Anthropic models, or your own custom API endpoints.
-- **📄 PDF Report Generation** — Export pristine, print-friendly Executive Summaries of your security assessments with a single click.
+- **🎯 Attack Library** — 80+ security test cases across OWASP LLM Top 10 categories
+- **🧬 Mutation Engine** — Automatically generates thousands of attack variations
+- **⚡ Test Runner** — Executes attacks against any LLM (Ollama, OpenAI, custom APIs)
+- **🧠 AI Evaluation** — LLM-as-Judge determines if vulnerabilities exist
+- **📊 Reporting** — Professional vulnerability reports with risk scores
 
 ## Tech Stack
 
 | Layer | Technology |
 |:---|:---|
-| **Frontend** | Next.js 15, TypeScript, Tailwind CSS, Recharts, Lucide Icons |
-| **Backend** | FastAPI, Python 3.12+, Pydantic |
-| **Database** | PostgreSQL 16 (via Docker) or SQLite (Local default) |
-| **Task Queue** | Celery + Redis |
-| **AI Layer** | LiteLLM (Ollama, OpenAI, Anthropic, Custom endpoints) |
-| **Auth** | Google OAuth (`@react-oauth/google`) + Custom FastAPI JWT |
-| **Monorepo** | pnpm workspaces (Turborepo compatible) |
+| Frontend | Next.js 15, TypeScript, Tailwind CSS |
+| Backend | FastAPI, Python 3.12+ |
+| Database | PostgreSQL 16 |
+| Task Queue | Celery + Redis |
+| AI Layer | LiteLLM (Ollama, OpenAI, Mistral, DeepSeek) |
+| Auth | NextAuth.js v5 + Google OAuth |
+| Monorepo | Turborepo + pnpm |
 
 ## Project Structure
 
@@ -45,8 +42,9 @@ ayzo/
 ├── apps/
 │   ├── web/          # Next.js 15 frontend
 │   └── api/          # FastAPI backend
+├── packages/         # Shared types/configs
 ├── docker-compose.yml
-└── package.json
+└── turbo.json
 ```
 
 ## Getting Started
@@ -55,7 +53,7 @@ ayzo/
 
 - Node.js 20+
 - Python 3.12+
-- Docker & Docker Compose (optional, for Redis/PostgreSQL)
+- Docker & Docker Compose
 - pnpm (`npm install -g pnpm`)
 
 ### Quick Start
@@ -65,27 +63,23 @@ ayzo/
 git clone https://github.com/krishjain-2301/Ayzo.git
 cd Ayzo
 
-# Install Node dependencies
+# Install dependencies
 pnpm install
 
-# Install Python dependencies
-cd apps/api
-pip install .
-cd ../..
+# Start infrastructure (PostgreSQL, Redis)
+docker-compose up -d
 
-# Start infrastructure (PostgreSQL, Redis) - Optional if using local SQLite
-pnpm run db:up
-
-# Terminal 1: Start Frontend
-pnpm run dev:web
-
-# Terminal 2: Start Backend
-pnpm run dev:api
+# Start development
+pnpm dev
 ```
 
 ## License
 
 MIT License — see [LICENSE](./LICENSE) for details.
+
+---
+
+**Built by [Krish Jain](https://github.com/krishjain-2301)**
 
 ---
 
