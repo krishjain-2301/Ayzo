@@ -123,12 +123,12 @@ export default function Dashboard() {
               const height = `${Math.max(5, score)}%`;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                  <div 
+                  <div
                     className={clsx(
                       "w-full rounded-t-sm transition-all duration-500 ease-out",
-                      score >= 61 ? "bg-red-500/80 hover:bg-red-400" : 
-                      score >= 41 ? "bg-amber-500/80 hover:bg-amber-400" : 
-                      "bg-green-500/80 hover:bg-green-400"
+                      score >= 61 ? "bg-red-500/80 hover:bg-red-400" :
+                        score >= 41 ? "bg-amber-500/80 hover:bg-amber-400" :
+                          "bg-green-500/80 hover:bg-green-400"
                     )}
                     style={{ height }}
                   />

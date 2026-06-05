@@ -65,29 +65,94 @@ def create_access_token(
     return encoded_jwt
 
 
+import urllib.request
+import json
+
+_jwks_cache = None
+
+def get_jwk_by_kid(kid: str) -> Optional[dict]:
+    global _jwks_cache
+    if _jwks_cache is not None:
+        for key in _jwks_cache.get("keys", []):
+            if key.get("kid") == kid:
+                return key
+
+    # Fetch JWKS from Supabase
+    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+        print("ERROR: SUPABASE_URL or SUPABASE_ANON_KEY not set in Settings, cannot fetch JWKS")
+        return None
+
+    try:
+        url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "apikey": settings.SUPABASE_ANON_KEY,
+                "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            _jwks_cache = json.loads(response.read().decode('utf-8'))
+            print("Successfully fetched and cached JWKS from Supabase")
+            
+        for key in _jwks_cache.get("keys", []):
+            if key.get("kid") == kid:
+                return key
+    except Exception as e:
+        print(f"ERROR: Failed to fetch JWKS from Supabase: {e}")
+        
+    return None
+
+
 def verify_token(token: str) -> Optional[dict]:
     """
     Verifies a JWT token and extracts the payload.
-    
-    Args:
-        token: The JWT string from the Authorization header
-    
-    Returns:
-        The decoded payload dict if valid, None if invalid/expired
-    
-    Example:
-        payload = verify_token("eyJhbGciOiJIUzI1NiIs...")
-        if payload:
-            user_id = payload["sub"]
-            role = payload["role"]
+    Supports asymmetric (ES256/JWKS) Supabase tokens, legacy symmetric (HS256) Supabase tokens, and custom local tokens.
     """
     try:
+        try:
+            header = jwt.get_unverified_header(token)
+            alg = header.get("alg")
+            kid = header.get("kid")
+        except Exception as e:
+            print(f"DEBUG: Could not parse token header: {e}")
+            return None
+
+        # 1. Asymmetric verification for newer Supabase projects
+        if alg == "ES256":
+            jwk = get_jwk_by_kid(kid)
+            if jwk is None:
+                print(f"JWT Verification Error: Could not find JWK with kid {kid}")
+                return None
+            payload = jwt.decode(
+                token,
+                key=jwk,
+                algorithms=["ES256"],
+                audience="authenticated",
+            )
+            return payload
+
+        # 2. Symmetric verification for legacy/symmetric Supabase projects
+        if settings.SUPABASE_JWT_SECRET:
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.SUPABASE_JWT_SECRET,
+                    algorithms=["HS256"],
+                    audience="authenticated",
+                )
+                return payload
+            except JWTError:
+                pass
+            
+        # 3. Fallback to local custom auth
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
         return payload
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT Verification Error: {e}")
         # Token is invalid or expired
         return None

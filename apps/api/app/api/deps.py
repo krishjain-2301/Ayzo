@@ -69,6 +69,21 @@ async def get_current_user(
     result = await db.execute(query)
     user = result.scalar_one_or_none()
     
+    # Auto-sync Supabase user to local SQLite DB if they don't exist
+    if user is None and payload.get("aud") == "authenticated":
+        email = payload.get("email", "unknown@ayzo.local")
+        name = payload.get("user_metadata", {}).get("full_name", email.split("@")[0])
+        
+        user = User(
+            id=parsed_user_id,
+            email=email,
+            name=name,
+            role="analyst"
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
     if user is None:
         raise credentials_exception
         

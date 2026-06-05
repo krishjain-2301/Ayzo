@@ -64,6 +64,12 @@ class User(Base):
         nullable=True,
     )
 
+    # ---- Traditional Auth ----
+    hashed_password: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
     # ---- CI/CD API Key ----
     api_key: Mapped[str | None] = mapped_column(
         String(255),

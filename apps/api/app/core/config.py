@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
+    # ---- Supabase Auth ----
+    SUPABASE_JWT_SECRET: Optional[str] = None
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
+
     # ---- LLM / AI ----
     # API key for Gemini models (used by LiteLLM when model starts with "gemini/")
     GEMINI_API_KEY: Optional[str] = None
