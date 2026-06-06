@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
 import clsx from "clsx";
+import { RunAssessmentModal } from "@/components/RunAssessmentModal";
 
 interface CampaignSummary {
   id: string;
@@ -20,6 +21,7 @@ interface CampaignSummary {
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadCampaigns = useCallback(async () => {
     try {
@@ -73,17 +75,27 @@ export default function CampaignsPage() {
 
   return (
     <div className="max-w-6xl">
+      <RunAssessmentModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        targetId={null} 
+        onSuccess={() => {
+          setIsModalOpen(false);
+          loadCampaigns();
+        }} 
+      />
+
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Campaigns</h1>
           <p className="text-zinc-400 text-sm mt-1">Monitor adversarial testing progress and history.</p>
         </div>
-        <Link
-          href="/dashboard"
+        <button
+          onClick={() => setIsModalOpen(true)}
           className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
         >
           <Plus size={16} /> New Campaign
-        </Link>
+        </button>
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">

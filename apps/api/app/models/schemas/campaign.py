@@ -41,10 +41,8 @@ class CampaignCreate(BaseModel):
         description="How many rounds of mutation (0=originals only, 3=max)",
     )
     mutations_per_prompt: int = Field(
-        default=5,
-        ge=1,
-        le=20,
-        description="How many variants per prompt per generation",
+        default=1,
+        description="How many variants to generate per failed prompt per generation.",
     )
 
 
