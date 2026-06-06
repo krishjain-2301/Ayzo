@@ -22,6 +22,24 @@ import yaml
 # Directory containing all YAML payload files
 PAYLOADS_DIR = Path(__file__).parent / "payloads"
 
+try:
+    from app.attacks.multi_turn import MULTI_TURN_ATTACK_LIBRARY
+except ImportError:
+    MULTI_TURN_ATTACK_LIBRARY = []
+
+OWASP_MAP = {
+    "LLM01": "prompt_injection",
+    "LLM02": "insecure_output_handling",
+    "LLM03": "data_poisoning",
+    "LLM04": "model_dos",
+    "LLM05": "supply_chain",
+    "LLM06": "data_leakage",
+    "LLM07": "system_prompt_leak",
+    "LLM08": "agent_misuse",
+    "LLM09": "overreliance",
+    "LLM10": "model_theft",
+}
+
 
 def load_all_payloads() -> list[dict]:
     """
@@ -80,6 +98,27 @@ def load_all_payloads() -> list[dict]:
         except Exception as e:
             print(f"Error loading {yaml_file.name}: {e}")
 
+    # Add multi-turn attacks
+    for mta in MULTI_TURN_ATTACK_LIBRARY:
+        cat_id = OWASP_MAP.get(mta.category.value, mta.category.value.lower())
+        all_attacks.append({
+            "category": cat_id,
+            "subcategory": mta.technique.value,
+            "name": mta.name,
+            "description": mta.description,
+            "original_prompt": "[Multi-Turn Sequence]",
+            "success_indicators": ", ".join(mta.success_indicators) if mta.success_indicators else "",
+            "severity": mta.severity.value,
+            "is_builtin": True,
+            "is_multiturn": True,
+            "multi_turn_obj": mta,
+            "metadata": {
+                "display_name": cat_id.replace("_", " ").title(),
+                "owasp_id": mta.category.value,
+                "source_file": "multi_turn_library",
+            },
+        })
+
     print(f"\nTotal attacks loaded: {len(all_attacks)}")
     return all_attacks
 
@@ -94,6 +133,11 @@ def get_available_categories() -> list[dict]:
     """
     categories = []
 
+    mta_counts = {}
+    for mta in MULTI_TURN_ATTACK_LIBRARY:
+        cat_id = OWASP_MAP.get(mta.category.value, mta.category.value.lower())
+        mta_counts[cat_id] = mta_counts.get(cat_id, 0) + 1
+
     for yaml_file in sorted(PAYLOADS_DIR.glob("*.yaml")):
         try:
             with open(yaml_file, "r", encoding="utf-8") as f:
@@ -102,9 +146,15 @@ def get_available_categories() -> list[dict]:
             if not data:
                 continue
 
+            cat_id = data.get("category", yaml_file.stem)
             attack_count = len(data.get("attacks", []))
+            
+            if cat_id in mta_counts:
+                attack_count += mta_counts[cat_id]
+                del mta_counts[cat_id]
+                
             categories.append({
-                "id": data.get("category", yaml_file.stem),
+                "id": cat_id,
                 "name": data.get("display_name", yaml_file.stem),
                 "owasp_id": data.get("owasp_id", ""),
                 "description": data.get("description", ""),
@@ -112,6 +162,15 @@ def get_available_categories() -> list[dict]:
             })
         except Exception:
             continue
+
+    for cat_id, count in mta_counts.items():
+        categories.append({
+            "id": cat_id,
+            "name": cat_id.replace("_", " ").title(),
+            "owasp_id": "",
+            "description": "Multi-turn attacks",
+            "attack_count": count,
+        })
 
     return categories
 
