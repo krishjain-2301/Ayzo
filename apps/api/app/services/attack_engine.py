@@ -141,6 +141,9 @@ class AttackEngine:
             if a["category"] in categories
         ]
 
+        multi_turn_attacks = [a for a in selected_attacks if a.get("is_multiturn")]
+        single_turn_attacks = [a for a in selected_attacks if not a.get("is_multiturn")]
+
         if not selected_attacks:
             return {
                 "status": "failed",
@@ -150,12 +153,12 @@ class AttackEngine:
                 "risk_score": 0,
             }
 
-        print(f" Selected {len(selected_attacks)} base attacks across {len(categories)} categories")
+        print(f" Selected {len(single_turn_attacks)} base attacks and {len(multi_turn_attacks)} multi-turn attacks across {len(categories)} categories")
 
         # ---- Step 2: Build Generation 0 (Base Attacks) ----
         current_generation_tests = []
 
-        for attack in selected_attacks:
+        for attack in single_turn_attacks:
             current_generation_tests.append({
                 "prompt": attack["original_prompt"],
                 "category": attack["category"],
@@ -205,6 +208,63 @@ class AttackEngine:
                             "mutation_generation": generation + 1,
                         })
                 current_generation_tests = next_generation_tests
+
+        # ---- Step 3.5: Run Multi-Turn Attacks ----
+        if multi_turn_attacks:
+            from app.attacks.multi_turn.runner import run_attack_suite, TargetConfig
+            
+            print(f"   -> Running {len(multi_turn_attacks)} Multi-Turn Attacks...")
+            # MultiTurnRunner uses httpx directly so it needs an endpoint.
+            # Default to Ollama's local URL if none provided, or OpenAI if that's the intention.
+            # (Assuming Ollama is default since no api_base typically means local for this app or user provided it).
+            resolved_endpoint = api_base or "http://localhost:11434"
+            if resolved_endpoint.endswith("/v1") or resolved_endpoint.endswith("/v1/chat/completions"):
+                # Clean up if the user passed full path
+                resolved_endpoint = resolved_endpoint.replace("/v1/chat/completions", "").replace("/v1", "")
+
+            mt_target_config = TargetConfig(
+                endpoint=resolved_endpoint,
+                model=target_model,
+                api_key=api_key,
+                system_prompt=system_message,
+            )
+            mt_objects = [a["multi_turn_obj"] for a in multi_turn_attacks]
+            
+            mt_results_objs = await run_attack_suite(
+                attacks=mt_objects,
+                target_config=mt_target_config,
+                concurrency=3
+            )
+            
+            # Map results to unified format
+            for a_dict, mtr in zip(multi_turn_attacks, mt_results_objs):
+                
+                # Build a prompt_sent representation for the evidence viewer
+                if not mtr.turn_responses:
+                    convo_text = f"Error: {mtr.error}"
+                else:
+                    convo_text = "[Multi-Turn Conversation]\n" + "\n".join(
+                        [f"Turn {t['turn_index']+1}: {t['sent']}\nModel: {t['received']}" for t in mtr.turn_responses]
+                    )
+
+                all_results.append({
+                    "id": str(uuid.uuid4()),
+                    "prompt_sent": convo_text,
+                    "model_response": "[See conversation above]",
+                    "result": "fail" if mtr.compromised else "error" if mtr.error else "pass",
+                    "severity": a_dict.get("severity", "medium"),
+                    "confidence": mtr.confidence,
+                    "eval_reasoning": mtr.judge_reasoning,
+                    "attack_category": a_dict.get("category"),
+                    "attack_id": mtr.attack_id,
+                    "mutation_generation": 0,
+                    "response_time_ms": mtr.latency_ms,
+                    "executed_at": datetime.now(timezone.utc),
+                    "metadata": {
+                        "model_used": target_model,
+                        "usage": {"total_tokens": mtr.total_tokens_used},
+                    },
+                })
 
         total_tests = len(all_results)
 

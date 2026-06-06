@@ -1,7 +1,7 @@
 # ============================================================
 # MODEL DENIAL OF SERVICE ATTACKS
 # ============================================================
-# OWASP LLM04:2025 — Model Denial of Service
+# OWASP LLM10:2025 — Unbounded Consumption
 #
 # What is it?
 # Attackers craft inputs that consume disproportionate amounts
@@ -16,7 +16,7 @@
 
 category: model_dos
 display_name: "Model Denial of Service"
-owasp_id: "LLM04:2025"
+owasp_id: "LLM10:2025"
 description: "Tricking the model into consuming excessive resources or generating massive outputs to cause degradation."
 
 attacks:

@@ -1,7 +1,7 @@
 # ============================================================
 # INSECURE OUTPUT HANDLING ATTACKS
 # ============================================================
-# OWASP LLM02:2025 — Insecure Output Handling
+# OWASP LLM05:2025 — Improper Output Handling
 #
 # What is it?
 # Occurs when a downstream application blindly accepts
@@ -15,7 +15,7 @@
 
 category: insecure_output_handling
 display_name: "Insecure Output Handling"
-owasp_id: "LLM02:2025"
+owasp_id: "LLM05:2025"
 description: "Tricking the model into generating malicious payloads that exploit downstream applications rendering the output."
 
 attacks:

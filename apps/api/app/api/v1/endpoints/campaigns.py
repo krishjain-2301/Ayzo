@@ -70,8 +70,8 @@ async def create_campaign(
     await db.commit()
     await db.refresh(campaign)
 
-    from app.workers.tasks import run_campaign_task
-    run_campaign_task.delay(str(campaign.id))
+    from app.workers.tasks import _run_campaign_async
+    background_tasks.add_task(_run_campaign_async, str(campaign.id))
     return campaign
 
 
