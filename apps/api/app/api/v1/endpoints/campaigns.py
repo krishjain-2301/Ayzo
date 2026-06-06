@@ -38,7 +38,6 @@ router = APIRouter()
 
 # The background execution logic has been moved to app.workers.tasks.
 
-
 @router.post("", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
 async def create_campaign(
     campaign_in: CampaignCreate,
@@ -73,7 +72,6 @@ async def create_campaign(
 
     from app.workers.tasks import run_campaign_task
     run_campaign_task.delay(str(campaign.id))
-
     return campaign
 
 
