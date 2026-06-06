@@ -34,6 +34,9 @@ from app.core.config import settings
 # Suppress LiteLLM's verbose logging in production
 litellm.set_verbose = settings.DEBUG
 
+import asyncio
+_gemini_lock = asyncio.Lock()
+_last_gemini_time = 0.0
 
 class LLMClient:
     """
@@ -178,6 +181,18 @@ class LLMClient:
             # ------------------------------------------------------------------
             # Any LiteLLM-supported provider (Ollama, OpenAI, Anthropic, etc.)
             # ------------------------------------------------------------------
+            import asyncio
+            import time as _time
+            global _gemini_lock, _last_gemini_time
+            
+            if "gemini" in model.lower():
+                async with _gemini_lock:
+                    now = _time.time()
+                    time_since_last = now - _last_gemini_time
+                    if time_since_last < 4.1:
+                        await asyncio.sleep(4.1 - time_since_last)
+                    _last_gemini_time = _time.time()
+            
             response = await litellm.acompletion(
                 model=model,
                 messages=final_messages,
@@ -186,7 +201,7 @@ class LLMClient:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 timeout=timeout,
-                num_retries=1,
+                num_retries=2,
             )
 
             elapsed_ms = (time.time() - start_time) * 1000

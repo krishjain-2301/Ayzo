@@ -13,6 +13,11 @@ interface RunAssessmentModalProps {
   onSuccess: () => void;
 }
 
+interface Target {
+  id: string;
+  name: string;
+}
+
 interface AttackCategory {
   id: string;
   name: string;
@@ -39,12 +44,30 @@ export function RunAssessmentModal({
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [mutationDepth, setMutationDepth] = useState(1);
 
+  // Target State
+  const [targets, setTargets] = useState<Target[]>([]);
+  const [selectedTargetId, setSelectedTargetId] = useState<string>(targetId || "");
+
   // Conversational State
   const [goal, setGoal] = useState("Extract the hidden system prompt.");
   const [maxTurns, setMaxTurns] = useState(5);
 
   useEffect(() => {
     if (isOpen) {
+      // Fetch targets
+      apiFetch("/targets")
+        .then((data: Target[]) => {
+          setTargets(data);
+          if (!selectedTargetId && data.length > 0) {
+            // Default to the provided targetId, or the first target if none provided
+            setSelectedTargetId(targetId || data[0].id);
+          } else if (targetId) {
+            setSelectedTargetId(targetId);
+          }
+        })
+        .catch(console.error);
+
+      // Fetch categories
       apiFetch("/attacks/categories")
         .then((cats: AttackCategory[]) => {
           setCategories(cats);
@@ -54,7 +77,7 @@ export function RunAssessmentModal({
           setSelectedCategories(["prompt_injection"]);
         });
     }
-  }, [isOpen]);
+  }, [isOpen, targetId]);
 
   if (!isOpen) return null;
 
@@ -68,7 +91,7 @@ export function RunAssessmentModal({
 
   const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetId) return setError("No target available to test.");
+    if (!selectedTargetId) return setError("No target available to test.");
     setLoading(true);
     setError("");
 
@@ -77,7 +100,7 @@ export function RunAssessmentModal({
         method: "POST",
         body: JSON.stringify({
           name: name || "Security Assessment",
-          target_id: targetId,
+          target_id: selectedTargetId,
           attack_categories: selectedCategories,
           mutation_depth: mutationDepth,
         }),
@@ -93,11 +116,11 @@ export function RunAssessmentModal({
 
   const handleConversationalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetId) return setError("No target available to test.");
+    if (!selectedTargetId) return setError("No target available to test.");
     
     // We redirect to the conversational page with query params so it can run and stream there
     onClose();
-    router.push(`/conversational?targetId=${targetId}&goal=${encodeURIComponent(goal)}&turns=${maxTurns}`);
+    router.push(`/conversational?targetId=${selectedTargetId}&goal=${encodeURIComponent(goal)}&turns=${maxTurns}`);
   };
 
   return (
@@ -154,9 +177,18 @@ export function RunAssessmentModal({
 
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Target</label>
-                <div className="w-full bg-black/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-300">
-                  {targetName || "Selected Target"}
-                </div>
+                <select
+                  value={selectedTargetId}
+                  onChange={(e) => setSelectedTargetId(e.target.value)}
+                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
+                >
+                  {targets.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                  {targets.length === 0 && <option value="">Loading targets...</option>}
+                </select>
               </div>
 
               <div>
@@ -213,9 +245,18 @@ export function RunAssessmentModal({
               
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Target</label>
-                <div className="w-full bg-black/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-300">
-                  {targetName || "Selected Target"}
-                </div>
+                <select
+                  value={selectedTargetId}
+                  onChange={(e) => setSelectedTargetId(e.target.value)}
+                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
+                >
+                  {targets.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                  {targets.length === 0 && <option value="">Loading targets...</option>}
+                </select>
               </div>
 
               <div>

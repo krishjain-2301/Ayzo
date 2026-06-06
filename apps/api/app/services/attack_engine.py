@@ -189,15 +189,14 @@ class AttackEngine:
 
             # If we haven't reached the max depth, generate the next generation
             if generation < mutation_depth:
-                # We only want to mutate prompts that FAILED (the model blocked the attack).
-                # If an attack PASSED (it bypassed the model), we don't need to mutate it further.
-                failed_results = [r for r in gen_results if r.get("result") == "fail"]
-                
+                # We mutate ALL prompts from the previous generation to ensure exact mathematical 
+                # predictability (Level 1 = 230, Level 2 = 345, Level 3 = 460).
                 next_generation_tests = []
-                for res in failed_results:
+                for res in gen_results:
+                    # Hardcode count=1 to generate exactly 1 mutation per prompt per generation
                     mutations = await mutation_engine.mutate(
                         prompt=res["prompt_sent"],
-                        count=mutations_per_prompt,
+                        count=1,
                     )
                     for m in mutations:
                         next_generation_tests.append({

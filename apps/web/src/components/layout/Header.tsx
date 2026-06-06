@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Search, Bell, Settings, Plus, User, LogOut, ShieldAlert, Zap } from "lucide-react";
 import clsx from "clsx";
+import { RunAssessmentModal } from "@/components/RunAssessmentModal";
 
 export function Header() {
   const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
   
   const [notifications, setNotifications] = useState([
     {
@@ -62,6 +64,20 @@ export function Header() {
           className="bg-transparent border-none text-white text-sm w-full outline-none placeholder:text-zinc-500"
         />
       </div>
+
+      <RunAssessmentModal 
+        isOpen={isAssessmentModalOpen} 
+        onClose={() => setIsAssessmentModalOpen(false)} 
+        targetId={null} 
+        onSuccess={() => {
+          setIsAssessmentModalOpen(false);
+          if (window.location.pathname === "/campaigns" || window.location.pathname === "/dashboard") {
+            window.location.reload(); // Refresh to show new campaign
+          } else {
+            router.push("/campaigns");
+          }
+        }} 
+      />
 
       <div className="flex items-center gap-4">
         {/* Notifications */}
@@ -158,7 +174,7 @@ export function Header() {
 
         <button
           className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => setIsAssessmentModalOpen(true)}
         >
           <Plus size={16} />
           New Campaign
