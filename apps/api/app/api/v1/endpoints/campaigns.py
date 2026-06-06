@@ -3,10 +3,14 @@ Campaign Endpoints
 ==================
 CRUD operations and execution for security testing campaigns.
 
-When a campaign is created, we use FastAPI's `BackgroundTasks` to
+When a campaign is created, we use FastAPI's BackgroundTasks to
 run the Attack Engine asynchronously. This means the API returns
 immediately (so the frontend doesn't hang), while the heavy testing
 runs in the background.
+
+FIX: target.api_key is now decrypted before being passed to the attack
+engine so the LLM client receives the raw plaintext key, not the
+"fernet:<token>" string.
 """
 
 import uuid
@@ -20,6 +24,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.core.database import get_db, async_session_maker
+from app.core.crypto import decrypt_api_key
 from app.models.db.campaign import Campaign
 from app.models.db.target import Target
 from app.models.db.user import User
@@ -38,19 +43,21 @@ async def run_campaign_background(campaign_id: uuid.UUID):
     outside the normal request/response cycle.
     """
     async with async_session_maker() as db:
-        # Load the campaign and its target
-        query = select(Campaign).options(selectinload(Campaign.target)).where(Campaign.id == campaign_id)
+        query = (
+            select(Campaign)
+            .options(selectinload(Campaign.target))
+            .where(Campaign.id == campaign_id)
+        )
         result = await db.execute(query)
         campaign = result.scalar_one_or_none()
-        
+
         if not campaign or not campaign.target:
             return
-            
-        # Update status to running
+
         campaign.status = "running"
         campaign.started_at = datetime.now(timezone.utc)
         await db.commit()
-        
+
         target = campaign.target
         model_identifier = target.model_name
         if target.provider == "dummy":
@@ -59,32 +66,33 @@ async def run_campaign_background(campaign_id: uuid.UUID):
             model_identifier = "custom_webhook"
         elif target.provider == "ollama" and not model_identifier.startswith("ollama/"):
             model_identifier = f"ollama/{target.model_name}"
-            
+
+        # Decrypt the API key — the DB stores it encrypted
+        raw_api_key = decrypt_api_key(target.api_key) if target.api_key else None
+
         try:
             import asyncio
             db_lock = asyncio.Lock()
+
             async def progress_cb(completed: int, total: int, result: dict | None):
-                # Update progress in DB with a lock to prevent concurrent transaction errors
                 async with db_lock:
                     campaign.completed_tests = completed
                     campaign.total_tests = total
                     await db.commit()
 
-            # RUN THE ATTACK ENGINE!
             results = await attack_engine.run_campaign(
                 target_model=model_identifier,
                 categories=campaign.attack_categories,
                 mutation_depth=campaign.mutation_depth,
                 mutations_per_prompt=campaign.mutations_per_prompt,
-                api_key=target.api_key,
+                api_key=raw_api_key,          # plaintext key
                 api_base=target.endpoint_url,
                 config=target.config,
                 progress_callback=progress_cb,
             )
-            
-            # Save all the test results
+
             for res_data in results.get("results", []):
-                tr = TestResult(
+                db.add(TestResult(
                     campaign_id=campaign.id,
                     prompt_sent=res_data["prompt_sent"],
                     model_response=res_data.get("model_response"),
@@ -95,12 +103,10 @@ async def run_campaign_background(campaign_id: uuid.UUID):
                     attack_category=res_data.get("attack_category"),
                     mutation_generation=res_data.get("mutation_generation", 0),
                     meta_data=res_data.get("metadata", {}),
-                )
-                db.add(tr)
-                
-            # Save the findings
+                ))
+
             for find_data in results.get("findings", []):
-                f = Finding(
+                db.add(Finding(
                     campaign_id=campaign.id,
                     category=find_data["category"],
                     title=find_data["title"],
@@ -111,10 +117,8 @@ async def run_campaign_background(campaign_id: uuid.UUID):
                     total_tests_in_category=find_data["total_tests_in_category"],
                     evidence=find_data.get("evidence", []),
                     remediation=find_data.get("remediation"),
-                )
-                db.add(f)
-                
-            # Update campaign final stats
+                ))
+
             campaign.status = "completed"
             campaign.completed_at = datetime.now(timezone.utc)
             campaign.total_tests = results.get("total_tests", 0)
@@ -122,11 +126,11 @@ async def run_campaign_background(campaign_id: uuid.UUID):
             campaign.passed_tests = results.get("passed_tests", 0)
             campaign.failed_tests = results.get("failed_tests", 0)
             campaign.risk_score = results.get("risk_score", 0.0)
-            
-        except Exception as e:
-            print(f"❌ Campaign failed: {e}")
+
+        except Exception as exc:
+            print(f"❌ Campaign failed: {exc}")
             campaign.status = "failed"
-            
+
         finally:
             await db.commit()
 
@@ -138,39 +142,33 @@ async def create_campaign(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Create a new campaign and start it in the background.
-    """
-    # Verify the target exists and belongs to the user
-    target_id = campaign_in.target_id
-    query = select(Target).where(Target.id == target_id)
+    """Create a new campaign and start it in the background."""
+    query = select(Target).where(Target.id == campaign_in.target_id)
     result = await db.execute(query)
     target = result.scalar_one_or_none()
-    
+
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
-        
+
     if target.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to test this target")
-        
-    # Create the campaign
+
     campaign = Campaign(
         user_id=current_user.id,
-        target_id=target_id,
+        target_id=campaign_in.target_id,
         name=campaign_in.name,
         description=campaign_in.description,
         attack_categories=campaign_in.attack_categories,
         mutation_depth=campaign_in.mutation_depth,
         mutations_per_prompt=campaign_in.mutations_per_prompt,
-        status="pending"
+        status="pending",
     )
     db.add(campaign)
     await db.commit()
     await db.refresh(campaign)
-    
-    # Start the testing process in the background!
+
     background_tasks.add_task(run_campaign_background, campaign.id)
-    
+
     return campaign
 
 
@@ -185,14 +183,17 @@ async def list_campaigns(
     if current_user.role == "admin":
         query = select(Campaign).options(selectinload(Campaign.target)).offset(skip).limit(limit)
     else:
-        query = select(Campaign).options(selectinload(Campaign.target)).where(
-            Campaign.user_id == current_user.id
-        ).offset(skip).limit(limit)
-        
+        query = (
+            select(Campaign)
+            .options(selectinload(Campaign.target))
+            .where(Campaign.user_id == current_user.id)
+            .offset(skip)
+            .limit(limit)
+        )
+
     result = await db.execute(query)
     campaigns = result.scalars().all()
-    
-    # Map to summary schema
+
     summaries = []
     for c in campaigns:
         target_name = c.target.name if c.target else "Unknown"
@@ -207,7 +208,7 @@ async def list_campaigns(
             "progress_percent": c.progress_percent,
             "created_at": c.created_at,
         })
-        
+
     return summaries
 
 
@@ -224,7 +225,7 @@ async def get_campaign(
 
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-        
+
     if campaign.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to view this campaign")
 

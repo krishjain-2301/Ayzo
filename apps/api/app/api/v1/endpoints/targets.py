@@ -3,9 +3,18 @@ Target Endpoints
 ================
 CRUD operations for target models.
 
-Every endpoint here is protected by `Depends(get_current_user)`,
+Every endpoint here is protected by Depends(get_current_user),
 meaning you must be logged in to access them. Additionally, users
 can only see targets they created (unless they are an admin).
+
+FIX: Target API keys are now encrypted at rest using Fernet symmetric
+encryption. The key is derived from settings.SECRET_KEY so no extra
+configuration is required. Keys are decrypted only inside llm_client
+calls, just before the HTTP request leaves the server. If the database
+is leaked, raw API keys are not exposed.
+
+The encryption helpers live in app.core.crypto and can be imported
+anywhere that needs to decrypt a key for use (e.g. test_connection).
 """
 
 import uuid
@@ -17,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.crypto import encrypt_api_key, decrypt_api_key
 from app.models.db.target import Target
 from app.models.db.user import User
 from app.models.schemas.target import (
@@ -44,7 +54,8 @@ async def create_target(
         provider=target_in.provider,
         model_name=target_in.model_name,
         endpoint_url=target_in.endpoint_url,
-        api_key=target_in.api_key,  # Store securely (in future, encrypt this!)
+        # Encrypt the API key before storing — never store plaintext credentials
+        api_key=encrypt_api_key(target_in.api_key) if target_in.api_key else None,
         config=target_in.config,
     )
     db.add(target)
@@ -61,12 +72,11 @@ async def list_targets(
     limit: int = 100,
 ):
     """List all targets owned by the current user."""
-    # Admins can see all targets, normal users only see their own
     if current_user.role == "admin":
         query = select(Target).offset(skip).limit(limit)
     else:
         query = select(Target).where(Target.user_id == current_user.id).offset(skip).limit(limit)
-        
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -84,8 +94,7 @@ async def get_target(
 
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
-        
-    # Check permissions
+
     if target.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to view this target")
 
@@ -105,7 +114,7 @@ async def delete_target(
 
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
-        
+
     if target.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to delete this target")
 
@@ -129,11 +138,10 @@ async def test_target_connection(
 
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
-        
+
     if target.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to test this target")
 
-    # Format model name based on provider
     model_identifier = target.model_name
     if target.provider == "dummy":
         model_identifier = "dummy"
@@ -142,14 +150,15 @@ async def test_target_connection(
     elif target.provider == "anthropic" and not model_identifier.startswith("anthropic/"):
         model_identifier = f"anthropic/{target.model_name}"
 
-    # Call the LLM Client connection tester
+    # Decrypt the API key only for the outgoing network call
+    raw_api_key = decrypt_api_key(target.api_key) if target.api_key else None
+
     test_result = await llm_client.test_connection(
         model=model_identifier,
-        api_key=target.api_key,
+        api_key=raw_api_key,
         api_base=target.endpoint_url,
     )
 
-    # Update target status based on result
     if test_result["success"] and target.status != "active":
         target.status = "active"
         await db.commit()

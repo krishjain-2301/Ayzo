@@ -6,26 +6,30 @@ This means:
 - No secrets in your code (safe to push to GitHub)
 - Different settings for dev vs production
 - Pydantic validates everything at startup (catches misconfigs early)
+
+FIX: Added @model_validator that raises at startup when DEBUG=False and
+SECRET_KEY is still the default insecure value.
+
+FIX: Added SHIELD_FAIL_OPEN setting (default False) so the Blue Team
+proxy fails CLOSED (safe) when its Shield LLM is unavailable.
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import model_validator
 from typing import Optional
 from dotenv import load_dotenv
-import os
 
-# Force loading .env into os.environ, overriding any existing system environment variables.
-# This prevents expired global keys from breaking the local app.
 load_dotenv(".env", override=True)
 
+_INSECURE_DEFAULT_KEY = "dev-secret-key-change-in-production"
 
 
 class Settings(BaseSettings):
     """
     Central configuration for the AYZO API.
-    
+
     Each field maps to an environment variable.
-    Example: `DATABASE_URL` env var → `settings.DATABASE_URL` in Python.
+    Example: DATABASE_URL env var → settings.DATABASE_URL in Python.
     """
 
     # ---- App ----
@@ -41,22 +45,21 @@ class Settings(BaseSettings):
     ]
 
     # ---- Database ----
-    # SQLite connection string for easy local demonstration
+    # SQLite for easy local dev; swap for PostgreSQL in .env
     DATABASE_URL: str = "sqlite+aiosqlite:///./ayzo_demo.db"
 
     # ---- Redis ----
-    # Used by Celery for background job queue
+    # Used by Celery for background job queue and the proxy traffic log
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ---- Auth / JWT ----
-    # SECRET_KEY is used to sign JWT tokens
-    # In production, use a long random string (e.g. `openssl rand -hex 32`)
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    # IMPORTANT: Generate a real secret before deploying to production:
+    #   python -c "import secrets; print(secrets.token_hex(32))"
+    SECRET_KEY: str = _INSECURE_DEFAULT_KEY
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # ---- Google OAuth ----
-    # Get these from: https://console.cloud.google.com/apis/credentials
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
@@ -66,27 +69,48 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: Optional[str] = None
 
     # ---- LLM / AI ----
-    # API key for Gemini models (used by LiteLLM when model starts with "gemini/")
     GEMINI_API_KEY: Optional[str] = None
-    # Default model for the evaluation engine (the "judge" that checks if attacks worked)
+    # Judge model — evaluates whether an attack bypassed the target
     DEFAULT_EVAL_MODEL: str = "ollama/llama3.2"
-    # Model used by the mutation engine to generate prompt variants
-    MUTATOR_MODEL: Optional[str] = None  # Falls back to DEFAULT_EVAL_MODEL if not set
-    # How many attack prompts to run at the same time
+    # Mutator model — generates prompt variations.
+    # Keep this separate from the eval model so a safety-tuned judge doesn't
+    # refuse to mutate jailbreak payloads. Falls back to DEFAULT_EVAL_MODEL
+    # when not set (see mutation_engine.py).
+    MUTATOR_MODEL: Optional[str] = None
     MAX_CONCURRENT_ATTACKS: int = 5
+
+    # ---- Blue Team Proxy ----
+    # When True, the proxy forwards requests if the Shield LLM errors out
+    # (fail-open). When False (default), it blocks on shield failure (fail-closed).
+    # Fail-closed is the secure default for a security firewall.
+    SHIELD_FAIL_OPEN: bool = False
 
     # ---- Celery ----
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
+    # ---- Validators ----
+    @model_validator(mode="after")
+    def _check_production_secret_key(self) -> "Settings":
+        """
+        Prevent deploying to production with the default, publicly-known
+        SECRET_KEY. If DEBUG=False and the key is still the default, raise
+        immediately at startup before any request is served.
+        """
+        if not self.DEBUG and self.SECRET_KEY == _INSECURE_DEFAULT_KEY:
+            raise ValueError(
+                "SECRET_KEY must be changed from the default before running in "
+                "production (DEBUG=False). Generate one with:\n"
+                "  python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        return self
+
     class Config:
-        # This tells Pydantic to read from a .env file
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
         extra = "ignore"
 
 
-# Create a single settings instance used throughout the app
-# Usage: `from app.core.config import settings`
+# Single instance used throughout the app:  from app.core.config import settings
 settings = Settings()
