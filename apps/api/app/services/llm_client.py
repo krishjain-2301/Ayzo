@@ -15,8 +15,13 @@ the rest (formatting, auth, retries, etc.)
 
 Think of it like a universal adapter — plug in any model,
 get the same interface.
+
+FIX: chat() now accepts an optional `messages` parameter so callers
+(e.g. the conversational runner) can pass a full multi-turn history
+directly instead of serialising it as a plain string.
 """
 
+import json
 import time
 from typing import Optional
 
@@ -33,22 +38,31 @@ litellm.set_verbose = settings.DEBUG
 class LLMClient:
     """
     Unified client for talking to any LLM.
-    
+
     Usage:
         client = LLMClient()
-        
-        # Talk to Ollama
+
+        # Single-turn (convenience)
         response = await client.chat("ollama/llama3.2", "What is 2+2?")
-        
-        # Talk to OpenAI
-        response = await client.chat("gpt-4", "What is 2+2?", api_key="sk-...")
+
+        # Multi-turn (pass full history)
+        response = await client.chat(
+            "ollama/llama3.2",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user",   "content": "Hello"},
+                {"role": "assistant", "content": "Hi! How can I help?"},
+                {"role": "user",   "content": "What is 2+2?"},
+            ]
+        )
     """
 
     async def chat(
         self,
         model: str,
-        user_message: str,
+        user_message: Optional[str] = None,
         system_message: Optional[str] = None,
+        messages: Optional[list[dict]] = None,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
         temperature: float = 0.7,
@@ -57,20 +71,61 @@ class LLMClient:
         config: Optional[dict] = None,
     ) -> dict:
         """
-        Send a message to an LLM and get a response.
+        Send a message (or full history) to an LLM and get a response.
+
+        Args:
+            model:          LiteLLM model string, e.g. "ollama/llama3.2"
+            user_message:   Convenience shortcut for a single user turn.
+                            Ignored when `messages` is provided.
+            system_message: Prepended as a system role message.
+                            Ignored when `messages` is provided.
+            messages:       Full OpenAI-format message list. When supplied,
+                            `user_message` and `system_message` are ignored.
+            api_key:        Target API key (forwarded to LiteLLM).
+            api_base:       Target endpoint URL override.
+            temperature:    Sampling temperature (0 = deterministic).
+            max_tokens:     Maximum tokens in the response.
+            timeout:        Request timeout in seconds.
+            config:         Extra model-specific config dict.
+
+        Returns:
+            {
+                "success": bool,
+                "response_text": str,       # on success
+                "model": str,
+                "usage": {...},
+                "response_time_ms": float,
+                "finish_reason": str,
+                "error": str,               # on failure
+                "error_type": str,          # on failure
+            }
         """
-        messages = []
-        if system_message:
-            messages.append({"role": "system", "content": system_message})
-        messages.append({"role": "user", "content": user_message})
+        # Build the messages list ------------------------------------------------
+        if messages is not None:
+            # Caller supplied a full history — use it verbatim
+            final_messages = messages
+        else:
+            # Single-turn convenience path
+            final_messages = []
+            if system_message:
+                final_messages.append({"role": "system", "content": system_message})
+            if user_message is not None:
+                final_messages.append({"role": "user", "content": user_message})
 
         start_time = time.time()
 
         try:
+            # ------------------------------------------------------------------
+            # Dummy target (in-process, no network call)
+            # ------------------------------------------------------------------
             if model == "dummy":
                 from app.api.v1.endpoints.dummy import chat_with_dummy_ai, ChatRequest
-                dummy_req = ChatRequest(prompt=user_message)
-                dummy_resp = await chat_with_dummy_ai(dummy_req)
+                # Extract the last user message for the dummy target
+                last_user = next(
+                    (m["content"] for m in reversed(final_messages) if m["role"] == "user"),
+                    "",
+                )
+                dummy_resp = await chat_with_dummy_ai(ChatRequest(prompt=last_user))
                 elapsed_ms = (time.time() - start_time) * 1000
                 return {
                     "success": True,
@@ -81,18 +136,25 @@ class LLMClient:
                     "finish_reason": "stop",
                 }
 
+            # ------------------------------------------------------------------
+            # Custom webhook target
+            # ------------------------------------------------------------------
             if model == "custom_webhook":
                 if not api_base:
                     raise ValueError("api_base (URL) is required for custom_webhook")
-                
+
                 cfg = config or {}
                 headers = cfg.get("headers", {})
                 if api_key:
                     headers["Authorization"] = f"Bearer {api_key}"
-                
+
+                # Use only the last user message for webhook payloads
+                last_user = next(
+                    (m["content"] for m in reversed(final_messages) if m["role"] == "user"),
+                    "",
+                )
                 payload_template = cfg.get("payload_template", {"prompt": "{{prompt}}"})
-                import json
-                payload_str = json.dumps(payload_template).replace("{{prompt}}", user_message)
+                payload_str = json.dumps(payload_template).replace("{{prompt}}", last_user)
                 payload = json.loads(payload_str)
 
                 async with httpx.AsyncClient(timeout=timeout) as client:
@@ -100,7 +162,6 @@ class LLMClient:
                     resp.raise_for_status()
                     resp_data = resp.json()
 
-                # Extract response based on json_path
                 json_path = cfg.get("response_json_path", "response")
                 response_text = resp_data.get(json_path, str(resp_data))
 
@@ -114,9 +175,12 @@ class LLMClient:
                     "finish_reason": "stop",
                 }
 
+            # ------------------------------------------------------------------
+            # Any LiteLLM-supported provider (Ollama, OpenAI, Anthropic, etc.)
+            # ------------------------------------------------------------------
             response = await litellm.acompletion(
                 model=model,
-                messages=messages,
+                messages=final_messages,
                 api_key=api_key,
                 api_base=api_base,
                 temperature=temperature,
@@ -140,31 +204,31 @@ class LLMClient:
                 "finish_reason": response.choices[0].finish_reason,
             }
 
-        except litellm.exceptions.AuthenticationError as e:
+        except litellm.exceptions.AuthenticationError as exc:
             return {
                 "success": False,
-                "error": f"Authentication failed: {str(e)}",
+                "error": f"Authentication failed: {exc}",
                 "error_type": "auth_error",
                 "response_time_ms": (time.time() - start_time) * 1000,
             }
-        except litellm.exceptions.RateLimitError as e:
+        except litellm.exceptions.RateLimitError as exc:
             return {
                 "success": False,
-                "error": f"Rate limited: {str(e)}",
+                "error": f"Rate limited: {exc}",
                 "error_type": "rate_limit",
                 "response_time_ms": (time.time() - start_time) * 1000,
             }
-        except litellm.exceptions.Timeout as e:
+        except litellm.exceptions.Timeout:
             return {
                 "success": False,
                 "error": f"Request timed out after {timeout}s",
                 "error_type": "timeout",
                 "response_time_ms": (time.time() - start_time) * 1000,
             }
-        except Exception as e:
+        except Exception as exc:
             return {
                 "success": False,
-                "error": str(e),
+                "error": str(exc),
                 "error_type": "unknown",
                 "response_time_ms": (time.time() - start_time) * 1000,
             }
@@ -178,9 +242,9 @@ class LLMClient:
         """
         Test if we can reach a model. Sends a simple "Hello" message.
         Used when adding a new target to verify the connection works.
-        
+
         Returns:
-            Dict with: success, message, response_time_ms
+            {"success": bool, "message": str, "response_time_ms": float}
         """
         result = await self.chat(
             model=model,
