@@ -35,8 +35,8 @@ from app.core.config import settings
 litellm.set_verbose = settings.DEBUG
 
 import asyncio
-_gemini_lock = asyncio.Lock()
-_last_gemini_time = 0.0
+_global_lock = asyncio.Lock()
+_last_request_time = 0.0
 
 class LLMClient:
     """
@@ -183,15 +183,21 @@ class LLMClient:
             # ------------------------------------------------------------------
             import asyncio
             import time as _time
-            global _gemini_lock, _last_gemini_time
+            global _global_lock, _last_request_time
             
+            delay = 0.0
             if "gemini" in model.lower():
-                async with _gemini_lock:
+                delay = 4.1
+            elif "groq" in model.lower():
+                delay = 2.1
+                
+            if delay > 0:
+                async with _global_lock:
                     now = _time.time()
-                    time_since_last = now - _last_gemini_time
-                    if time_since_last < 4.1:
-                        await asyncio.sleep(4.1 - time_since_last)
-                    _last_gemini_time = _time.time()
+                    time_since_last = now - _last_request_time
+                    if time_since_last < delay:
+                        await asyncio.sleep(delay - time_since_last)
+                    _last_request_time = _time.time()
             
             response = await litellm.acompletion(
                 model=model,
