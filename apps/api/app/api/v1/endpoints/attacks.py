@@ -107,3 +107,41 @@ async def create_custom_payload(
         
     return {"message": "Custom payload saved successfully"}
 
+
+@router.delete("/payloads/custom/{name}")
+async def delete_custom_payload(
+    name: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    Delete a custom adversarial payload from the custom.yaml file by name.
+    """
+    custom_yaml_path = Path(__file__).parent.parent.parent.parent / "attack_library" / "payloads" / "custom.yaml"
+    
+    if not custom_yaml_path.exists():
+        raise HTTPException(status_code=404, detail="No custom payloads found")
+        
+    try:
+        with open(custom_yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read custom.yaml: {e}")
+        
+    if "attacks" not in data or not isinstance(data["attacks"], list):
+        raise HTTPException(status_code=404, detail="No custom attacks found")
+        
+    original_length = len(data["attacks"])
+    data["attacks"] = [attack for attack in data["attacks"] if attack.get("name") != name]
+    
+    if len(data["attacks"]) == original_length:
+        raise HTTPException(status_code=404, detail=f"Custom payload '{name}' not found")
+        
+    try:
+        with open(custom_yaml_path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, sort_keys=False, default_flow_style=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save custom.yaml: {e}")
+        
+    return {"message": f"Custom payload '{name}' deleted successfully"}
+
+

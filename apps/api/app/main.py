@@ -22,6 +22,11 @@ load_dotenv(override=True)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+
 from app.core.config import settings
 from app.core.database import engine, Base
 
@@ -69,6 +74,13 @@ app = FastAPI(
     docs_url="/docs",        # Swagger UI at http://localhost:8000/docs
     redoc_url="/redoc",      # ReDoc at http://localhost:8000/redoc
 )
+
+
+# ---- Rate Limiting ----
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 
 # ---- CORS Middleware ----

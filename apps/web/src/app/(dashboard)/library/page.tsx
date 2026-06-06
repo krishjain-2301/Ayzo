@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, Trash2 } from "lucide-react";
 import clsx from "clsx";
 
 import { CustomPayloadModal } from "@/components/CustomPayloadModal";
@@ -63,6 +63,21 @@ export default function LibraryPage() {
       setPayloadsLoading(false);
     }
   }, []);
+
+  const handleDeletePayload = async (name: string) => {
+    if (!confirm(`Are you sure you want to delete the custom payload "${name}"?`)) return;
+    try {
+      await apiFetch(`/attacks/payloads/custom/${encodeURIComponent(name)}`, {
+        method: "DELETE",
+      });
+      if (selectedCategory) {
+        loadPayloads(selectedCategory);
+      }
+      loadCategories();
+    } catch (e: any) {
+      alert(e.message || "Failed to delete payload.");
+    }
+  };
 
   useEffect(() => {
     loadCategories();
@@ -182,12 +197,23 @@ export default function LibraryPage() {
                         )}
                       </div>
                     </div>
-                    <span className={clsx(
-                      "px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-widest",
-                      getSeverityBadgeColor(payload.severity)
-                    )}>
-                      {payload.severity}
-                    </span>
+                    <div className="flex gap-2 items-center">
+                      {!payload.is_builtin && (
+                        <button
+                          onClick={() => handleDeletePayload(payload.name)}
+                          className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+                          title="Delete Custom Payload"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      <span className={clsx(
+                        "px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-widest",
+                        getSeverityBadgeColor(payload.severity)
+                      )}>
+                        {payload.severity}
+                      </span>
+                    </div>
                   </div>
 
                   <p className="text-sm text-zinc-400 mb-6 leading-relaxed">{payload.description}</p>

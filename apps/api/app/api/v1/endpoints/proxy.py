@@ -42,6 +42,9 @@ router = APIRouter()
 _TRAFFIC_KEY = "ayzo:proxy:traffic"
 _TRAFFIC_MAX = 50  # Keep the most recent N entries
 
+# Fallback in-memory log if Redis is unavailable (useful for local dev without Docker)
+_FALLBACK_TRAFFIC_LOG = []
+
 
 def _get_redis():
     """Return a synchronous Redis client. Import is deferred so the app still
@@ -52,24 +55,27 @@ def _get_redis():
 
 def _push_traffic_log(entry: dict) -> None:
     """Push a log entry to the Redis list and trim to the cap. Fails silently
-    so a Redis hiccup doesn't take down the proxy."""
+    so a Redis hiccup doesn't take down the proxy. Uses in-memory list as fallback."""
     try:
         r = _get_redis()
         r.lpush(_TRAFFIC_KEY, json.dumps(entry))
         r.ltrim(_TRAFFIC_KEY, 0, _TRAFFIC_MAX - 1)
     except Exception as exc:
-        print(f"[proxy] Failed to write traffic log to Redis: {exc}")
+        print(f"[proxy] Failed to write traffic log to Redis, using in-memory fallback: {exc}")
+        global _FALLBACK_TRAFFIC_LOG
+        _FALLBACK_TRAFFIC_LOG.insert(0, entry)
+        _FALLBACK_TRAFFIC_LOG = _FALLBACK_TRAFFIC_LOG[:_TRAFFIC_MAX]
 
 
 def _read_traffic_log() -> list:
-    """Read the most recent traffic entries from Redis."""
+    """Read the most recent traffic entries from Redis or fallback to in-memory list."""
     try:
         r = _get_redis()
         raw = r.lrange(_TRAFFIC_KEY, 0, _TRAFFIC_MAX - 1)
         return [json.loads(entry) for entry in raw]
     except Exception as exc:
-        print(f"[proxy] Failed to read traffic log from Redis: {exc}")
-        return []
+        print(f"[proxy] Failed to read traffic log from Redis, using in-memory fallback: {exc}")
+        return _FALLBACK_TRAFFIC_LOG
 
 
 # ---------------------------------------------------------------------------

@@ -59,6 +59,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # ------------------------------------------------
+  # Celery Worker — Background Job Processing
+  # ------------------------------------------------
+  # Executes tasks pulled from the Redis queue.
+  celery-worker:
+    build:
+      context: ./apps/api
+    container_name: ayzo-celery
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://ayzo:ayzo_dev_password@postgres:5432/ayzo
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
 # Named volumes — Docker manages the storage location
 # Your data survives container restarts
 volumes:

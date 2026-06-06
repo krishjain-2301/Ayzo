@@ -32,6 +32,7 @@ dependencies = [
     # ---- Utilities ----
     "python-dotenv>=1.0.0",      # Load .env files
     "google-auth>=2.53.0",
+    "slowapi>=0.1.9",            # API rate limiting
 ]
 
 [project.optional-dependencies]

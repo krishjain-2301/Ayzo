@@ -63,7 +63,7 @@ def load_all_payloads() -> list[dict]:
                     "original_prompt": attack["prompt"],
                     "success_indicators": attack.get("success_indicators", ""),
                     "severity": attack.get("severity", "medium"),
-                    "is_builtin": True,
+                    "is_builtin": yaml_file.name != "custom.yaml",
                     "metadata": {
                         "display_name": display_name,
                         "owasp_id": owasp_id,
