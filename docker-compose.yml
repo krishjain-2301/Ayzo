@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ayzo
-      POSTGRES_PASSWORD: ayzo_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ayzo
     ports:
       - "5432:5432"    # Access from your machine at localhost:5432
@@ -63,16 +63,17 @@ services:
   # Celery Worker — Background Job Processing
   # ------------------------------------------------
   # Executes tasks pulled from the Redis queue.
-  celery-worker:
+  celery_worker:
     build:
       context: ./apps/api
     container_name: ayzo-celery
     restart: unless-stopped
     command: celery -A app.workers.celery_app worker --loglevel=info
+    env_file: .env
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL: postgresql+asyncpg://ayzo:ayzo_dev_password@postgres:5432/ayzo
+      DATABASE_URL: postgresql+asyncpg://ayzo:${POSTGRES_PASSWORD}@postgres:5432/ayzo
     depends_on:
       redis:
         condition: service_healthy
