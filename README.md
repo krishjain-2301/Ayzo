@@ -1,4 +1,4 @@
-# 🛡️ AYZO — AI Red Team & Vulnerability Assessment Platform
+#  AYZO — AI Red Team & Vulnerability Assessment Platform
 
 > Automated security testing for AI models. Think Burp Suite, but for LLMs.
 
