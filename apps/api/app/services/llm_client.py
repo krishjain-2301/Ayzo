@@ -35,8 +35,14 @@ from app.core.config import settings
 litellm.set_verbose = settings.DEBUG
 
 import asyncio
-_global_lock = asyncio.Lock()
+_global_lock = None
 _last_request_time = 0.0
+
+def get_lock():
+    global _global_lock
+    if _global_lock is None:
+        _global_lock = asyncio.Lock()
+    return _global_lock
 
 class LLMClient:
     """
@@ -192,7 +198,8 @@ class LLMClient:
                 delay = 2.1
                 
             if delay > 0:
-                async with _global_lock:
+                lock = get_lock()
+                async with lock:
                     now = _time.time()
                     time_since_last = now - _last_request_time
                     if time_since_last < delay:

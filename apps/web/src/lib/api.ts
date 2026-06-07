@@ -1,6 +1,9 @@
 import { supabase } from './supabase';
 
-const envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+let envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+if (envUrl.includes('127.0.0.1')) {
+  envUrl = envUrl.replace('127.0.0.1', 'localhost');
+}
 export const API_BASE_URL = envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {

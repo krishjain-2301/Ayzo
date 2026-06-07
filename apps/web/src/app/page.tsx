@@ -29,8 +29,19 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-black selection:bg-violet-500/30 selection:text-white text-zinc-400">
-      <GridBackground />
+    <div className="relative min-h-screen selection:bg-violet-500/30 selection:text-white text-zinc-400">
+      <div className="fixed inset-0 w-full h-full overflow-hidden opacity-80 pointer-events-none z-0 flex items-center justify-center">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-contain scale-[0.85]"
+        >
+          <source src="https://svs.gsfc.nasa.gov/vis/a030000/a030000/a030082/viirs_dnb_night_lights_rotating_earth_1080p.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80" />
+      </div>
 
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-zinc-800/60">
@@ -45,8 +56,8 @@ export default function LandingPage() {
             </div>
           </div>
           <div>
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all"
             >
               Get Started &rarr;
@@ -76,8 +87,8 @@ export default function LandingPage() {
           </motion.p>
 
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="bg-violet-600 hover:bg-violet-500 text-white px-8 py-3.5 rounded-full font-semibold transition-all hover:shadow-[0_0_30px_rgba(124,58,237,0.4)] flex items-center justify-center"
             >
               Start Free Assessment &rarr;
@@ -87,9 +98,9 @@ export default function LandingPage() {
       </main>
 
       {/* Features Section */}
-      <section id="features" className="relative z-10 py-24 px-6 bg-black">
+      <section id="features" className="relative z-10 py-24 px-6">
         <div className="max-w-7xl mx-auto">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
@@ -103,7 +114,7 @@ export default function LandingPage() {
               { icon: ShieldAlert, title: "Prompt Injection Detection", desc: "Test defenses against jailbreaks, systemic overrides, and persona manipulation." },
               { icon: Database, title: "Data Leakage Testing", desc: "Identify if your model leaks PII, system prompts, or proprietary training data." },
               { icon: UserX, title: "Role Override Analysis", desc: "Verify strict adherence to assigned AI personas and permission boundaries." },
-              { icon: Target, title: "7 Attack Vector Categories", desc: "Comprehensive testing across industry-standard AI vulnerability frameworks." },
+              { icon: Target, title: "17 Attack Vector Categories", desc: "Comprehensive testing across industry-standard AI vulnerability frameworks." },
               { icon: Cpu, title: "Async Execution Engine", desc: "Run thousands of adversarial tests in parallel without rate-limiting your app." },
               { icon: FileText, title: "Actionable Security Reports", desc: "Get detailed evidence of vulnerabilities with exact prompts and responses." },
             ].map((feature, i) => (
@@ -115,10 +126,7 @@ export default function LandingPage() {
                 transition={{ delay: i * 0.1 }}
                 className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-violet-500/30 hover:bg-zinc-900 hover:scale-[1.01] transition-all duration-300 backdrop-blur-sm group"
               >
-                <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-300 mb-4 group-hover:text-violet-400 group-hover:bg-violet-500/10 transition-colors">
-                  <feature.icon size={20} />
-                </div>
-                <h3 className="font-heading font-semibold text-white text-lg mb-2">{feature.title}</h3>
+                <h3 className="font-heading font-bold text-white text-2xl mb-3">{feature.title}</h3>
                 <p className="text-zinc-400 text-sm leading-relaxed">{feature.desc}</p>
               </motion.div>
             ))}
@@ -127,10 +135,10 @@ export default function LandingPage() {
       </section>
 
       {/* How it works Section */}
-      <section id="how-it-works" className="relative z-10 py-24 px-6 border-t border-zinc-900 bg-black">
+      <section id="how-it-works" className="relative z-10 py-24 px-6 border-t border-zinc-900/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-16">
           <div className="lg:w-1/3">
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -138,7 +146,7 @@ export default function LandingPage() {
             >
               How it works
             </motion.h2>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -183,8 +191,8 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-zinc-900 py-12 text-center text-zinc-600 text-sm bg-black">
-        <p>&copy; {new Date().getFullYear()} AYZO Security. All rights reserved.</p>
+      <footer className="relative z-10 border-t border-zinc-900/50 py-12 text-center text-zinc-600 text-sm backdrop-blur-sm">
+        <p></p>
       </footer>
     </div>
   );
