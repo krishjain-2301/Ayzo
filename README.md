@@ -23,6 +23,20 @@ Target AI Model → Attack Engine → Automated Testing → Response Analysis �
 - **🧠 AI Evaluation** — LLM-as-Judge determines if vulnerabilities exist
 - **📊 Reporting** — Professional vulnerability reports with risk scores
 
+## How to Test a Custom Website Chatbot
+
+If you want to run a red-team test against a custom AI chatbot embedded in a website, you must target the website's backend API, **not** the raw LLM provider (like OpenAI or Google).
+
+1. Open the target website in your browser.
+2. Open **Developer Tools** (F12) and go to the **Network** tab.
+3. Send a message to the chatbot.
+4. Look for the network request the website makes to its own backend (e.g., `https://theirwebsite.com/api/chat`).
+5. In the AYZO dashboard, create a new Target:
+   - **Provider:** Custom Endpoint
+   - **Endpoint URL:** Paste the backend URL you found in the Network tab.
+   - **API Key:** If their backend requires authorization (like a session token), paste it here. Do **not** use your own OpenAI/Google API key here.
+6. Run the campaign! AYZO will now test their specific backend logic, hidden system prompts, and safety filters.
+
 ## Tech Stack
 
 | Layer | Technology |
