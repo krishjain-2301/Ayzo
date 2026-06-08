@@ -87,14 +87,5 @@ docker-compose up -d
 pnpm dev
 ```
 
-## License
-
-MIT License — see [LICENSE](./LICENSE) for details.
-
----
-
 **Built by [Krish Jain](https://github.com/krishjain-2301)**
 
----
-
-**Built by [Krish Jain](https://github.com/krishjain-2301)**
