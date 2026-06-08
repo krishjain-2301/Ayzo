@@ -11,4 +11,7 @@ COPY . .
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info"]
+# Make the start script executable
+RUN chmod +x start.sh
+
+CMD ["bash", "start.sh"]
