@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import clsx from "clsx";
-import { X, MessageSquare, Layers } from "lucide-react";
+import { X, MessageSquare, Layers, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface RunAssessmentModalProps {
@@ -23,6 +23,67 @@ interface AttackCategory {
   name: string;
   description: string;
   attack_count: number;
+}
+
+function CustomTargetSelect({ 
+  targets, 
+  value, 
+  onChange 
+}: { 
+  targets: Target[], 
+  value: string, 
+  onChange: (val: string) => void 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedTarget = targets.find((t) => t.id === value);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className={clsx(
+          "w-full flex items-center justify-between bg-black border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none transition-all",
+          isOpen ? "border-violet-500 ring-1 ring-violet-500/50" : "border-zinc-800"
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="truncate">
+          {selectedTarget ? selectedTarget.name : targets.length === 0 ? "Loading targets..." : "Select a target"}
+        </span>
+        <ChevronDown size={16} className={clsx("text-zinc-400 transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-20 w-full mt-1.5 bg-[#121214] border border-zinc-800 rounded-lg shadow-2xl overflow-hidden py-1.5 max-h-60 overflow-y-auto flex flex-col gap-0.5">
+            {targets.length === 0 ? (
+              <div className="px-4 py-2 text-sm text-zinc-500 italic">No targets available</div>
+            ) : (
+              targets.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={clsx(
+                    "w-full text-left px-4 py-2.5 text-sm transition-colors",
+                    value === t.id
+                      ? "bg-violet-600/20 text-violet-300 font-medium"
+                      : "text-zinc-300 hover:bg-zinc-800/80 hover:text-white"
+                  )}
+                  onClick={() => {
+                    onChange(t.id);
+                    setIsOpen(false);
+                  }}
+                >
+                  {t.name}
+                </button>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export function RunAssessmentModal({
@@ -107,6 +168,7 @@ export function RunAssessmentModal({
       });
 
       setName("");
+      setLoading(false);
       onSuccess();
     } catch (err: any) {
       setError(err.message || "Failed to start campaign");
@@ -175,20 +237,13 @@ export function RunAssessmentModal({
                 />
               </div>
 
-              <div>
+              <div className="relative z-40">
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Target</label>
-                <select
-                  value={selectedTargetId}
-                  onChange={(e) => setSelectedTargetId(e.target.value)}
-                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
-                >
-                  {targets.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                  {targets.length === 0 && <option value="">Loading targets...</option>}
-                </select>
+                <CustomTargetSelect 
+                  targets={targets} 
+                  value={selectedTargetId} 
+                  onChange={setSelectedTargetId} 
+                />
               </div>
 
               <div>
@@ -243,20 +298,13 @@ export function RunAssessmentModal({
                 <strong>Agentic Attack (Crescendo):</strong> AYZO will spawn an Attacker LLM to hold a multi-turn conversation with the target, slowly escalating to bypass its filters.
               </div>
               
-              <div>
+              <div className="relative z-40">
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Target</label>
-                <select
-                  value={selectedTargetId}
-                  onChange={(e) => setSelectedTargetId(e.target.value)}
-                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
-                >
-                  {targets.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                  {targets.length === 0 && <option value="">Loading targets...</option>}
-                </select>
+                <CustomTargetSelect 
+                  targets={targets} 
+                  value={selectedTargetId} 
+                  onChange={setSelectedTargetId} 
+                />
               </div>
 
               <div>

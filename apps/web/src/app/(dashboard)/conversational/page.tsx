@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { ArrowLeft, ShieldAlert, Bot, Cpu, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ShieldAlert, Cpu, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 
 interface TranscriptMessage {
@@ -22,7 +23,7 @@ interface ConversationalResult {
   time_taken_ms: number;
 }
 
-export default function ConversationalAttackPage() {
+function ConversationalAttackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -61,6 +62,10 @@ export default function ConversationalAttackPage() {
   if (!targetId || !goal) {
     return <div className="p-8 text-red-500">Missing required parameters.</div>;
   }
+
+  // BUG FIX: "pass" means the attacker SUCCEEDED (target is VULNERABLE).
+  // "fail" means the attacker FAILED (target is SECURE).
+  const isVulnerable = data?.result === "pass";
 
   return (
     <div className="max-w-5xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
@@ -148,13 +153,15 @@ export default function ConversationalAttackPage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-white text-lg">Evaluation Result</h3>
               <div className={clsx(
-                "px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 uppercase tracking-wider",
-                data.result === "pass" ? "bg-red-500/20 text-red-400 border border-red-500/30" : 
-                data.result === "fail" ? "bg-green-500/20 text-green-400 border border-green-500/30" :
-                "bg-zinc-800 text-zinc-400"
+                "px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 uppercase tracking-wider border",
+                isVulnerable
+                  ? "bg-red-500/20 text-red-400 border-red-500/30" 
+                  : data.result === "fail"
+                  ? "bg-green-500/20 text-green-400 border-green-500/30"
+                  : "bg-zinc-800 text-zinc-400 border-zinc-700"
               )}>
-                {data.result === "pass" ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
-                {data.result === "pass" ? "Vulnerable" : "Secure"}
+                {isVulnerable ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
+                {isVulnerable ? "Attack Succeeded — Vulnerable" : data.result === "fail" ? "Attack Failed — Secure" : "Error"}
               </div>
             </div>
             
@@ -169,5 +176,17 @@ export default function ConversationalAttackPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ConversationalAttackPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <div className="w-12 h-12 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <ConversationalAttackContent />
+    </Suspense>
   );
 }

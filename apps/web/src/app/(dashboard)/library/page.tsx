@@ -38,11 +38,11 @@ export default function LibraryPage() {
   const [payloadsLoading, setPayloadsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const loadCategories = useCallback(async () => {
+  const loadCategories = useCallback(async (currentSelectedCategory?: string | null) => {
     try {
       const data = await apiFetch("/attacks/categories");
       setCategories(data);
-      if (data.length > 0 && !selectedCategory) {
+      if (data.length > 0 && !currentSelectedCategory) {
         setSelectedCategory(data[0].id);
       }
     } catch (e) {
@@ -50,7 +50,7 @@ export default function LibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory]);
+  }, []);
 
   const loadPayloads = useCallback(async (categoryId: string) => {
     setPayloadsLoading(true);
@@ -80,8 +80,9 @@ export default function LibraryPage() {
   };
 
   useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+    loadCategories(selectedCategory);
+  }, []); // Run only once on mount
+
 
   useEffect(() => {
     if (selectedCategory) {

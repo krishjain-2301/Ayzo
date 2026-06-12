@@ -12,26 +12,29 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isInitialLoad = false) => {
     try {
-      let targets = await apiFetch("/targets");
-      let dummy = targets.find((t: any) => t.name === "Vulnerable Support Bot");
+      // Only attempt to create the dummy target on the first load
+      if (isInitialLoad) {
+        let targets = await apiFetch("/targets");
+        let dummy = targets.find((t: any) => t.name === "Vulnerable Support Bot");
 
-      if (!dummy) {
-        dummy = await apiFetch("/targets", {
-          method: "POST",
-          body: JSON.stringify({
-            name: "Vulnerable Support Bot",
-            description: "Internal vulnerable dummy target for testing",
-            provider: "dummy",
-            model_name: "dummy-support-v1",
-            endpoint_url: "internal://dummy",
-            api_key: "dummy-key",
-          }),
-        });
+        if (!dummy) {
+          dummy = await apiFetch("/targets", {
+            method: "POST",
+            body: JSON.stringify({
+              name: "Vulnerable Support Bot",
+              description: "Internal vulnerable dummy target for testing",
+              provider: "dummy",
+              model_name: "dummy-support-v1",
+              endpoint_url: "internal://dummy",
+              api_key: "dummy-key",
+            }),
+          });
+        }
+        setTargetId(dummy.id);
+        setTargetName(dummy.name);
       }
-      setTargetId(dummy.id);
-      setTargetName(dummy.name);
 
       const camps = await apiFetch("/campaigns");
       setCampaigns(camps);
@@ -43,8 +46,8 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 3000);
+    loadData(true); // initial load: create dummy target if needed
+    const interval = setInterval(() => loadData(false), 3000); // polls: only fetch campaigns
     return () => clearInterval(interval);
   }, [loadData]);
 

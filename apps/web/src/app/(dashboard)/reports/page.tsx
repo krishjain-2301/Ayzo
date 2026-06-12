@@ -326,7 +326,7 @@ function ReportsContent() {
                           )}>
                             {finding.severity}
                           </span>
-                          <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">{finding.category.replace("_", " ")}</span>
+                          <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">{finding.category.replaceAll("_", " ")}</span>
                         </div>
                         <h3 className="font-heading text-lg font-bold text-white">{finding.title}</h3>
                       </div>

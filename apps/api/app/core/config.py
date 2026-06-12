@@ -12,12 +12,16 @@ SECRET_KEY is still the default insecure value.
 
 FIX: Added SHIELD_FAIL_OPEN setting (default False) so the Blue Team
 proxy fails CLOSED (safe) when its Shield LLM is unavailable.
+
+FIX: CORS_ORIGINS now supports a JSON array string from env vars
+for flexible production configuration.
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import model_validator
-from typing import Optional
+from pydantic import model_validator, field_validator
+from typing import Optional, Union
 from dotenv import load_dotenv
+import json
 
 load_dotenv(".env", override=True)
 
@@ -39,10 +43,29 @@ class Settings(BaseSettings):
 
     # ---- API ----
     API_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list[str] = [
+    # Supports a JSON array string from env: '["https://app.vercel.app"]'
+    # or a comma-separated string: "https://app.vercel.app,http://localhost:3000"
+    CORS_ORIGINS: Union[list[str], str] = [
         "http://localhost:3000",   # Next.js dev server
         "http://127.0.0.1:3000",
     ]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Union[str, list]) -> list[str]:
+        """Allow CORS_ORIGINS to be a JSON array string or comma-separated string."""
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Comma-separated fallback
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     # ---- Database ----
     # SQLite for easy local dev; swap for PostgreSQL in .env
@@ -70,6 +93,8 @@ class Settings(BaseSettings):
 
     # ---- LLM / AI ----
     GEMINI_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
     # Judge model — evaluates whether an attack bypassed the target
     DEFAULT_EVAL_MODEL: str = "ollama/llama3.2"
     # Mutator model — generates prompt variations.

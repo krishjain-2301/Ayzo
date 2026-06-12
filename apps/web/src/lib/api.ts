@@ -1,9 +1,6 @@
 import { supabase } from './supabase';
 
-let envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-if (envUrl.includes('127.0.0.1')) {
-  envUrl = envUrl.replace('127.0.0.1', 'localhost');
-}
+let envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 export const API_BASE_URL = envUrl.endsWith('/api/v1') ? envUrl : `${envUrl}/api/v1`;
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
@@ -51,12 +48,15 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     
     if (response.status === 401 && typeof window !== 'undefined') {
       // Unauthorized, clear token and redirect to login
+      // Only redirect if not already on the login page to prevent loops
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       try {
         await supabase.auth.signOut();
       } catch (e) {}
-      window.location.href = '/login';
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
     }
     
     throw new Error(errorMessage);

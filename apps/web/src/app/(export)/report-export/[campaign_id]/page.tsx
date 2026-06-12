@@ -226,7 +226,7 @@ export default function ReportExportPage() {
                         {finding.severity}
                       </span>
                       <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">
-                        {finding.category.replace("_", " ")}
+                        {finding.category.replaceAll("_", " ")}
                       </span>
                     </div>
                     <h3 className="text-lg font-bold text-zinc-900">{finding.title}</h3>

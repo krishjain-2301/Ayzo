@@ -101,7 +101,7 @@ export default function TargetsPage() {
     setTestingId(id);
     setTestResult(null);
     try {
-      const res = await apiFetch(`/targets/${id}/test-connection`, {
+      const res = await apiFetch(`/targets/${id}/test`, {
         method: "POST",
       });
       setTestResult({ id, success: res.success, message: res.message });
@@ -261,6 +261,7 @@ export default function TargetsPage() {
                     <option value="ollama">Ollama (Local)</option>
                     <option value="openai">OpenAI</option>
                     <option value="anthropic">Anthropic</option>
+                    <option value="google">Google Gemini</option>
                     <option value="custom">Custom Endpoint</option>
                   </select>
                 </div>

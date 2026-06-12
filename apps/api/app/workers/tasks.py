@@ -38,6 +38,10 @@ async def _run_campaign_async(campaign_id: str):
             model_identifier = "custom_webhook"
         elif target.provider == "ollama" and not model_identifier.startswith("ollama/"):
             model_identifier = f"ollama/{target.model_name}"
+        elif target.provider == "anthropic" and not model_identifier.startswith("anthropic/"):
+            model_identifier = f"anthropic/{target.model_name}"
+        elif target.provider == "google" and not model_identifier.startswith("gemini/"):
+            model_identifier = f"gemini/{target.model_name}"
 
         raw_api_key = decrypt_api_key(target.api_key) if target.api_key else None
 

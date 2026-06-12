@@ -1,0 +1,100 @@
+# ==================================================
+# AYZO — Render Deployment Configuration
+# ==================================================
+# Services deployed:
+#   1. ayzo-api    — FastAPI backend (Web Service)
+#   2. ayzo-worker — Celery background worker (Background Worker)
+#
+# External services (free tiers):
+#   Database: Supabase PostgreSQL
+#   Redis:    Upstash Redis (https://upstash.com)
+#   Frontend: Deployed separately on Vercel
+# ==================================================
+
+services:
+  # ------------------------------------------------
+  # 1. FastAPI Web Service
+  # ------------------------------------------------
+  - type: web
+    name: ayzo-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      # ---- Database ----
+      # Use your Supabase "Connection String" (Session mode, port 5432)
+      # Format: postgresql+asyncpg://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+      - key: DATABASE_URL
+        sync: false
+      # ---- Redis (Upstash) ----
+      # Format: rediss://:[password]@[endpoint]:6379
+      - key: REDIS_URL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false
+      # ---- Auth ----
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # ---- LLM ----
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DEFAULT_EVAL_MODEL
+        value: "groq/llama-3.3-70b-versatile"
+      - key: MUTATOR_MODEL
+        value: "groq/llama-3.3-70b-versatile"
+      # ---- CORS ----
+      # Set this AFTER deploying web to Vercel.
+      # Example: https://ayzo.vercel.app,http://localhost:3000
+      - key: CORS_ORIGINS
+        sync: false
+
+  # ------------------------------------------------
+  # 2. Celery Background Worker
+  # ------------------------------------------------
+  - type: worker
+    name: ayzo-worker
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    plan: free
+    startCommand: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        fromService:
+          name: ayzo-api
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DEFAULT_EVAL_MODEL
+        value: "groq/llama-3.3-70b-versatile"
+      - key: MUTATOR_MODEL
+        value: "groq/llama-3.3-70b-versatile"

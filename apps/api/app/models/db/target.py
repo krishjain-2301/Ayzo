@@ -88,7 +88,10 @@ class Target(Base):
 
     # ---- Relationships ----
     owner = relationship("User", back_populates="targets")
-    campaigns = relationship("Campaign", back_populates="target", lazy="selectin")
+    campaigns = relationship(
+        "Campaign", back_populates="target", lazy="selectin",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Target {self.name} ({self.provider}/{self.model_name})>"

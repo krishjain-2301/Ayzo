@@ -116,9 +116,10 @@ export default function SettingsPage() {
         <div className="p-6 space-y-6 bg-black/40">
           <div>
             <h3 className="text-sm font-bold text-white mb-2">cURL Example</h3>
-            <p className="text-xs text-zinc-400 mb-2">Trigger a synchronous scan and fail the script if risk score &gt; 40.</p>
+            <p className="text-xs text-zinc-400 mb-2">Trigger an asynchronous scan and poll until complete. Fails if risk score &gt; 40.</p>
             <div className="bg-black border border-zinc-800 rounded-lg p-4 font-mono text-xs text-zinc-300 whitespace-pre overflow-x-auto">
-{`RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/cicd/run-sync \\
+{`# 1. Start the scan
+CAMPAIGN_ID=$(curl -s -X POST http://localhost:8000/api/v1/cicd/run \\
   -H "Authorization: Bearer \${AYZO_API_KEY}" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -127,9 +128,22 @@ export default function SettingsPage() {
     "attack_categories": ["prompt_injection", "jailbreak"],
     "mutation_depth": 0,
     "mutations_per_prompt": 0
-  }')
+  }' | jq -r '.campaign_id')
 
-RISK_SCORE=$(echo $RESPONSE | jq '.risk_score')
+echo "Started Campaign: $CAMPAIGN_ID"
+
+# 2. Poll for completion
+STATUS="running"
+while [ "$STATUS" = "running" ] || [ "$STATUS" = "pending" ]; do
+  sleep 10
+  RESP=$(curl -s http://localhost:8000/api/v1/cicd/poll/$CAMPAIGN_ID \\
+    -H "Authorization: Bearer \${AYZO_API_KEY}")
+  STATUS=$(echo $RESP | jq -r '.status')
+  echo "Status: $STATUS"
+done
+
+# 3. Check Risk Score
+RISK_SCORE=$(echo $RESP | jq '.risk_score')
 
 if (( $(echo "$RISK_SCORE > 40" | bc -l) )); then
   echo "Security Gate Failed: Risk Score is $RISK_SCORE"
