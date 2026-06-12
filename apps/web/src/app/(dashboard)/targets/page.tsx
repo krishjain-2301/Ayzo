@@ -323,13 +323,16 @@ export default function TargetsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">API Key (Optional)</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  API Key *
+                </label>
                 <input
                   type="password"
                   className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                   value={form.api_key}
                   onChange={(e) => setForm({ ...form, api_key: e.target.value })}
                   placeholder="sk-..."
+                  required
                 />
               </div>
 
