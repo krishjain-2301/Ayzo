@@ -16,13 +16,25 @@ function HeaderContent() {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchValue(val);
-    const params = new URLSearchParams(searchParams);
-    if (val) {
-      params.set("q", val);
-    } else {
-      params.delete("q");
+    
+    // Only auto-update URL if we are already on a searchable page
+    if (pathname === "/campaigns" || pathname === "/targets") {
+      const params = new URLSearchParams(searchParams);
+      if (val) {
+        params.set("q", val);
+      } else {
+        params.delete("q");
+      }
+      router.replace(`${pathname}?${params.toString()}`);
     }
-    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchValue) {
+      if (pathname !== "/campaigns" && pathname !== "/targets") {
+        router.push(`/campaigns?q=${encodeURIComponent(searchValue)}`);
+      }
+    }
   };
 
   return (
@@ -33,6 +45,7 @@ function HeaderContent() {
           type="text"
           value={searchValue}
           onChange={handleSearch}
+          onKeyDown={handleKeyDown}
           placeholder="Search campaigns, targets..."
           className="bg-transparent border-none text-white text-sm w-full outline-none placeholder:text-zinc-500"
         />
