@@ -294,7 +294,7 @@ export default function LoginPage() {
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
                 onError={() => setError("Google login widget failed to load or encountered an error.")}
-                theme="filled_black"
+                theme="outline"
                 size="large"
                 shape="rectangular"
                 width="360"
