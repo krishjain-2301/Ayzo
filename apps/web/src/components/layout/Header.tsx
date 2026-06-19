@@ -11,14 +11,14 @@ export function Header() {
 
   return (
     <header className="h-16 flex items-center justify-between px-8 border-b border-zinc-800 bg-black shrink-0">
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl w-80 focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/20 transition-all">
+      <label className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl w-80 focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/20 transition-all cursor-text">
         <Search size={16} className="text-zinc-500 shrink-0" />
         <input
           type="text"
           placeholder="Search campaigns, targets..."
           className="bg-transparent border-none text-white text-sm w-full outline-none placeholder:text-zinc-500"
         />
-      </div>
+      </label>
 
       <RunAssessmentModal 
         isOpen={isAssessmentModalOpen} 
