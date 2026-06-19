@@ -276,7 +276,13 @@ export default function TargetsPage() {
                     className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                     value={form.model_name}
                     onChange={(e) => setForm({ ...form, model_name: e.target.value })}
-                    placeholder={form.provider === "custom" ? "e.g. My Webhook Target" : "e.g. llama3, gpt-4"}
+                    placeholder={{
+                      deepseek: "e.g. deepseek-chat, deepseek-coder",
+                      openai: "e.g. gpt-4o, gpt-4-turbo",
+                      anthropic: "e.g. claude-3-5-sonnet, claude-3-opus",
+                      google: "e.g. gemini-1.5-pro, gemini-1.5-flash",
+                      custom: "e.g. My Webhook Target"
+                    }[form.provider as string] || "e.g. model-name"}
                   />
                 </div>
               </div>
