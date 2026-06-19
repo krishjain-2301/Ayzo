@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { Plus, Trash2, Play, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
 import clsx from "clsx";
@@ -17,6 +18,9 @@ interface Target {
 }
 
 export default function TargetsPage() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q")?.toLowerCase() || "";
+  
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -114,6 +118,13 @@ export default function TargetsPage() {
     }
   };
 
+  const filteredTargets = targets.filter(t => 
+    t.name.toLowerCase().includes(query) || 
+    (t.description && t.description.toLowerCase().includes(query)) ||
+    t.provider.toLowerCase().includes(query) ||
+    t.model_name.toLowerCase().includes(query)
+  );
+
   return (
     <div className="max-w-6xl">
       <div className="flex justify-between items-start mb-8">
@@ -168,9 +179,13 @@ export default function TargetsPage() {
             <Plus size={16} /> Add Your First Target
           </button>
         </div>
+      ) : filteredTargets.length === 0 ? (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl text-center py-16">
+          <p className="text-zinc-500 text-sm">No targets match "{searchParams.get("q")}".</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {targets.map((t) => (
+          {filteredTargets.map((t) => (
             <div
               key={t.id}
               className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col group hover:border-violet-500/30 transition-colors"

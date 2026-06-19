@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
@@ -19,6 +20,9 @@ interface CampaignSummary {
 }
 
 export default function CampaignsPage() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q")?.toLowerCase() || "";
+
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,6 +76,11 @@ export default function CampaignsPage() {
     if (score >= 41) return "text-yellow-500";
     return "text-green-500";
   };
+
+  const filteredCampaigns = campaigns.filter(c => 
+    c.name.toLowerCase().includes(query) || 
+    c.target_name.toLowerCase().includes(query)
+  );
 
   return (
     <div className="max-w-6xl">
@@ -130,8 +139,14 @@ export default function CampaignsPage() {
                     </Link>
                   </td>
                 </tr>
+              ) : filteredCampaigns.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center text-zinc-500">
+                    <p className="mb-4">No campaigns match "{searchParams.get("q")}".</p>
+                  </td>
+                </tr>
               ) : (
-                campaigns.map((c) => (
+                filteredCampaigns.map((c) => (
                   <tr key={c.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors group">
                     <td className="px-6 py-4">
                       <p className="font-heading font-semibold text-white group-hover:text-violet-400 transition-colors">{c.name}</p>

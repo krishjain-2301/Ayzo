@@ -1,13 +1,32 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Search, Plus } from "lucide-react";
 import { RunAssessmentModal } from "@/components/RunAssessmentModal";
 
 export function Header() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
+
+  useEffect(() => {
+    setSearchValue(searchParams.get("q") || "");
+  }, [searchParams]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchValue(val);
+    const params = new URLSearchParams(searchParams);
+    if (val) {
+      params.set("q", val);
+    } else {
+      params.delete("q");
+    }
+    router.replace(`${pathname}?${params.toString()}`);
+  };
 
   return (
     <header className="h-16 flex items-center justify-between px-8 border-b border-zinc-800 bg-black shrink-0">
@@ -15,6 +34,8 @@ export function Header() {
         <Search size={16} className="text-zinc-500 shrink-0" />
         <input
           type="text"
+          value={searchValue}
+          onChange={handleSearch}
           placeholder="Search campaigns, targets..."
           className="bg-transparent border-none text-white text-sm w-full outline-none placeholder:text-zinc-500"
         />
