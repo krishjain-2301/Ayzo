@@ -37,10 +37,10 @@ export function Header() {
       <div className="flex items-center gap-4">
         <button
           className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-          onClick={() => setIsAssessmentModalOpen(true)}
+          onClick={() => router.push('/targets')}
         >
           <Plus size={16} />
-          New Campaign
+          Add Target
         </button>
       </div>
     </header>
