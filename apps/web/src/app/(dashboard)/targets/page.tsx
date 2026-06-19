@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
-import { Plus, Trash2, Play, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Play, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 
 interface Target {
@@ -30,7 +30,7 @@ export default function TargetsPage() {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    provider: "ollama",
+    provider: "deepseek",
     model_name: "",
     endpoint_url: "",
     api_key: "",
@@ -70,7 +70,7 @@ export default function TargetsPage() {
       setForm({
         name: "",
         description: "",
-        provider: "ollama",
+        provider: "deepseek",
         model_name: "",
         endpoint_url: "",
         api_key: "",
@@ -253,17 +253,20 @@ export default function TargetsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Provider</label>
-                  <select
-                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
-                    value={form.provider}
-                    onChange={(e) => setForm({ ...form, provider: e.target.value })}
-                  >
-                    <option value="ollama">Ollama (Local)</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic</option>
-                    <option value="google">Google Gemini</option>
-                    <option value="custom">Custom Endpoint</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
+                      value={form.provider}
+                      onChange={(e) => setForm({ ...form, provider: e.target.value })}
+                    >
+                      <option value="deepseek">DeepSeek</option>
+                      <option value="openai">OpenAI</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="google">Google Gemini</option>
+                      <option value="custom">Custom Endpoint</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none w-4 h-4" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Model Name / Alias</label>
