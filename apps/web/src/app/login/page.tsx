@@ -290,19 +290,17 @@ export default function LoginPage() {
               <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-white/10"></div>
             </div>
 
-            <div className="flex justify-center w-full transition-all group rounded-full p-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent hover:via-violet-500/30">
-              <div className="w-full bg-black/50 rounded-full overflow-hidden backdrop-blur-sm group-hover:bg-black/40 transition-colors">
-                <GoogleLogin
-                  onSuccess={handleGoogleLogin}
-                  onError={() => setError("Google login widget failed to load or encountered an error.")}
-                  theme="outline"
-                  size="large"
-                  shape="pill"
-                  width="100%"
-                  logo_alignment="center"
-                  text={isLoginMode ? "signin_with" : "signup_with"}
-                />
-              </div>
+            <div className="w-full flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => setError("Google login widget failed to load or encountered an error.")}
+                theme="filled_black"
+                size="large"
+                shape="rectangular"
+                width="360"
+                logo_alignment="center"
+                text={isLoginMode ? "signin_with" : "signup_with"}
+              />
             </div>
 
           </div>
