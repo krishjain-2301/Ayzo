@@ -45,16 +45,17 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-zinc-800/60">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-center">
-          <div className="flex items-center gap-8">
+        <div className="max-w-7xl mx-auto px-6 h-16 grid grid-cols-3 items-center">
+          <div className="flex justify-start">
             <Link href="/" className="font-heading font-bold text-xl text-white tracking-wide">
               AYZO
             </Link>
-            <div className="hidden md:flex gap-6 text-sm font-medium">
-              <a href="#features" className="hover:text-white transition-colors">Features</a>
-              <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
-            </div>
           </div>
+          <div className="hidden md:flex justify-center gap-6 text-sm font-medium col-span-1">
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
+          </div>
+          <div className="flex justify-end"></div>
         </div>
       </nav>
 

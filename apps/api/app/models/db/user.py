@@ -57,6 +57,17 @@ class User(Base):
         default="analyst",  # New users default to analyst
     )
 
+    # ---- Pay-As-You-Go (Razorpay) ----
+    credits: Mapped[int] = mapped_column(
+        nullable=False,
+        default=10,  # 10 free credits on sign up
+    )
+    razorpay_customer_id: Mapped[str | None] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=True,
+    )
+
     # ---- Google OAuth ----
     google_id: Mapped[str | None] = mapped_column(
         String(255),

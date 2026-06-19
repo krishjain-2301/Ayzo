@@ -110,6 +110,11 @@ class Settings(BaseSettings):
     # Fail-closed is the secure default for a security firewall.
     SHIELD_FAIL_OPEN: bool = False
 
+    # ---- Razorpay (Payments) ----
+    RAZORPAY_KEY_ID: Optional[str] = None
+    RAZORPAY_KEY_SECRET: Optional[str] = None
+    RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
+
     # ---- Celery ----
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"

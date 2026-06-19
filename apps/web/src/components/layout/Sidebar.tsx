@@ -11,6 +11,7 @@ import {
   Library,
   Shield,
   Settings2,
+  Zap,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -50,6 +51,7 @@ export function Sidebar() {
       items: [
         { label: "Live Proxy", href: "/proxy", icon: Shield },
         { label: "Settings", href: "/settings", icon: Settings2 },
+        { label: "Buy Credits", href: "/pricing", icon: Zap },
       ],
     },
   ];

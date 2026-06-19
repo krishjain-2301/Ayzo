@@ -136,6 +136,8 @@ async def root():
 # ---- API Routes ----
 # Import the main API router that bundles all our endpoints
 from app.api.v1.router import api_router
+from app.api import razorpay_routes
 
 # Mount all our routes under the /api/v1 prefix
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(razorpay_routes.router, prefix="/api/v1")
