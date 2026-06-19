@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { Plus, Trash2, Play, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
@@ -17,7 +17,7 @@ interface Target {
   updated_at: string;
 }
 
-export default function TargetsPage() {
+function TargetsContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q")?.toLowerCase() || "";
   
@@ -381,5 +381,13 @@ export default function TargetsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TargetsPage() {
+  return (
+    <Suspense fallback={<div className="max-w-6xl p-10 text-center animate-pulse text-zinc-500">Loading targets...</div>}>
+      <TargetsContent />
+    </Suspense>
   );
 }

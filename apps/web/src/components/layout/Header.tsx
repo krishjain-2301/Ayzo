@@ -1,20 +1,17 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, Suspense } from "react";
 import { Search, Plus } from "lucide-react";
 import { RunAssessmentModal } from "@/components/RunAssessmentModal";
 
-export function Header() {
+function HeaderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
 
-  useEffect(() => {
-    setSearchValue(searchParams.get("q") || "");
-  }, [searchParams]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -65,5 +62,17 @@ export function Header() {
         </button>
       </div>
     </header>
+  );
+}
+
+export function Header() {
+  return (
+    <Suspense fallback={
+      <header className="h-16 flex items-center justify-between px-8 border-b border-zinc-800 bg-black shrink-0">
+        <div className="w-80 h-9 bg-zinc-900 border border-zinc-800 rounded-xl animate-pulse"></div>
+      </header>
+    }>
+      <HeaderContent />
+    </Suspense>
   );
 }

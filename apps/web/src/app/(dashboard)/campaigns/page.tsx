@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
@@ -19,7 +19,7 @@ interface CampaignSummary {
   created_at: string;
 }
 
-export default function CampaignsPage() {
+function CampaignsContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q")?.toLowerCase() || "";
 
@@ -228,5 +228,13 @@ export default function CampaignsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CampaignsPage() {
+  return (
+    <Suspense fallback={<div className="max-w-6xl p-10 text-center animate-pulse text-zinc-500">Loading campaigns...</div>}>
+      <CampaignsContent />
+    </Suspense>
   );
 }
