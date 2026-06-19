@@ -60,6 +60,40 @@ export default function Dashboard() {
     0
   );
 
+  const actionItems = [];
+  const completedCampaignsWithIssues = campaigns.filter(c => c.status === "completed" && c.failed_tests > 0);
+  if (completedCampaignsWithIssues.length > 0) {
+    const worstCampaign = [...completedCampaignsWithIssues].sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0))[0];
+    actionItems.push({
+      type: (worstCampaign.risk_score || 0) >= 61 ? "critical" : "warning",
+      title: "Vulnerabilities Detected",
+      description: `Review the ${worstCampaign.failed_tests} vulnerabilities found in "${worstCampaign.name}".`,
+    });
+  }
+
+  const failedCampaigns = campaigns.filter(c => c.status === "failed");
+  if (failedCampaigns.length > 0) {
+    actionItems.push({
+      type: "critical",
+      title: "Campaign Failed",
+      description: `The campaign "${failedCampaigns[0].name}" failed to complete. Please check its configuration.`,
+    });
+  }
+
+  if (actionItems.length === 0 && campaigns.length > 0) {
+    actionItems.push({
+      type: "success",
+      title: "All Clear",
+      description: "No pending action items. Your recent assessments look clean.",
+    });
+  } else if (actionItems.length === 0 && campaigns.length === 0) {
+    actionItems.push({
+      type: "info",
+      title: "Getting Started",
+      description: "Run your first assessment to discover potential vulnerabilities.",
+    });
+  }
+
   return (
     <div className="max-w-6xl">
       <RunAssessmentModal
@@ -156,14 +190,27 @@ export default function Dashboard() {
         <div className="md:col-span-1 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
           <h3 className="font-heading text-lg font-bold text-white mb-6">Action Items</h3>
           <div className="flex flex-col gap-4">
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-              <p className="text-sm font-semibold text-red-400 mb-1">Critical Vulnerabilities</p>
-              <p className="text-xs text-zinc-400">Review the 3 critical Prompt Injections found in the last scan.</p>
-            </div>
-            <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-4">
-              <p className="text-sm font-semibold text-violet-400 mb-1">Agentic Test Recommended</p>
-              <p className="text-xs text-zinc-400">Run a multi-turn Crescendo attack against your latest target.</p>
-            </div>
+            {actionItems.map((item, i) => (
+              <div
+                key={i}
+                className={clsx(
+                  "border rounded-lg p-4",
+                  item.type === "critical" ? "bg-red-500/10 border-red-500/20" :
+                  item.type === "warning" ? "bg-amber-500/10 border-amber-500/20" :
+                  item.type === "info" ? "bg-violet-500/10 border-violet-500/20" :
+                  "bg-green-500/10 border-green-500/20"
+                )}
+              >
+                <p className={clsx(
+                  "text-sm font-semibold mb-1",
+                  item.type === "critical" ? "text-red-400" :
+                  item.type === "warning" ? "text-amber-400" :
+                  item.type === "info" ? "text-violet-400" :
+                  "text-green-400"
+                )}>{item.title}</p>
+                <p className="text-xs text-zinc-400">{item.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
