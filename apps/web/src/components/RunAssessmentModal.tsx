@@ -280,16 +280,19 @@ export function RunAssessmentModal({
 
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Mutation Depth</label>
-                <select
-                  value={mutationDepth}
-                  onChange={(e) => setMutationDepth(Number(e.target.value))}
-                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
-                >
-                  <option value={0}>0 — Original prompts only (fastest)</option>
-                  <option value={1}>1 — One round of mutations</option>
-                  <option value={2}>2 — Two rounds (thorough)</option>
-                  <option value={3}>3 — Maximum depth (slowest)</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={mutationDepth}
+                    onChange={(e) => setMutationDepth(Number(e.target.value))}
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
+                  >
+                    <option value={0}>0 — Original prompts only (fastest)</option>
+                    <option value={1}>1 — One round of mutations</option>
+                    <option value={2}>2 — Two rounds (thorough)</option>
+                    <option value={3}>3 — Maximum depth (slowest)</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none w-4 h-4" />
+                </div>
               </div>
             </form>
           ) : (
