@@ -45,7 +45,7 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-zinc-800/60">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-center">
           <div className="flex items-center gap-8">
             <Link href="/" className="font-heading font-bold text-xl text-white tracking-wide">
               AYZO
@@ -54,14 +54,6 @@ export default function LandingPage() {
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
             </div>
-          </div>
-          <div>
-            <Link
-              href="/login"
-              className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all"
-            >
-              Get Started &rarr;
-            </Link>
           </div>
         </div>
       </nav>
