@@ -1,91 +1,123 @@
-#  AYZO — AI Red Team & Vulnerability Assessment Platform
+# 🎯 AYZO — Local AI Red Team & Vulnerability Assessment Platform
 
-> Automated security testing for AI models. Think Burp Suite, but for LLMs.
+> Automated dynamic security testing for local LLM applications and agents. Run security audits entirely on your machine.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status](https://img.shields.io/badge/status-In%20Development-yellow.svg)
+![Status](https://img.shields.io/badge/status-Ready-green.svg)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
+
+---
 
 ## What is AYZO?
 
-AYZO is an AI security platform that helps organizations assess the security of their AI models by automatically running large-scale adversarial tests, analyzing responses, and generating vulnerability reports.
+AYZO is a local-first red-teaming tool designed to test LLM apps, chatbots, and agents for prompt injection, jailbreaks, and instructions overrides. Unlike standard scanners, AYZO boots your codebase in an isolated subprocess, monitors port bindings, dynamically conducts adversarial tests, and securely tears down your application when finished.
 
 ### Core Workflow
 
 ```
-Target AI Model → Attack Engine → Automated Testing → Response Analysis → Vulnerability Detection → Security Report
+[Local Codebase Path] 
+       │
+       ▼ (Boot Subprocess)
+[App Running on Port] ◄─── (Adversarial Payloads) ───► [AYZO Attack Engine]
+       │                                                     │
+       ▼ (Graceful Teardown)                                 ▼ (LiteLLM / Local Heuristic)
+[Subprocess Terminated]                                 [Vulnerability Evaluation]
+                                                             │
+                                                             ▼
+                                                    [Security Report & DB Logs]
 ```
+
+---
 
 ## Key Features
 
-- **🎯 Attack Library** — 80+ security test cases across OWASP LLM Top 10 categories
-- **🧬 Mutation Engine** — Automatically generates thousands of attack variations
-- **⚡ Test Runner** — Executes attacks against any LLM (Ollama, OpenAI, custom APIs)
-- **🧠 AI Evaluation** — LLM-as-Judge determines if vulnerabilities exist
-- **📊 Reporting** — Professional vulnerability reports with risk scores
+- **🚀 Subprocess Orchestration** — Boot local project directories automatically, bind to target ports, run scans, and clean up.
+- **🧬 Adversarial Attack Engine** — Standardized attacks (Prompt Injection, Role Override, System Prompt Leakage) adapted to local contexts.
+- **🧠 Resilient Evaluation** — Responses are graded using LLM-as-a-Judge (via LiteLLM / Ollama) with a backup keyword heuristic engine if your AI endpoints are offline.
+- **🔒 Zero Cloud Overhead** — All external services (Supabase, Postgres, Redis, Celery, Google Auth) have been purged. Your database runs on a local SQLite instance.
 
-## How to Test a Custom Website Chatbot
-
-If you want to run a red-team test against a custom AI chatbot embedded in a website, you must target the website's backend API, **not** the raw LLM provider (like OpenAI or Google).
-
-1. Open the target website in your browser.
-2. Open **Developer Tools** (F12) and go to the **Network** tab.
-3. Send a message to the chatbot.
-4. Look for the network request the website makes to its own backend (e.g., `https://theirwebsite.com/api/chat`).
-5. In the AYZO dashboard, create a new Target:
-   - **Provider:** Custom Endpoint
-   - **Endpoint URL:** Paste the backend URL you found in the Network tab.
-   - **API Key:** If their backend requires authorization (like a session token), paste it here. Do **not** use your own OpenAI/Google API key here.
-6. Run the campaign! AYZO will now test their specific backend logic, hidden system prompts, and safety filters.
+---
 
 ## Tech Stack
 
 | Layer | Technology |
 |:---|:---|
-| Frontend | Next.js 15, TypeScript, Tailwind CSS |
-| Backend | FastAPI, Python 3.12+ |
-| Database | PostgreSQL 16 |
-| Task Queue | Celery + Redis |
-| AI Layer | LiteLLM (Ollama, OpenAI, Mistral, DeepSeek) |
-| Auth | NextAuth.js v5 + Google OAuth |
-| Monorepo | Turborepo + pnpm |
+| **Frontend** | Next.js 15, TypeScript, Tailwind CSS |
+| **Backend** | FastAPI, Python 3.12, SQLite (via SQLAlchemy + aiosqlite) |
+| **Orchestration** | Python Asyncio Subprocesses (with Process Group isolation) |
+| **AI Layer** | LiteLLM & Local Heuristic Engine |
+| **Package Management** | pnpm Monorepo |
 
-## Project Structure
-
-```
-ayzo/
-├── apps/
-│   ├── web/          # Next.js 15 frontend
-│   └── api/          # FastAPI backend
-├── packages/         # Shared types/configs
-├── docker-compose.yml
-└── turbo.json
-```
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 20+
-- Python 3.12+
-- Docker & Docker Compose
-- pnpm (`npm install -g pnpm`)
+- **Node.js** 20+
+- **Python** 3.12+
+- **pnpm** (`npm install -g pnpm`)
 
-### Quick Start
+### Setup & Installation
 
-```bash
-# Clone the repo
-git clone https://github.com/krishjain-2301/Ayzo.git
-cd Ayzo
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/krishjain-2301/Ayzo.git
+   cd Ayzo
+   ```
 
-# Install dependencies
-pnpm install
+2. **Install Frontend Dependencies**
+   ```bash
+   pnpm install
+   ```
 
-# Start infrastructure (PostgreSQL, Redis)
-docker-compose up -d
+3. **Setup Backend Python Virtual Environment**
+   ```bash
+   cd apps/api
+   python -m venv .venv
+   
+   # Windows
+   .venv\Scripts\activate
+   # Linux/macOS
+   source .venv/bin/activate
+   
+   pip install -r requirements.txt
+   ```
 
-# Start development
-pnpm dev
-```
+---
+
+## Running the Platform
+
+1. **Start the API Backend**
+   ```bash
+   cd apps/api
+   # Make sure your virtual environment is active
+   uvicorn app.main:app --reload
+   ```
+
+2. **Start the Frontend Web App**
+   ```bash
+   # From the root directory
+   pnpm dev:web
+   ```
+
+3. **Navigate to the Platform**
+   Open your browser to `http://localhost:3000`.
+
+---
+
+## Running Your First Audit
+
+To run a scan against a local project, register it as a **Target** in the dashboard:
+
+1. Click **AI Targets** -> **Add Target**.
+2. Fill out the target configuration:
+   - **Project Directory Path:** The absolute path to your repository (e.g. `C:\Projects\my-chatbot-app`).
+   - **Start Command:** The command to boot your app (e.g. `python app.py` or `npm run dev`).
+   - **Target Port:** The port your chatbot runs on (e.g. `5000` or `3000`).
+3. Click **Campaigns** -> **New Assessment** -> select the target.
+4. Select the attack categories and click **Start Assessment**. The AYZO red-team agent will orchestrate the rest!
+
+---
 
 **Built by [Krish Jain](https://github.com/krishjain-2301)**
-
