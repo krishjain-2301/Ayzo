@@ -120,7 +120,6 @@ export function RunAssessmentModal({
         .then((data: Target[]) => {
           setTargets(data);
           if (!selectedTargetId && data.length > 0) {
-            // Default to the provided targetId, or the first target if none provided
             setSelectedTargetId(targetId || data[0].id);
           } else if (targetId) {
             setSelectedTargetId(targetId);
@@ -128,15 +127,14 @@ export function RunAssessmentModal({
         })
         .catch(console.error);
 
-      // Fetch categories
-      apiFetch("/attacks/categories")
-        .then((cats: AttackCategory[]) => {
-          setCategories(cats);
-          setSelectedCategories(cats.map((c) => c.id));
-        })
-        .catch(() => {
-          setSelectedCategories(["prompt_injection"]);
-        });
+      // Hardcode agentic attack modes
+      const modes = [
+        { id: "prompt_injection", name: "Prompt Injection Fuzzing", description: "Attempts to override instructions", attack_count: 50 },
+        { id: "role_override", name: "Agent Hijacking", description: "Attempts to make the agent adopt a new persona", attack_count: 50 },
+        { id: "recon", name: "Reconnaissance", description: "Scans for open endpoints and API structures", attack_count: 10 }
+      ];
+      setCategories(modes);
+      setSelectedCategories(modes.map((c) => c.id));
     }
   }, [isOpen, targetId]);
 

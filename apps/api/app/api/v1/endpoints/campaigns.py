@@ -53,8 +53,6 @@ async def create_campaign(
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
 
-    if target.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to test this target")
 
     campaign = Campaign(
         user_id=current_user.id,
@@ -70,8 +68,8 @@ async def create_campaign(
     await db.commit()
     await db.refresh(campaign)
 
-    from app.workers.tasks import _run_campaign_async
-    background_tasks.add_task(_run_campaign_async, str(campaign.id))
+    from app.services.hacker_agent import hacker_agent
+    background_tasks.add_task(hacker_agent.run_campaign_async, str(campaign.id))
     return campaign
 
 
@@ -83,13 +81,9 @@ async def list_campaigns(
     limit: int = 100,
 ):
     """List all campaigns with summary info."""
-    if current_user.role == "admin":
-        query = select(Campaign).options(selectinload(Campaign.target)).offset(skip).limit(limit)
-    else:
-        query = (
+    query = (
             select(Campaign)
             .options(selectinload(Campaign.target))
-            .where(Campaign.user_id == current_user.id)
             .offset(skip)
             .limit(limit)
         )
@@ -129,9 +123,6 @@ async def get_campaign(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    if campaign.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to view this campaign")
-
     return campaign
 
 
@@ -148,9 +139,6 @@ async def delete_campaign(
 
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-
-    if campaign.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to delete this campaign")
 
     await db.delete(campaign)
     await db.commit()

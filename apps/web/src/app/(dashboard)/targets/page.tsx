@@ -9,9 +9,9 @@ interface Target {
   id: string;
   name: string;
   description: string | null;
-  provider: string;
-  model_name: string;
-  endpoint_url: string | null;
+  project_path: string;
+  start_command: string;
+  target_port: number;
   status: string;
   created_at: string;
   updated_at: string;
@@ -34,14 +34,9 @@ function TargetsContent() {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    provider: "deepseek",
-    model_name: "",
-    endpoint_url: "",
-    api_key: "",
-    config: {
-      payload_template: { prompt: "{{prompt}}" },
-      response_json_path: "response"
-    },
+    project_path: "",
+    start_command: "",
+    target_port: 3000,
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
@@ -74,14 +69,9 @@ function TargetsContent() {
       setForm({
         name: "",
         description: "",
-        provider: "deepseek",
-        model_name: "",
-        endpoint_url: "",
-        api_key: "",
-        config: {
-          payload_template: { prompt: "{{prompt}}" },
-          response_json_path: "response"
-        },
+        project_path: "",
+        start_command: "",
+        target_port: 3000,
       });
       loadTargets();
     } catch (err: any) {
@@ -121,8 +111,8 @@ function TargetsContent() {
   const filteredTargets = targets.filter(t => 
     t.name.toLowerCase().includes(query) || 
     (t.description && t.description.toLowerCase().includes(query)) ||
-    t.provider.toLowerCase().includes(query) ||
-    t.model_name.toLowerCase().includes(query)
+    t.project_path.toLowerCase().includes(query) ||
+    t.start_command.toLowerCase().includes(query)
   );
 
   return (
@@ -193,7 +183,9 @@ function TargetsContent() {
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="font-heading text-lg font-bold text-white group-hover:text-violet-400 transition-colors">{t.name}</h3>
-                  <p className="text-xs text-zinc-500 mt-1 uppercase tracking-wider">{t.provider} &middot; {t.model_name}</p>
+                  <p className="text-xs text-zinc-500 mt-1 tracking-wider font-mono bg-black px-2 py-0.5 rounded border border-zinc-800 w-max">
+                    {t.start_command} : {t.target_port}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className={clsx(
@@ -243,121 +235,63 @@ function TargetsContent() {
 
             <form onSubmit={handleAddTarget} className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Target Name</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Project Name</label>
                 <input
                   type="text"
                   required
                   className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. Production Support Bot"
+                  placeholder="e.g. My RAG Application"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Description</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Description (Optional)</label>
                 <input
                   type="text"
                   className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Optional details"
+                  placeholder="What does this project do?"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Provider</label>
-                  <div className="relative">
-                    <select
-                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none"
-                      value={form.provider}
-                      onChange={(e) => setForm({ ...form, provider: e.target.value })}
-                    >
-                      <option value="deepseek">DeepSeek</option>
-                      <option value="openai">OpenAI</option>
-                      <option value="anthropic">Anthropic</option>
-                      <option value="google">Google Gemini</option>
-                      <option value="custom">Custom Endpoint</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none w-4 h-4" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Model Name / Alias</label>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Project Directory Path</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
+                  value={form.project_path}
+                  onChange={(e) => setForm({ ...form, project_path: e.target.value })}
+                  placeholder="C:\Projects\MyApp"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Start Command</label>
                   <input
                     type="text"
                     required
-                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
-                    value={form.model_name}
-                    onChange={(e) => setForm({ ...form, model_name: e.target.value })}
-                    placeholder={{
-                      deepseek: "e.g. deepseek-chat, deepseek-coder",
-                      openai: "e.g. gpt-4o, gpt-4-turbo",
-                      anthropic: "e.g. claude-3-5-sonnet, claude-3-opus",
-                      google: "e.g. gemini-1.5-pro, gemini-1.5-flash",
-                      custom: "e.g. My Webhook Target"
-                    }[form.provider as string] || "e.g. model-name"}
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
+                    value={form.start_command}
+                    onChange={(e) => setForm({ ...form, start_command: e.target.value })}
+                    placeholder="npm run dev"
                   />
                 </div>
-              </div>
-
-              {form.provider === "custom" && (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Payload Template (JSON)</label>
-                    <textarea
-                      rows={3}
-                      className="w-full font-mono bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
-                      value={JSON.stringify(form.config.payload_template, null, 2)}
-                      onChange={(e) => {
-                        try {
-                          const parsed = JSON.parse(e.target.value);
-                          setForm({ ...form, config: { ...form.config, payload_template: parsed } });
-                        } catch(err) {
-                          // Allow invalid json while typing, we'll just not update the internal state 
-                        }
-                      }}
-                      placeholder={`{\n  "prompt": "{{prompt}}"\n}`}
-                    />
-                    <p className="text-xs text-zinc-500 mt-1">Use <code>{`{{prompt}}`}</code> as the injection variable.</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Response JSON Path</label>
-                    <input
-                      type="text"
-                      className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
-                      value={form.config.response_json_path}
-                      onChange={(e) => setForm({ ...form, config: { ...form.config, response_json_path: e.target.value } })}
-                      placeholder="response"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Endpoint URL</label>
-                <input
-                  type="text"
-                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
-                  value={form.endpoint_url}
-                  onChange={(e) => setForm({ ...form, endpoint_url: e.target.value })}
-                  placeholder="e.g. http://localhost:11434"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">
-                  API Key *
-                </label>
-                <input
-                  type="password"
-                  className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
-                  value={form.api_key}
-                  onChange={(e) => setForm({ ...form, api_key: e.target.value })}
-                  placeholder="sk-..."
-                  required
-                />
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Port</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
+                    value={form.target_port}
+                    onChange={(e) => setForm({ ...form, target_port: Number(e.target.value) })}
+                    placeholder="3000"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 mt-4">
@@ -373,7 +307,7 @@ function TargetsContent() {
                   disabled={formLoading}
                   className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-full text-sm font-semibold transition-all disabled:opacity-50"
                 >
-                  {formLoading ? "Saving..." : "Save Target"}
+                  {formLoading ? "Saving..." : "Add Project"}
                 </button>
               </div>
             </form>

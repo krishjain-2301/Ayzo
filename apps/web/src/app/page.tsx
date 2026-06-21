@@ -80,10 +80,10 @@ export default function LandingPage() {
 
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
             <Link
-              href="/login"
+              href="/dashboard"
               className="bg-violet-600 hover:bg-violet-500 text-white px-8 py-3.5 rounded-full font-semibold transition-all hover:shadow-[0_0_30px_rgba(124,58,237,0.4)] flex items-center justify-center"
             >
-              Start Free Assessment &rarr;
+              Open Dashboard &rarr;
             </Link>
           </motion.div>
         </motion.div>

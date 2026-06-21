@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Crosshair,
@@ -11,24 +10,11 @@ import {
   Library,
   Shield,
   Settings2,
-  Zap,
 } from "lucide-react";
 import clsx from "clsx";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ name: string; email: string; picture?: string } | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
 
   const navGroups = [
     {
@@ -51,7 +37,6 @@ export function Sidebar() {
       items: [
         { label: "Live Proxy", href: "/proxy", icon: Shield },
         { label: "Settings", href: "/settings", icon: Settings2 },
-        { label: "Buy Credits", href: "/pricing", icon: Zap },
       ],
     },
   ];
@@ -96,20 +81,12 @@ export function Sidebar() {
 
       <div className="mt-auto pt-4 border-t border-zinc-800">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden">
-            {user?.picture ? (
-              <img src={user.picture} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              user?.name?.charAt(0) || "U"
-            )}
+          <div className="w-8 h-8 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center font-semibold text-xs shrink-0">
+            L
           </div>
-          <div className="min-w-0 overflow-hidden text-ellipsis">
-            <div className="font-medium text-xs text-white truncate">
-              {user?.name || "User"}
-            </div>
-            <div className="text-[10px] text-zinc-500 truncate">
-              {user?.email || "user@example.com"}
-            </div>
+          <div className="min-w-0 overflow-hidden">
+            <div className="font-medium text-xs text-white truncate">Local User</div>
+            <div className="text-[10px] text-zinc-500 truncate">local mode — no auth</div>
           </div>
         </div>
       </div>

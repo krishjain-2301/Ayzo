@@ -35,9 +35,6 @@ async def run_conversational_attack(
 
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
-        
-    if target.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to test this target")
 
     # 2. Determine target model identifier
     model_identifier = target.model_name

@@ -1,25 +1,16 @@
 """
-Blue Team Proxy Endpoint
-========================
+Blue Team Proxy Endpoint — Local Mode
+======================================
 Intercepts incoming prompts, evaluates them with a Shield LLM, and only
 forwards safe requests to the target model.
 
-FIX (fail-closed): When the Shield LLM errors, the proxy now blocks the
-request by default (fail-closed). A security firewall that silently passes
-everything through when its detection is down is worse than having none.
-This behaviour is controlled by settings.SHIELD_FAIL_OPEN — set it to True
-in .env only if you explicitly prefer availability over security.
-
-FIX (traffic log): The LIVE_TRAFFIC_LOG is now backed by Redis instead of
-a process-local list. Under multiple uvicorn workers each process had its
-own copy, so the dashboard only saw a random fraction of traffic.  Redis
-gives every worker a shared, consistent log.
+Traffic log is stored in-memory (sufficient for local single-user use).
+Fail-closed by default: if Shield LLM errors, the request is blocked.
 """
 
 from typing import Annotated
 import uuid
 import datetime
-import json
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -36,46 +27,20 @@ from app.core.config import settings
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
-# Redis-backed traffic log
+# In-memory traffic log (local mode — single user, no Redis needed)
 # ---------------------------------------------------------------------------
-# Key used in Redis for the capped traffic log list.
-_TRAFFIC_KEY = "ayzo:proxy:traffic"
-_TRAFFIC_MAX = 50  # Keep the most recent N entries
-
-# Fallback in-memory log if Redis is unavailable (useful for local dev without Docker)
-_FALLBACK_TRAFFIC_LOG = []
-
-
-def _get_redis():
-    """Return a synchronous Redis client. Import is deferred so the app still
-    starts if Redis is temporarily unavailable."""
-    import redis as redis_lib
-    return redis_lib.from_url(settings.REDIS_URL, decode_responses=True)
+_TRAFFIC_MAX = 50
+_TRAFFIC_LOG: list[dict] = []
 
 
 def _push_traffic_log(entry: dict) -> None:
-    """Push a log entry to the Redis list and trim to the cap. Fails silently
-    so a Redis hiccup doesn't take down the proxy. Uses in-memory list as fallback."""
-    try:
-        r = _get_redis()
-        r.lpush(_TRAFFIC_KEY, json.dumps(entry))
-        r.ltrim(_TRAFFIC_KEY, 0, _TRAFFIC_MAX - 1)
-    except Exception as exc:
-        print(f"[proxy] Failed to write traffic log to Redis, using in-memory fallback: {exc}")
-        global _FALLBACK_TRAFFIC_LOG
-        _FALLBACK_TRAFFIC_LOG.insert(0, entry)
-        _FALLBACK_TRAFFIC_LOG = _FALLBACK_TRAFFIC_LOG[:_TRAFFIC_MAX]
+    global _TRAFFIC_LOG
+    _TRAFFIC_LOG.insert(0, entry)
+    _TRAFFIC_LOG = _TRAFFIC_LOG[:_TRAFFIC_MAX]
 
 
 def _read_traffic_log() -> list:
-    """Read the most recent traffic entries from Redis or fallback to in-memory list."""
-    try:
-        r = _get_redis()
-        raw = r.lrange(_TRAFFIC_KEY, 0, _TRAFFIC_MAX - 1)
-        return [json.loads(entry) for entry in raw]
-    except Exception as exc:
-        print(f"[proxy] Failed to read traffic log from Redis, using in-memory fallback: {exc}")
-        return _FALLBACK_TRAFFIC_LOG
+    return _TRAFFIC_LOG
 
 
 # ---------------------------------------------------------------------------
@@ -107,8 +72,7 @@ async def reverse_proxy(
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
 
-    if target.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to use this target")
+    # Local mode: single user owns everything, no auth check needed
 
     body = await request.json()
     user_message = body.get("message", str(body))
@@ -210,5 +174,5 @@ async def reverse_proxy(
 async def get_live_traffic(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    """Return the most recent proxy traffic log entries from Redis."""
+    """Return the most recent proxy traffic log entries."""
     return _read_traffic_log()

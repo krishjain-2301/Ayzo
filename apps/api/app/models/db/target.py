@@ -1,27 +1,18 @@
 """
 Target Model
 ============
-A "target" is the AI model you want to test for vulnerabilities.
-Think of it like adding a "scope" in a bug bounty program.
+A "target" is the local project you want to test for vulnerabilities.
 
-Example: You want to test an Ollama model running locally:
-- name: "My ChatBot"
-- provider: "ollama"
-- model_name: "llama3.2"
-- endpoint_url: "http://localhost:11434"
-
-Or an OpenAI model:
-- name: "Client GPT-4"
-- provider: "openai"
-- model_name: "gpt-4"
-- endpoint_url: None (uses default OpenAI API)
-- api_key: "sk-..." (stored in config, the encrypted key reference)
+Since Ayzo is now an autonomous local hacker agent, the target is defined by:
+- project_path: Absolute path to the code (e.g. C:\\Projects\\MyApp)
+- start_command: How to boot the app (e.g. npm run dev, python app.py)
+- target_port: What port the app listens on (so Ayzo knows where to attack)
 """
 
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text, ForeignKey, JSON, Uuid
+from sqlalchemy import String, DateTime, Text, ForeignKey, Integer, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -39,7 +30,7 @@ class Target(Base):
     # ---- Who owns this target ----
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("users.id", ondelete="CASCADE"),  # Delete targets if user is deleted
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -47,32 +38,16 @@ class Target(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # ---- Provider Configuration ----
-    # provider: Which LLM service hosts this model
-    # Supported: "ollama", "openai", "anthropic", "mistral", "custom"
-    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    # ---- Execution Configuration ----
+    project_path: Mapped[str] = mapped_column(Text, nullable=False)
+    start_command: Mapped[str] = mapped_column(Text, nullable=False)
+    target_port: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    # model_name: The specific model identifier
-    # Examples: "llama3.2", "gpt-4", "claude-3-sonnet"
-    model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    # endpoint_url: Where to send requests (for Ollama or custom APIs)
-    # For OpenAI/Anthropic, this can be null (uses default endpoints)
-    endpoint_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # api_key: Encrypted API key for the provider (if needed)
-    # Ollama doesn't need one, OpenAI does
-    api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # config: Extra settings as JSON (temperature, max_tokens, system prompt, etc.)
-    # Using JSONB because different models have different settings
-    config: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
-
-    # status: Is this target available for testing?
+    # status: active | running | error
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
-        default="active",  # active | inactive | error
+        default="active",
     )
 
     # ---- Timestamps ----
@@ -94,4 +69,4 @@ class Target(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Target {self.name} ({self.provider}/{self.model_name})>"
+        return f"<Target {self.name} ({self.project_path})>"

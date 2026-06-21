@@ -183,9 +183,6 @@ async def start_cicd_assessment(
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
 
-    if target.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to test this target")
-
     campaign = Campaign(
         user_id=current_user.id,
         target_id=campaign_in.target_id,
@@ -232,9 +229,6 @@ async def poll_cicd_assessment(
 
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-
-    if campaign.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to view this campaign")
 
     return {
         "campaign_id": str(campaign.id),

@@ -1,87 +1,37 @@
 # ==================================================
-# AYZO Development Infrastructure
+# AYZO — Local Docker Infrastructure
 # ==================================================
+# This is OPTIONAL. AYZO runs on SQLite by default
+# with zero setup. Use this only if you want to
+# switch to PostgreSQL for larger datasets.
+#
 # Run with: docker-compose up -d
 # Stop with: docker-compose down
-# View logs: docker-compose logs -f
-#
-# This spins up:
-# 1. PostgreSQL — our main database (stores users, campaigns, results)
-# 2. Redis — message broker for background jobs (Celery task queue)
 # ==================================================
 
 services:
   # ------------------------------------------------
-  # PostgreSQL 16 — Relational Database
+  # PostgreSQL (optional — SQLite is the default)
   # ------------------------------------------------
-  # Stores everything: users, targets, campaigns,
-  # attack results, findings, reports.
-  # We use PostgreSQL because:
-  # - Rock solid for security audit trails
-  # - JSONB columns let us store flexible data (like attack metadata)
-  # - Free and battle-tested
+  # To use: set DATABASE_URL in .env to:
+  # postgresql+asyncpg://ayzo:ayzo@localhost:5432/ayzo
   postgres:
     image: postgres:16-alpine
     container_name: ayzo-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ayzo
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ayzo
       POSTGRES_DB: ayzo
     ports:
-      - "5432:5432"    # Access from your machine at localhost:5432
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data   # Persist data between restarts
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ayzo"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ------------------------------------------------
-  # Redis 7 — Message Broker & Cache
-  # ------------------------------------------------
-  # Used by Celery (our task queue) to manage background jobs.
-  # When you start a campaign with 1000 attacks, you don't want
-  # the API to freeze — Celery puts each attack in a Redis queue
-  # and workers process them in the background.
-  redis:
-    image: redis:7-alpine
-    container_name: ayzo-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"    # Access from your machine at localhost:6379
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ------------------------------------------------
-  # Celery Worker — Background Job Processing
-  # ------------------------------------------------
-  # Executes tasks pulled from the Redis queue.
-  celery_worker:
-    build:
-      context: ./apps/api
-    container_name: ayzo-celery
-    restart: unless-stopped
-    command: celery -A app.workers.celery_app worker --loglevel=info
-    env_file: .env
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL: postgresql+asyncpg://ayzo:${POSTGRES_PASSWORD}@postgres:5432/ayzo
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-
-# Named volumes — Docker manages the storage location
-# Your data survives container restarts
 volumes:
   postgres_data:
-  redis_data:

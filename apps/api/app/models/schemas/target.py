@@ -1,10 +1,7 @@
 """
 Target Schemas
 ==============
-API contracts for target model management.
-
-When someone wants to register an AI model to test, they send
-a TargetCreate request. The API validates it and returns a TargetResponse.
+API contracts for managing local project targets.
 """
 
 from datetime import datetime
@@ -16,64 +13,53 @@ from pydantic import BaseModel, Field
 
 class TargetCreate(BaseModel):
     """
-    Request body for registering a new target AI model.
+    Request body for registering a local project target.
     
     Example request:
     {
-        "name": "My ChatBot",
-        "provider": "ollama",
-        "model_name": "llama3.2",
-        "endpoint_url": "http://localhost:11434",
-        "config": {"temperature": 0.7}
+        "name": "My Next.js Bot",
+        "description": "Local test",
+        "project_path": "C:/Projects/MyBot",
+        "start_command": "npm run dev",
+        "target_port": 3000
     }
     """
     name: str = Field(..., min_length=1, max_length=255, description="Friendly name for this target")
-    description: Optional[str] = Field(None, description="What this model does")
-    provider: str = Field(
-        ...,
-        description="LLM provider: ollama, openai, anthropic, mistral, custom",
-    )
-    model_name: str = Field(..., description="Model identifier (e.g., llama3.2, gpt-4)")
-    endpoint_url: Optional[str] = Field(None, description="API endpoint URL (required for Ollama/custom)")
-    api_key: Optional[str] = Field(None, description="API key for the provider")
-    config: Optional[dict] = Field(
-        default_factory=dict,
-        description="Extra settings: temperature, max_tokens, system prompt, etc.",
-    )
+    description: Optional[str] = Field(None, description="What this project does")
+    
+    project_path: str = Field(..., description="Absolute path to the project directory on disk")
+    start_command: str = Field(..., description="Command to start the application (e.g. npm run dev)")
+    target_port: int = Field(..., description="The port the application listens on")
 
 
 class TargetUpdate(BaseModel):
     """Partial update — only send the fields you want to change."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    provider: Optional[str] = None
-    model_name: Optional[str] = None
-    endpoint_url: Optional[str] = None
-    api_key: Optional[str] = None
-    config: Optional[dict] = None
+    project_path: Optional[str] = None
+    start_command: Optional[str] = None
+    target_port: Optional[int] = None
     status: Optional[str] = None
 
 
 class TargetResponse(BaseModel):
-    """What the API returns for target data. Notice: api_key is NOT included!"""
+    """What the API returns for target data."""
     id: UUID
     name: str
     description: Optional[str] = None
-    provider: str
-    model_name: str
-    endpoint_url: Optional[str] = None
-    config: Optional[dict] = None
+    project_path: str
+    start_command: str
+    target_port: int
     status: str
     created_at: datetime
     updated_at: datetime
-    # api_key deliberately excluded — never expose secrets in responses!
 
     class Config:
         from_attributes = True
 
 
 class TargetTestResult(BaseModel):
-    """Result of testing if we can connect to a target model."""
-    success: bool = Field(..., description="Whether we could reach the model")
+    """Result of testing if we can boot the target project."""
+    success: bool = Field(..., description="Whether the project booted successfully")
     message: str = Field(..., description="Success/error message")
-    response_time_ms: Optional[float] = Field(None, description="How fast the model responded")
+    output: Optional[str] = Field(None, description="Recent console output from the project process")

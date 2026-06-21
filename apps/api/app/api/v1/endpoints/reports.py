@@ -41,9 +41,6 @@ async def get_campaign_report(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
-    if campaign.user_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to view this report")
-        
     if campaign.status != "completed" and campaign.status != "failed":
         raise HTTPException(
             status_code=400, 
