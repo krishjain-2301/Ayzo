@@ -12,7 +12,7 @@ _API_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "apps", "api
 os.chdir(_API_DIR)
 sys.path.insert(0, _API_DIR)
 
-from sqlalchemy import select
+from sqlalchemy import select, desc
 
 from app.core.database import async_session_maker, Base, engine
 # Import ALL models so Base.metadata knows every table
@@ -33,8 +33,8 @@ async def main():
 
     # Find the most recent campaign
     async with async_session_maker() as db:
-        query = select(Campaign).order_by(Campaign.created_at.desc()).limit(1)
-        res = await db.execute(query)
+        query = select(Campaign).order_by(Campaign.created_at.desc()).limit(1)  # type: ignore
+        res = await db.execute(query)  # type: ignore
         campaign = res.scalar_one_or_none()
         if not campaign:
             print("No campaign found to test! Create one via the UI or API first.")
