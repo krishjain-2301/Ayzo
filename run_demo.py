@@ -9,7 +9,7 @@ async def run_demo():
         target_res = await client.post("http://127.0.0.1:8000/api/v1/targets", json={
             "name": "Dummy Test App",
             "description": "A deliberately vulnerable python server",
-            "project_path": r"C:\Users\jaink\Desktop\Projects\Ayzo\dummy_target",
+            "project_path": r"/path/to/your/dummy_target",  # Update this to your local path
             "start_command": r"python app.py",
             "target_port": 5000
         })
