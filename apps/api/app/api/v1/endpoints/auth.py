@@ -1,8 +1,8 @@
 """
 Authentication Endpoints
 ========================
-Supabase handles user login/registration. This router now only
-handles generating static API keys for CI/CD integrations.
+Local mode: no login required. This router only handles generating
+static API keys for CI/CD pipeline integrations.
 """
 
 from typing import Annotated

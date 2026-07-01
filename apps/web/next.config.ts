@@ -5,23 +5,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: "../..",
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com", // Google profile pictures
-      },
-      {
-        protocol: "https",
-        hostname: "*.supabase.co", // Supabase storage avatars
-      },
-      {
-        protocol: "https",
-        hostname: "avatars.githubusercontent.com", // GitHub avatars
-      },
-    ],
-  },
-  // Standalone output for optimized Docker/Vercel deployment
+  // Standalone output for optimized Docker deployment
   output: "standalone",
 };
 

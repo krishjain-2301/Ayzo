@@ -1,6 +1,6 @@
 import sqlite3
 
-conn = sqlite3.connect('ayzo_demo.db')
+conn = sqlite3.connect('ayzo.db')
 cursor = conn.cursor()
 
 try:

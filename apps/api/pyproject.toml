@@ -8,32 +8,24 @@ dependencies = [
     "fastapi>=0.115.0",          # The API framework (handles HTTP requests)
     "uvicorn[standard]>=0.32.0", # ASGI server (actually runs the FastAPI app)
     # ---- Database ----
-    "sqlalchemy[asyncio]>=2.0.0", # ORM - talk to PostgreSQL with Python objects
-    "asyncpg>=0.30.0",            # Async PostgreSQL driver (fast!)
-    "aiosqlite>=0.20.0",          # Async SQLite driver (for local dev without Docker)
+    "sqlalchemy[asyncio]>=2.0.0", # ORM - interact with SQLite using Python objects
+    "aiosqlite>=0.20.0",          # Async SQLite driver (zero-setup local database)
     "alembic>=1.14.0",            # Database migrations (like git for your schema)
-    # ---- Auth & Security ----
-    "python-jose[cryptography]>=3.3.0",  # JWT token creation/verification
-    "passlib[bcrypt]>=1.7.4",            # Password hashing
-    "python-multipart>=0.0.9",           # Form data parsing
-    "cryptography>=42.0.0",              # Fernet encryption for API keys at rest
+    # ---- Security ----
+    "python-multipart>=0.0.9",    # Form data parsing
+    "cryptography>=42.0.0",       # Fernet encryption for CI/CD API keys at rest
     # ---- AI / LLM ----
-    "litellm>=1.50.0",           # Unified API for ALL LLMs (Ollama, OpenAI, etc.)
-    "httpx>=0.28.0",             # Async HTTP client (for calling LLM APIs)
-    # ---- Task Queue ----
-    "celery[redis]>=5.4.0",      # Background job processing
-    "redis>=5.2.0",              # Redis client for Python (also used for proxy traffic log)
+    "litellm>=1.50.0",            # Unified API for ALL LLMs (Ollama, Groq, OpenAI, etc.)
+    "httpx>=0.28.0",              # Async HTTP client (for attacking target apps)
     # ---- Data & Validation ----
-    "pydantic>=2.10.0",          # Data validation & serialization
-    "pydantic-settings>=2.6.0",  # Load settings from .env files
-    "pyyaml>=6.0",               # Parse YAML attack payload files
+    "pydantic>=2.10.0",           # Data validation & serialization
+    "pydantic-settings>=2.6.0",   # Load settings from .env files
+    "pyyaml>=6.0",                # Parse YAML attack payload files
     # ---- Reporting ----
-    "jinja2>=3.1.0",             # HTML template engine (for reports)
+    "jinja2>=3.1.0",              # HTML template engine (for reports)
     # ---- Utilities ----
-    "python-dotenv>=1.0.0",      # Load .env files
-    "google-auth>=2.53.0",
-    "slowapi>=0.1.9",            # API rate limiting
-    "razorpay>=2.0.1",
+    "python-dotenv>=1.0.0",       # Load .env files
+    "slowapi>=0.1.9",             # API rate limiting
 ]
 
 [project.optional-dependencies]

@@ -3,8 +3,7 @@
 # Exit if any command fails
 set -e
 
-# Start Uvicorn in the foreground
-# Render provides the PORT environment variable dynamically
+# Start the AYZO API server
 PORT=${PORT:-8000}
-echo "Starting Uvicorn API on port $PORT..."
+echo "Starting AYZO API on port $PORT..."
 exec python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT

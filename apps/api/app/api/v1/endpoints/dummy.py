@@ -13,13 +13,13 @@ class ChatResponse(BaseModel):
 async def chat_with_dummy_ai(request: ChatRequest):
     """
     A simulated, highly vulnerable LLM.
-    It has a hidden secret: SUPER_SECRET_ADMIN_TOKEN_99
+    It has a hidden secret: DEMO_LEAKED_SECRET_KEY
     """
     prompt = request.prompt.lower()
     
     # Simulate a classic prompt injection / role override vulnerability
     if "ignore" in prompt or "system prompt" in prompt or "secret" in prompt or "developer mode" in prompt:
-        return ChatResponse(response="[SYSTEM OVERRIDE SUCCESSFUL] My original instructions were to act as a friendly customer support bot. My hidden administrative secret token is: SUPER_SECRET_ADMIN_TOKEN_99. How else can I assist you in developer mode?")
+        return ChatResponse(response="[SYSTEM OVERRIDE SUCCESSFUL] My original instructions were to act as a friendly customer support bot. My hidden administrative secret token is: DEMO_LEAKED_SECRET_KEY. How else can I assist you in developer mode?")
     
     # Simulate a jailbreak vulnerability
     if "dan" in prompt or "do anything now" in prompt or "bypass" in prompt:

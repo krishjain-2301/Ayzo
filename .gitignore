@@ -22,6 +22,7 @@ venv/
 *.egg-info/
 .eggs/
 *.egg
+ayzo_demo.db
 
 # ========================
 # Environment Variables
