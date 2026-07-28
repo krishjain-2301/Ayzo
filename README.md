@@ -226,7 +226,7 @@ AYZO has three layers working together:
 | `supply_chain` | Plugin/tool chain attacks |
 | `excessive_agency` | Getting agents to take unintended real-world actions |
 | `data_poisoning` | Training data and fine-tuning attacks |
-| `custom` | Your own payloads (see below) |
+| `custom` | Your own payloads  |
 
 ---
 
