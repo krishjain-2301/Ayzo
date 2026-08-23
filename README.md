@@ -43,6 +43,18 @@ AYZO is a **local-first red-teaming platform** that finds security vulnerabiliti
 
 ---
 
+## Architecture notes (local mode)
+
+| Topic | How AYZO works today |
+|:---|:---|
+| **Campaign execution** | FastAPI `BackgroundTasks` in the API process — not Celery/Redis. If the API restarts mid-scan, orphaned campaigns are marked `failed` on the next startup. |
+| **Database** | SQLite by default (`ayzo.db`). `docker-compose.yml` only provides optional PostgreSQL — it does **not** run the API. You still start `uvicorn` locally; point `DATABASE_URL` at Postgres only if you chose that path. |
+| **Targets** | Local apps: `project_path`, `start_command`, `target_port`. Campaigns boot the app (or skip with `already running`), discover a chat HTTP contract, then fire the YAML library. |
+| **Auth / users** | Single local user (fixed UUID). `user_id` FKs remain for future multi-user; list/get endpoints filter by that user. |
+| **Reports** | `GET /api/v1/reports/campaign/{id}` returns JSON; the export page at `/report-export/[campaign_id]` renders it for printing. |
+
+---
+
 ## Prerequisites
 
 | Tool | Version | How to install |
@@ -77,6 +89,7 @@ Open `.env` and fill in your Groq key:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here        # Free at console.groq.com
+SECRET_KEY=change-me-in-production         # Encrypts stored API keys (crypto.py)
 DEFAULT_EVAL_MODEL=groq/llama-3.3-70b-versatile
 MUTATOR_MODEL=groq/llama-3.3-70b-versatile
 DATABASE_URL=sqlite+aiosqlite:///./ayzo.db  # Already set — no changes needed

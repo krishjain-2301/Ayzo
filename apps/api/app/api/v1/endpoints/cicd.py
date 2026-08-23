@@ -39,7 +39,10 @@ async def start_cicd_assessment(
     Fail the build when should_fail_build is true
     (risk_score > CICD_FAIL_RISK_THRESHOLD, default 40).
     """
-    query = select(Target).where(Target.id == campaign_in.target_id)
+    query = select(Target).where(
+        Target.id == campaign_in.target_id,
+        Target.user_id == current_user.id,
+    )
     result = await db.execute(query)
     target = result.scalar_one_or_none()
 
@@ -76,7 +79,10 @@ async def poll_cicd_assessment(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Campaign).where(Campaign.id == campaign_id)
+    query = select(Campaign).where(
+        Campaign.id == campaign_id,
+        Campaign.user_id == current_user.id,
+    )
     result = await db.execute(query)
     campaign = result.scalar_one_or_none()
 
@@ -118,7 +124,10 @@ async def run_cicd_assessment_sync(
     for _ in range(max_checks):
         await asyncio.sleep(10)
         async with async_session_maker() as poll_db:
-            q = select(Campaign).where(Campaign.id == campaign_id)
+            q = select(Campaign).where(
+                Campaign.id == campaign_id,
+                Campaign.user_id == current_user.id,
+            )
             r = await poll_db.execute(q)
             campaign = r.scalar_one_or_none()
         if campaign and campaign.status in ("completed", "failed"):

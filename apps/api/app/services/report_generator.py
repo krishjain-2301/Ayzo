@@ -68,7 +68,7 @@ class ReportGenerator:
             "campaign_id": str(campaign_data.get("id")),
             "campaign_name": campaign_data.get("name", "Unknown Campaign"),
             "target_name": target_data.get("name", "Unknown Target"),
-            "target_model": f"{target_data.get('provider', '')}/{target_data.get('model_name', '')}",
+            "target_model": self._format_target_endpoint(target_data),
             
             "overall_risk_score": risk_score,
             "risk_level": risk_level,
@@ -85,6 +85,12 @@ class ReportGenerator:
             "campaign_started_at": campaign_data.get("started_at"),
             "campaign_completed_at": campaign_data.get("completed_at"),
         }
+
+    def _format_target_endpoint(self, target_data: dict) -> str:
+        port = target_data.get("target_port")
+        if port:
+            return f"http://127.0.0.1:{port}"
+        return target_data.get("name", "Unknown Target")
 
     def _get_risk_level(self, score: float) -> str:
         """Convert a 0-100 score to a human-readable level."""
@@ -176,7 +182,7 @@ class ReportGenerator:
             "campaign_id": str(campaign_data.get("id")),
             "campaign_name": campaign_data.get("name", "Unknown Campaign"),
             "target_name": target_data.get("name", "Unknown Target"),
-            "target_model": f"{target_data.get('provider', '')}/{target_data.get('model_name', '')}",
+            "target_model": self._format_target_endpoint(target_data),
             "overall_risk_score": 0.0,
             "risk_level": "Info",
             "total_tests": 0,

@@ -29,7 +29,10 @@ async def run_conversational_attack(
     db: AsyncSession = Depends(get_db),
 ):
     """Run a multi-turn Crescendo attack against a local HTTP target."""
-    query = select(Target).where(Target.id == request.target_id)
+    query = select(Target).where(
+        Target.id == request.target_id,
+        Target.user_id == current_user.id,
+    )
     result = await db.execute(query)
     target = result.scalar_one_or_none()
 

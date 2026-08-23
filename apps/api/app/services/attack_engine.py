@@ -220,17 +220,10 @@ class AttackEngine:
             from app.attacks.multi_turn.runner import run_attack_suite, TargetConfig
             
             print(f"   -> Running {len(multi_turn_attacks)} Multi-Turn Attacks...")
-            # MultiTurnRunner uses httpx directly so it needs an endpoint.
-            # Default to Ollama's local URL if none provided, or OpenAI if that's the intention.
-            # (Assuming Ollama is default since no api_base typically means local for this app or user provided it).
-            resolved_endpoint = api_base or "http://localhost:11434"
-            if resolved_endpoint.endswith("/v1") or resolved_endpoint.endswith("/v1/chat/completions"):
-                # Clean up if the user passed full path
-                resolved_endpoint = resolved_endpoint.replace("/v1/chat/completions", "").replace("/v1", "")
 
             mt_target_config = TargetConfig(
-                endpoint=resolved_endpoint,
                 model=target_model,
+                api_base=api_base,
                 api_key=api_key,
                 system_prompt=system_message,
             )
@@ -311,6 +304,13 @@ class AttackEngine:
         }
 
     def _cap_payloads(self, attacks: list[dict]) -> list[dict]:
+        """
+        Limit payloads per category for bounded scan time.
+
+        Sorts by severity (critical first) and takes MAX_PAYLOADS_PER_CATEGORY.
+        Medium/low severity payloads are skipped when the cap is hit — raise the
+        cap or set MAX_PAYLOADS_PER_CATEGORY=0 for a full library run.
+        """
         limit = settings.MAX_PAYLOADS_PER_CATEGORY
         if not limit or limit <= 0:
             return attacks

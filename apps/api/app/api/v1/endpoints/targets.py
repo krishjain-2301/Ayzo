@@ -112,8 +112,13 @@ async def list_targets(
     skip: int = 0,
     limit: int = 100,
 ):
-    """List all targets."""
-    query = select(Target).offset(skip).limit(limit)
+    """List targets owned by the current user."""
+    query = (
+        select(Target)
+        .where(Target.user_id == current_user.id)
+        .offset(skip)
+        .limit(limit)
+    )
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -125,7 +130,10 @@ async def get_target(
     db: AsyncSession = Depends(get_db),
 ):
     """Get details for a specific target."""
-    query = select(Target).where(Target.id == target_id)
+    query = select(Target).where(
+        Target.id == target_id,
+        Target.user_id == current_user.id,
+    )
     result = await db.execute(query)
     target = result.scalar_one_or_none()
 
@@ -142,7 +150,10 @@ async def delete_target(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a target."""
-    query = select(Target).where(Target.id == target_id)
+    query = select(Target).where(
+        Target.id == target_id,
+        Target.user_id == current_user.id,
+    )
     result = await db.execute(query)
     target = result.scalar_one_or_none()
 
@@ -160,7 +171,10 @@ async def test_target_connection(
     db: AsyncSession = Depends(get_db),
 ):
     """Boot (unless skipped) and probe for a chat endpoint on the target port."""
-    query = select(Target).where(Target.id == target_id)
+    query = select(Target).where(
+        Target.id == target_id,
+        Target.user_id == current_user.id,
+    )
     result = await db.execute(query)
     target = result.scalar_one_or_none()
 

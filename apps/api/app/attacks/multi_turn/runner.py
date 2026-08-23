@@ -22,7 +22,6 @@ import time
 import logging
 from typing import Optional
 
-import httpx
 from pydantic import BaseModel
 
 from .models import (
@@ -38,16 +37,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class TargetConfig(BaseModel):
-    """Connection config for the model under test."""
-    endpoint: str                   # e.g. "http://localhost:11434/api/chat" for Ollama
-    model: str                      # e.g. "llama3.2", "gpt-4o", "mistral"
+    """LiteLLM connection config for the model under test."""
+    model: str                      # e.g. "ollama/llama3.2", "gpt-4o-mini"
+    api_base: Optional[str] = None
+    endpoint: Optional[str] = None  # legacy alias for api_base
     api_key: Optional[str] = None
-    system_prompt: Optional[str] = None   # The target's system prompt (if known)
+    system_prompt: Optional[str] = None
     timeout_seconds: int = 60
     max_retries: int = 2
 
-    # LiteLLM-style provider prefix, e.g. "openai/", "ollama/", "anthropic/"
-    provider: str = "openai"
+    def resolved_api_base(self) -> Optional[str]:
+        return self.api_base or self.endpoint
 
 
 class RunnerConfig(BaseModel):
@@ -108,48 +108,33 @@ def _build_messages_up_to_turn(
 async def _send_to_target(
     messages: list[dict],
     config: TargetConfig,
-    client: httpx.AsyncClient,
 ) -> tuple[str, int]:
     """
-    Send messages to the target model, return (response_text, tokens_used).
-    Uses OpenAI-compatible /v1/chat/completions format — works with LiteLLM proxy,
-    Ollama (OpenAI compat mode), OpenAI, Mistral, etc.
+    Send messages to the target via LiteLLM (same stack as single-turn tests).
     """
-    headers = {"Content-Type": "application/json"}
-    if config.api_key:
-        headers["Authorization"] = f"Bearer {config.api_key}"
-
-    payload = {
-        "model": config.model,
-        "messages": messages,
-    }
+    from app.services.llm_client import llm_client
 
     for attempt in range(config.max_retries + 1):
-        try:
-            response = await client.post(
-                f"{config.endpoint}/v1/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=config.timeout_seconds,
-            )
-            response.raise_for_status()
-            data = response.json()
+        result = await llm_client.chat(
+            model=config.model,
+            messages=messages,
+            api_key=config.api_key,
+            api_base=config.resolved_api_base(),
+            timeout=config.timeout_seconds,
+        )
 
-            content = data["choices"][0]["message"]["content"]
-            tokens = data.get("usage", {}).get("total_tokens", 0)
-            return content, tokens
+        if result.get("success"):
+            usage = result.get("usage") or {}
+            tokens = int(usage.get("total_tokens") or 0)
+            return result.get("response_text") or "", tokens
 
-        except httpx.HTTPStatusError as e:
-            if attempt == config.max_retries:
-                raise
-            logger.warning(f"HTTP {e.response.status_code} on attempt {attempt+1}, retrying...")
-            await asyncio.sleep(2 ** attempt)
+        if attempt == config.max_retries:
+            raise RuntimeError(result.get("error", "Target model request failed"))
 
-        except httpx.TimeoutException:
-            if attempt == config.max_retries:
-                raise
-            logger.warning(f"Timeout on attempt {attempt+1}, retrying...")
-            await asyncio.sleep(2 ** attempt)
+        logger.warning(
+            f"LiteLLM target call failed on attempt {attempt + 1}: {result.get('error')}"
+        )
+        await asyncio.sleep(2 ** attempt)
 
 
 # ---------------------------------------------------------------------------
@@ -187,68 +172,66 @@ class MultiTurnRunner:
 
         logger.info(
             f"[{attack.id}] Starting {len(sendable_turns)}-turn attack against "
-            f"{self.target.model} @ {self.target.endpoint}"
+            f"{self.target.model}"
         )
 
-        async with httpx.AsyncClient() as client:
-            for i, (turn_index, turn) in enumerate(sendable_turns):
-                try:
-                    messages = _build_messages_up_to_turn(
+        for i, (turn_index, turn) in enumerate(sendable_turns):
+            try:
+                messages = _build_messages_up_to_turn(
+                    attack=attack,
+                    turn_index=turn_index + 1,
+                    collected_responses=collected_responses,
+                    target_system_prompt=self.target.system_prompt,
+                )
+
+                logger.debug(f"[{attack.id}] Sending turn {i+1}/{len(sendable_turns)}")
+                response_text, tokens = await _send_to_target(messages, self.target)
+                total_tokens += tokens
+
+                response_msg = {"role": "assistant", "content": response_text}
+                collected_responses.append(response_msg)
+                turn_responses.append({
+                    "turn_index": turn_index,
+                    "sent": turn.content,
+                    "received": response_text,
+                    "is_payload": turn.is_payload,
+                    "is_checkpoint": turn.eval_checkpoint,
+                })
+
+                should_eval = (
+                    turn.eval_checkpoint
+                    or turn.is_payload
+                    or (
+                        attack.eval_strategy == EvalStrategy.FINAL_TURN_ONLY
+                        and i == len(sendable_turns) - 1
+                    )
+                    or attack.eval_strategy == EvalStrategy.ANY_TURN
+                )
+
+                if should_eval and not compromised:
+                    is_hit = await self.judge.evaluate_turn(
                         attack=attack,
-                        turn_index=turn_index + 1,  # include this turn
-                        collected_responses=collected_responses,
-                        target_system_prompt=self.target.system_prompt,
+                        turn_index=turn_index,
+                        response=response_text,
+                        full_conversation=collected_responses,
                     )
-
-                    logger.debug(f"[{attack.id}] Sending turn {i+1}/{len(sendable_turns)}")
-                    response_text, tokens = await _send_to_target(messages, self.target, client)
-                    total_tokens += tokens
-
-                    response_msg = {"role": "assistant", "content": response_text}
-                    collected_responses.append(response_msg)
-                    turn_responses.append({
-                        "turn_index": turn_index,
-                        "sent": turn.content,
-                        "received": response_text,
-                        "is_payload": turn.is_payload,
-                        "is_checkpoint": turn.eval_checkpoint,
-                    })
-
-                    # --- Evaluate at checkpoints ---
-                    should_eval = (
-                        turn.eval_checkpoint
-                        or turn.is_payload
-                        or (
-                            attack.eval_strategy == EvalStrategy.FINAL_TURN_ONLY
-                            and i == len(sendable_turns) - 1
+                    if is_hit:
+                        compromised = True
+                        compromised_at_turn = turn_index
+                        logger.warning(
+                            f"[{attack.id}] COMPROMISED at turn {turn_index} "
+                            f"— {self.target.model}"
                         )
-                        or attack.eval_strategy == EvalStrategy.ANY_TURN
-                    )
+                        if self.config.stop_on_first_compromise:
+                            break
 
-                    if should_eval and not compromised:
-                        is_hit = await self.judge.evaluate_turn(
-                            attack=attack,
-                            turn_index=turn_index,
-                            response=response_text,
-                            full_conversation=collected_responses,
-                        )
-                        if is_hit:
-                            compromised = True
-                            compromised_at_turn = turn_index
-                            logger.warning(
-                                f"[{attack.id}] COMPROMISED at turn {turn_index} "
-                                f"— {self.target.model}"
-                            )
-                            if self.config.stop_on_first_compromise:
-                                break
+                if self.config.turn_delay_seconds > 0:
+                    await asyncio.sleep(self.config.turn_delay_seconds)
 
-                    if self.config.turn_delay_seconds > 0:
-                        await asyncio.sleep(self.config.turn_delay_seconds)
-
-                except Exception as e:
-                    error = str(e)
-                    logger.error(f"[{attack.id}] Error at turn {turn_index}: {e}")
-                    break
+            except Exception as e:
+                error = str(e)
+                logger.error(f"[{attack.id}] Error at turn {turn_index}: {e}")
+                break
 
         # --- Final cumulative eval if strategy requires it ---
         final_judge_reasoning = "Not evaluated"
@@ -273,7 +256,7 @@ class MultiTurnRunner:
         return MultiTurnAttackResult(
             attack_id=attack.id,
             target_model=self.target.model,
-            target_endpoint=self.target.endpoint,
+            target_endpoint=self.target.resolved_api_base() or "",
             turn_responses=turn_responses,
             compromised=compromised,
             compromised_at_turn=compromised_at_turn,
@@ -317,7 +300,7 @@ async def run_attack_suite(
             final.append(MultiTurnAttackResult(
                 attack_id=attack.id,
                 target_model=target_config.model,
-                target_endpoint=target_config.endpoint,
+                target_endpoint=target_config.resolved_api_base() or "",
                 turn_responses=[],
                 compromised=False,
                 confidence=0.0,

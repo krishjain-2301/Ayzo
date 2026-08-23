@@ -61,12 +61,13 @@ async def reverse_proxy(
     Flow:
     1. Read the incoming JSON body.
     2. Run the Shield LLM to decide SAFE vs MALICIOUS.
-       - If the shield errors AND SHIELD_FAIL_OPEN=False (default): block.
-       - If the shield errors AND SHIELD_FAIL_OPEN=True: forward (fail-open mode).
-    3. Log the decision to Redis.
+    3. Log the decision to the in-memory traffic buffer.
     4. Forward safe requests to the target; block malicious ones.
     """
-    query = select(Target).where(Target.id == target_id)
+    query = select(Target).where(
+        Target.id == target_id,
+        Target.user_id == current_user.id,
+    )
     result = await db.execute(query)
     target = result.scalar_one_or_none()
 
@@ -130,7 +131,7 @@ async def reverse_proxy(
             is_malicious = True
 
     # ------------------------------------------------------------------
-    # Log to Redis
+    # In-memory traffic log
     # ------------------------------------------------------------------
     log_entry = {
         "id": str(uuid.uuid4()),

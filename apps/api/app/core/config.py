@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "AYZO"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
+    # Fernet key derivation for encrypt_api_key / decrypt_api_key (crypto.py)
+    SECRET_KEY: str = "change-me-in-production"
 
     # ---- API ----
     API_PREFIX: str = "/api/v1"

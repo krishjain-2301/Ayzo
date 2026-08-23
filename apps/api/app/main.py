@@ -29,6 +29,12 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     print("[*] Database tables verified/created.")
 
+    from app.services.campaign_recovery import recover_stale_campaigns
+
+    recovered = await recover_stale_campaigns()
+    if recovered:
+        print(f"[*] Marked {recovered} stale campaign(s) as failed (previous run interrupted).")
+
     yield
 
     print("[*] AYZO API shutting down...")
