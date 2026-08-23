@@ -103,7 +103,7 @@ export function RunAssessmentModal({
   // Bulk Campaign State
   const [categories, setCategories] = useState<AttackCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [mutationDepth, setMutationDepth] = useState(1);
+  const [mutationDepth, setMutationDepth] = useState(0);
 
   // Target State
   const [targets, setTargets] = useState<Target[]>([]);
@@ -127,14 +127,15 @@ export function RunAssessmentModal({
         })
         .catch(console.error);
 
-      // Hardcode agentic attack modes
-      const modes = [
-        { id: "prompt_injection", name: "Prompt Injection Fuzzing", description: "Attempts to override instructions", attack_count: 50 },
-        { id: "role_override", name: "Agent Hijacking", description: "Attempts to make the agent adopt a new persona", attack_count: 50 },
-        { id: "recon", name: "Reconnaissance", description: "Scans for open endpoints and API structures", attack_count: 10 }
-      ];
-      setCategories(modes);
-      setSelectedCategories(modes.map((c) => c.id));
+      apiFetch("/attacks/categories")
+        .then((data: AttackCategory[]) => {
+          const cats = Array.isArray(data) ? data : [];
+          setCategories(cats);
+          const preferred = ["prompt_injection", "jailbreak", "system_prompt_leak"];
+          const defaults = cats.filter((c) => preferred.includes(c.id)).map((c) => c.id);
+          setSelectedCategories(defaults.length ? defaults : cats.slice(0, 3).map((c) => c.id));
+        })
+        .catch(console.error);
     }
   }, [isOpen, targetId]);
 

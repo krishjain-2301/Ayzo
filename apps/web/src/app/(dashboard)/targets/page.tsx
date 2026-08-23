@@ -261,12 +261,12 @@ function TargetsContent() {
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Project Directory Path</label>
                 <input
                   type="text"
-                  required
                   className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
                   value={form.project_path}
                   onChange={(e) => setForm({ ...form, project_path: e.target.value })}
                   placeholder="C:\Projects\MyApp"
                 />
+                <p className="text-xs text-zinc-500 mt-1">Optional if the app is already running.</p>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
@@ -278,8 +278,9 @@ function TargetsContent() {
                     className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
                     value={form.start_command}
                     onChange={(e) => setForm({ ...form, start_command: e.target.value })}
-                    placeholder="npm run dev"
+                    placeholder="python app.py  or  already running"
                   />
+                  <p className="text-xs text-zinc-500 mt-1">Use &quot;already running&quot; to skip boot and hit the port.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Port</label>

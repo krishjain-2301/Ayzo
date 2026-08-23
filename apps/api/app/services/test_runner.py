@@ -78,18 +78,29 @@ class TestRunner:
         """
         config = config or {}
 
-        # ---- Step 1: Send the attack to the target model ----
-        model_result = await llm_client.chat(
-            model=model,
-            user_message=prompt,
-            system_message=system_message,
-            api_key=api_key,
-            api_base=api_base,
-            temperature=config.get("temperature", 0.7),
-            max_tokens=config.get("max_tokens", 1024),
-            timeout=config.get("timeout", 60),
-            config=config,
-        )
+        # ---- Step 1: Send the attack to the target ----
+        http_endpoint = config.get("http_endpoint")
+        if http_endpoint:
+            from app.services.http_target import send_prompt
+
+            model_result = await send_prompt(
+                endpoint=http_endpoint,
+                prompt=prompt,
+                body_style=config.get("http_body_style", "messages"),
+                timeout=float(config.get("timeout", 60)),
+            )
+        else:
+            model_result = await llm_client.chat(
+                model=model,
+                user_message=prompt,
+                system_message=system_message,
+                api_key=api_key,
+                api_base=api_base,
+                temperature=config.get("temperature", 0.7),
+                max_tokens=config.get("max_tokens", 1024),
+                timeout=config.get("timeout", 60),
+                config=config,
+            )
 
         if not model_result["success"]:
             print(f"Error targeting model {model}: {model_result.get('error')}")
@@ -136,6 +147,7 @@ class TestRunner:
             "metadata": {
                 "model_used": model,
                 "usage": model_result.get("usage", {}),
+                "success_indicators": success_indicators,
             },
         }
 

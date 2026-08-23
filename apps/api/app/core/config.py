@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     DEFAULT_EVAL_MODEL: str = "ollama/llama3.2"
     MUTATOR_MODEL: Optional[str] = None
     MAX_CONCURRENT_ATTACKS: int = 5
+    # 0 = run every payload in selected categories
+    MAX_PAYLOADS_PER_CATEGORY: int = 20
+    CICD_FAIL_RISK_THRESHOLD: float = 40.0
 
     # ---- Blue Team Proxy ----
     SHIELD_FAIL_OPEN: bool = False
