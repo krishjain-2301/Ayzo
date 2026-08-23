@@ -14,24 +14,8 @@ export default function Dashboard() {
 
   const loadData = useCallback(async (isInitialLoad = false) => {
     try {
-      // Only attempt to create the dummy target on the first load
       if (isInitialLoad) {
-        let targets = await apiFetch("/targets");
-        let dummy = targets.find((t: any) => t.name === "Vulnerable Support Bot");
-
-        if (!dummy) {
-          dummy = await apiFetch("/targets", {
-            method: "POST",
-            body: JSON.stringify({
-              name: "Vulnerable Support Bot",
-              description: "Internal vulnerable dummy target for testing",
-              provider: "dummy",
-              model_name: "dummy-support-v1",
-              endpoint_url: "internal://dummy",
-              api_key: "dummy-key",
-            }),
-          });
-        }
+        const dummy = await apiFetch("/targets/builtin-dummy", { method: "POST" });
         setTargetId(dummy.id);
         setTargetName(dummy.name);
       }

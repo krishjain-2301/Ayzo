@@ -14,21 +14,21 @@ from pydantic import BaseModel, Field
 class TargetCreate(BaseModel):
     """
     Request body for registering a local project target.
-    
-    Example request:
-    {
-        "name": "My Next.js Bot",
-        "description": "Local test",
-        "project_path": "C:/Projects/MyBot",
-        "start_command": "npm run dev",
-        "target_port": 3000
-    }
+
+    Use start_command "already running" when the app is already listening
+    on target_port (no subprocess boot).
     """
     name: str = Field(..., min_length=1, max_length=255, description="Friendly name for this target")
     description: Optional[str] = Field(None, description="What this project does")
-    
-    project_path: str = Field(..., description="Absolute path to the project directory on disk")
-    start_command: str = Field(..., description="Command to start the application (e.g. npm run dev)")
+
+    project_path: str = Field(
+        default=".",
+        description="Absolute path to the project directory on disk",
+    )
+    start_command: str = Field(
+        default="already running",
+        description="Command to start the application, or 'already running' to skip boot",
+    )
     target_port: int = Field(..., description="The port the application listens on")
 
 

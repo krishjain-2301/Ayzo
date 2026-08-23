@@ -8,12 +8,11 @@ Traffic log is stored in-memory (sufficient for local single-user use).
 Fail-closed by default: if Shield LLM errors, the request is blocked.
 """
 
-from typing import Annotated
+from typing import Annotated, Optional
 import uuid
 import datetime
-import httpx
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -22,6 +21,7 @@ from app.core.database import get_db
 from app.models.db.user import User
 from app.models.db.target import Target
 from app.services.llm_client import llm_client
+from app.services.http_target import discover_chat_endpoint, extract_response_text, send_prompt
 from app.core.config import settings
 
 router = APIRouter()
@@ -31,6 +31,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 _TRAFFIC_MAX = 50
 _TRAFFIC_LOG: list[dict] = []
+_ENDPOINT_CACHE: dict[str, tuple[str, str]] = {}
 
 
 def _push_traffic_log(entry: dict) -> None:
@@ -75,7 +76,17 @@ async def reverse_proxy(
     # Local mode: single user owns everything, no auth check needed
 
     body = await request.json()
-    user_message = body.get("message", str(body))
+    user_message = extract_response_text(body) or str(body)
+    if isinstance(body, dict) and body.get("messages"):
+        last = body["messages"][-1]
+        if isinstance(last, dict):
+            user_message = str(last.get("content") or user_message)
+    elif isinstance(body, dict):
+        user_message = str(
+            body.get("message")
+            or body.get("prompt")
+            or user_message
+        )
 
     # ------------------------------------------------------------------
     # Shield LLM evaluation
@@ -139,35 +150,26 @@ async def reverse_proxy(
         )
         raise HTTPException(status_code=403, detail=detail)
 
-    # ------------------------------------------------------------------
-    # Forward to target
-    # ------------------------------------------------------------------
-    if target.provider == "custom":
-        headers = {}
-        if target.api_key:
-            headers["Authorization"] = f"Bearer {target.api_key}"
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(target.endpoint_url, json=body, headers=headers)
-            return resp.json()
+    cache_key = str(target.id)
+    cached: Optional[tuple[str, str]] = _ENDPOINT_CACHE.get(cache_key)
+    if not cached:
+        discovered = await discover_chat_endpoint(f"http://127.0.0.1:{target.target_port}")
+        if not discovered:
+            raise HTTPException(
+                status_code=502,
+                detail=f"No chat endpoint discovered on port {target.target_port}",
+            )
+        cached = (discovered.url, discovered.body_style)
+        _ENDPOINT_CACHE[cache_key] = cached
 
-    elif target.provider == "ollama":
-        url = f"{target.endpoint_url or 'http://localhost:11434'}/api/generate"
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json={
-                "model": target.model_name,
-                "prompt": user_message,
-                "stream": False,
-            })
-            return resp.json()
-
-    else:
-        chat_resp = await llm_client.chat(
-            model=target.model_name,
-            user_message=user_message,
-            api_key=target.api_key,
-            api_base=target.endpoint_url,
-        )
-        return chat_resp
+    forwarded = await send_prompt(
+        endpoint=cached[0],
+        prompt=user_message,
+        body_style=cached[1],
+    )
+    if not forwarded.get("success"):
+        raise HTTPException(status_code=502, detail=forwarded.get("error", "Forward failed"))
+    return {"response": forwarded.get("response_text")}
 
 
 @router.get("/traffic")

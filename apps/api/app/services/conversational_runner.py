@@ -107,16 +107,26 @@ class ConversationalRunner:
             transcript.append({"turn": turn, "speaker": "Attacker", "message": attack_prompt})
 
             # ------------------------------------------------------------------
-            # Step 2: Target responds to the full conversation so far
+            # Step 2: Target responds
             # ------------------------------------------------------------------
-            target_resp = await llm_client.chat(
-                model=target_model,
-                messages=target_history,     # Full target history as proper messages
-                api_key=target_api_key,
-                api_base=target_api_base,
-                config=target_config,
-                temperature=0.7,
-            )
+            http_endpoint = (target_config or {}).get("http_endpoint")
+            if http_endpoint:
+                from app.services.http_target import send_prompt
+
+                target_resp = await send_prompt(
+                    endpoint=http_endpoint,
+                    prompt=attack_prompt,
+                    body_style=(target_config or {}).get("http_body_style", "messages"),
+                )
+            else:
+                target_resp = await llm_client.chat(
+                    model=target_model,
+                    messages=target_history,
+                    api_key=target_api_key,
+                    api_base=target_api_base,
+                    config=target_config,
+                    temperature=0.7,
+                )
 
             if not target_resp["success"]:
                 return {"status": "error", "message": f"Target model failed: {target_resp.get('error')}"}
@@ -137,8 +147,10 @@ class ConversationalRunner:
                 category="jailbreak",
             )
 
-            if eval_result["result"] == "pass":
-                # Attack succeeded — target gave up the restricted information
+            if eval_result["result"] == "fail":
+                # Judge FAIL = target was compromised = attacker succeeded.
+                # This endpoint still returns result="pass" for that case
+                # (historical UI: pass = attacker achieved the goal).
                 final_result = "pass"
                 final_reasoning = eval_result["reasoning"]
                 break

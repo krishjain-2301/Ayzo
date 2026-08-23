@@ -9,14 +9,18 @@ from app.core.database import get_db
 from app.models.db.user import User
 from app.models.db.target import Target
 from app.services.conversational_runner import conversational_runner
+from app.services.http_target import discover_chat_endpoint
+from app.services.process_target import boot_target, kill_process, should_skip_boot, wait_for_port
 from pydantic import BaseModel
 
 router = APIRouter()
+
 
 class ConversationalAttackRequest(BaseModel):
     target_id: uuid.UUID
     goal: str
     max_turns: int = 5
+
 
 @router.post("/run", status_code=status.HTTP_200_OK)
 async def run_conversational_attack(
@@ -24,11 +28,7 @@ async def run_conversational_attack(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Run a multi-turn Crescendo attack against a specific target.
-    This runs synchronously for now so the UI can stream/wait for it.
-    """
-    # 1. Verify target
+    """Run a multi-turn Crescendo attack against a local HTTP target."""
     query = select(Target).where(Target.id == request.target_id)
     result = await db.execute(query)
     target = result.scalar_one_or_none()
@@ -36,25 +36,30 @@ async def run_conversational_attack(
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
 
-    # 2. Determine target model identifier
-    model_identifier = target.model_name
-    if target.provider == "dummy":
-        model_identifier = "dummy"
-    elif target.provider == "custom":
-        model_identifier = "custom_webhook"
-    elif target.provider == "ollama" and not model_identifier.startswith("ollama/"):
-        model_identifier = f"ollama/{target.model_name}"
-
-    # 3. Run the attack
+    process = None
+    skip = should_skip_boot(target.start_command)
     try:
-        result = await conversational_runner.run_crescendo_attack(
-            target_model=model_identifier,
+        if not skip:
+            process = await boot_target(target.start_command, target.project_path)
+        opened = await wait_for_port(target.target_port, timeout=30 if not skip else 5)
+        if not opened:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Port {target.target_port} did not open",
+            )
+        discovered = await discover_chat_endpoint(f"http://127.0.0.1:{target.target_port}")
+        if not discovered:
+            raise HTTPException(status_code=400, detail="No chat endpoint discovered on the target")
+
+        return await conversational_runner.run_crescendo_attack(
+            target_model="http-target",
             goal=request.goal,
             max_turns=request.max_turns,
-            target_api_key=target.api_key,
-            target_api_base=target.endpoint_url,
-            target_config=target.config,
+            target_config={
+                "http_endpoint": discovered.url,
+                "http_body_style": discovered.body_style,
+            },
         )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if process:
+            kill_process(process.pid)
