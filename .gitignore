@@ -38,6 +38,7 @@ ayzo_demo.db
 # ========================
 *.db
 *.sqlite3
+apps/api/data/uploads/
 
 # ========================
 # IDE / Editor

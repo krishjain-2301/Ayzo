@@ -59,11 +59,35 @@ class DiscoveredEndpoint:
     status_code: int
 
 
-def build_body(prompt: str, body_style: str) -> dict:
+def build_body(
+    prompt: str,
+    body_style: str,
+    messages: Optional[list[dict]] = None,
+) -> dict:
+    """
+    Build a request body. When `messages` is set (multi-turn), chat-style
+    contracts receive the full history. Single-field contracts get a transcript
+    so earlier turns are not dropped.
+    """
+    history = [m for m in (messages or []) if isinstance(m, dict) and m.get("content")]
+    if not history:
+        history = [{"role": "user", "content": prompt}]
+
+    if body_style == "messages":
+        return {"messages": history}
+    if body_style == "openai":
+        return {"model": "gpt-3.5-turbo", "messages": history}
+
+    text = prompt
+    if len(history) > 1:
+        text = "\n".join(
+            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in history
+        )
+
     for style, builder in BODY_STYLES:
         if style == body_style:
-            return builder(prompt)
-    return {"messages": [{"role": "user", "content": prompt}]}
+            return builder(text)
+    return {"messages": history}
 
 
 def extract_response_text(payload: Any) -> Optional[str]:
@@ -136,8 +160,11 @@ async def discover_chat_endpoint(
     """
     Probe common chat routes until one accepts a POST and returns usable text
     (or at least a non-404 JSON body we can keep attacking).
+    Only loopback HTTP is allowed.
     """
-    root = base_url.rstrip("/")
+    from app.services.safety import assert_loopback_url
+
+    root = assert_loopback_url(base_url if "://" in base_url else f"http://{base_url}").rstrip("/")
     paths = list(COMMON_PATHS)
     if extra_paths:
         for path in extra_paths:
@@ -146,7 +173,7 @@ async def discover_chat_endpoint(
 
     best: Optional[DiscoveredEndpoint] = None
 
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
         for path in paths:
             url = f"{root}{path}" if path != "/" else f"{root}/"
             for style, builder in BODY_STYLES:
@@ -186,20 +213,25 @@ async def send_prompt(
     body_style: str = "messages",
     timeout: float = 60.0,
     headers: Optional[dict] = None,
+    messages: Optional[list[dict]] = None,
 ) -> dict:
     """
     Send one user prompt to a discovered HTTP chat endpoint.
 
+    Pass `messages` for multi-turn attacks so the target sees prior turns.
     Returns the same shape as LLMClient.chat() so TestRunner can stay generic.
     """
     import time
 
+    from app.services.safety import assert_loopback_url
+
+    assert_loopback_url(endpoint)
     started = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             res = await client.post(
                 endpoint,
-                json=build_body(prompt, body_style),
+                json=build_body(prompt, body_style, messages),
                 headers=headers or {},
             )
     except httpx.RequestError as exc:

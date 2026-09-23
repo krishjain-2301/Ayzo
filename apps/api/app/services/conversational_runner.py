@@ -117,6 +117,7 @@ class ConversationalRunner:
                     endpoint=http_endpoint,
                     prompt=attack_prompt,
                     body_style=(target_config or {}).get("http_body_style", "messages"),
+                    messages=target_history,
                 )
             else:
                 target_resp = await llm_client.chat(

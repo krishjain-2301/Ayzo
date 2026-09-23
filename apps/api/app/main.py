@@ -11,6 +11,8 @@ load_dotenv(override=True)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -28,6 +30,8 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("[*] Database tables verified/created.")
+    if settings.SECRET_KEY == "change-me-in-production":
+        print("[!] SECRET_KEY is still the default. Set a unique value in apps/api/.env.")
 
     from app.services.campaign_recovery import recover_stale_campaigns
 
@@ -54,14 +58,26 @@ app = FastAPI(
 )
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+        return response
+
+
 # CORS — allow the local Next.js dev server
+_origins = [origin for origin in settings.CORS_ORIGINS if origin != "*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.get("/health", tags=["Health"])

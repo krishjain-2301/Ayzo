@@ -27,9 +27,10 @@ class TargetCreate(BaseModel):
     )
     start_command: str = Field(
         default="already running",
+        max_length=200,
         description="Command to start the application, or 'already running' to skip boot",
     )
-    target_port: int = Field(..., description="The port the application listens on")
+    target_port: int = Field(..., ge=1, le=65535, description="The port the application listens on")
 
 
 class TargetUpdate(BaseModel):

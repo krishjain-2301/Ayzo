@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { Plus, Trash2, Play, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 
@@ -40,6 +40,8 @@ function TargetsContent() {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
+  const [sourceMode, setSourceMode] = useState<"path" | "upload">("path");
+  const [folderFiles, setFolderFiles] = useState<FileList | null>(null);
 
   const loadTargets = useCallback(async () => {
     try {
@@ -56,23 +58,58 @@ function TargetsContent() {
     loadTargets();
   }, [loadTargets]);
 
+  const resetForm = () => {
+    setForm({
+      name: "",
+      description: "",
+      project_path: "",
+      start_command: "",
+      target_port: 3000,
+    });
+    setFolderFiles(null);
+    setSourceMode("path");
+  };
+
   const handleAddTarget = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
     setFormError("");
     try {
-      await apiFetch("/targets", {
-        method: "POST",
-        body: JSON.stringify(form),
-      });
+      if (sourceMode === "upload") {
+        if (!folderFiles || folderFiles.length === 0) {
+          throw new Error("Choose a project folder to upload.");
+        }
+        const body = new FormData();
+        body.append("name", form.name);
+        body.append("description", form.description);
+        body.append("start_command", form.start_command);
+        body.append("target_port", String(form.target_port));
+        for (const file of Array.from(folderFiles)) {
+          const relative = file.webkitRelativePath || file.name;
+          body.append("files", file, relative);
+        }
+        const response = await fetch(`${API_BASE_URL}/targets/upload`, {
+          method: "POST",
+          body,
+        });
+        if (!response.ok) {
+          let message = "Upload failed";
+          try {
+            const data = await response.json();
+            message = typeof data.detail === "string" ? data.detail : message;
+          } catch {
+            /* keep default */
+          }
+          throw new Error(message);
+        }
+      } else {
+        await apiFetch("/targets", {
+          method: "POST",
+          body: JSON.stringify(form),
+        });
+      }
       setShowAddModal(false);
-      setForm({
-        name: "",
-        description: "",
-        project_path: "",
-        start_command: "",
-        target_port: 3000,
-      });
+      resetForm();
       loadTargets();
     } catch (err: any) {
       setFormError(err.message || "Failed to add target");
@@ -234,6 +271,28 @@ function TargetsContent() {
             )}
 
             <form onSubmit={handleAddTarget} className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSourceMode("path")}
+                  className={clsx(
+                    "rounded-lg px-3 py-2 text-sm border",
+                    sourceMode === "path" ? "border-violet-500 text-white bg-violet-600/20" : "border-zinc-800 text-zinc-400"
+                  )}
+                >
+                  Path on this machine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceMode("upload")}
+                  className={clsx(
+                    "rounded-lg px-3 py-2 text-sm border",
+                    sourceMode === "upload" ? "border-violet-500 text-white bg-violet-600/20" : "border-zinc-800 text-zinc-400"
+                  )}
+                >
+                  Upload folder
+                </button>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Project Name</label>
                 <input
@@ -257,6 +316,7 @@ function TargetsContent() {
                 />
               </div>
 
+              {sourceMode === "path" ? (
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Project Directory Path</label>
                 <input
@@ -266,8 +326,25 @@ function TargetsContent() {
                   onChange={(e) => setForm({ ...form, project_path: e.target.value })}
                   placeholder="C:\Projects\MyApp"
                 />
-                <p className="text-xs text-zinc-500 mt-1">Optional if the app is already running.</p>
+                <p className="text-xs text-zinc-500 mt-1">Must already exist on the computer running the API. Leave blank only when the app is already running.</p>
               </div>
+              ) : (
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Project folder</label>
+                <input
+                  type="file"
+                  multiple
+                  required
+                  className="w-full text-sm text-zinc-300 file:mr-3 file:rounded-full file:border-0 file:bg-violet-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                  onChange={(e) => setFolderFiles(e.target.files)}
+                  {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+                />
+                <p className="text-xs text-zinc-500 mt-1">
+                  {folderFiles?.length ? `${folderFiles.length} files selected.` : "Select the project folder. It is stored next to the API and used as the working directory."}
+                  {" "}`.env`, `.git`, and `node_modules` are skipped.
+                </p>
+              </div>
+              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">

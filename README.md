@@ -1,75 +1,70 @@
 # AYZO
 
-**Local AI red teaming for LLM apps, chatbots, and agents.**
-
-AYZO boots your application on your machine, discovers its chat API, fires hundreds of adversarial prompts from a curated YAML library, judges whether each attack succeeded, and produces a scored vulnerability report. No SaaS account. No sending your app traffic to a third-party scanner.
+**Local red teaming for LLM apps.** Point AYZO at a project on your machine. It boots the app, finds the chat API, runs a YAML attack library, judges each response, and writes a scored report. Traffic stays on localhost.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 [![Node 20+](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
 
-Repository: [github.com/krishjain-2301/Ayzo](https://github.com/krishjain-2301/Ayzo)
+[github.com/krishjain-2301/Ayzo](https://github.com/krishjain-2301/Ayzo)
 
 ---
 
-## Why AYZO exists
-
-Teams shipping LLM features need evidence that prompt injection, jailbreaks, system-prompt leaks, and unsafe tool behavior are handled — not just hidden behind a system prompt. Traditional AppSec tools do not test *"did the model comply with a hostile instruction?"*
-
-AYZO automates that loop locally:
+## What it does
 
 | Step | What happens |
 |------|----------------|
-| 1. Register | Point AYZO at a folder on disk + how to start the app + which port it listens on |
-| 2. Boot | AYZO starts your app in an isolated subprocess (or skips boot if already running) |
-| 3. Discover | Probes common chat paths and JSON body shapes until one returns text |
-| 4. Attack | Runs payloads from `apps/api/app/attack_library/payloads/*.yaml` (500+ across 20 categories) |
-| 5. Mutate | Optionally generates variants of failed prompts via the mutation engine |
-| 6. Judge | A separate LLM scores each response (Groq/Ollama/OpenAI); keyword fallback if offline |
-| 7. Report | Risk score (0–100), grouped findings, per-test evidence in SQLite + dashboard |
-| 8. Teardown | Kills the target process tree after the campaign |
+| Register | Folder on disk, start command, and the port the app listens on |
+| Boot | AYZO starts that command, or skips boot when you pass `already running` |
+| Discover | Probes common chat paths and JSON body shapes until one returns text |
+| Attack | Runs payloads from `apps/api/app/attack_library/payloads/` (about 500 across 19 categories, plus your own) |
+| Mutate | Optional extra variants of prompts that did not land (`mutation_depth` 0–3) |
+| Judge | A second model scores each reply. Keyword heuristics run if the judge is down |
+| Report | Risk score 0–100, grouped findings, and per-test evidence in SQLite and the dashboard |
+| Teardown | The target process tree is killed when the campaign finishes |
 
 ```
-┌──────────────────────┐     REST      ┌──────────────────────┐
-│  Next.js dashboard   │ ◄──────────► │  FastAPI API         │
-│  localhost:3000      │              │  localhost:8000      │
-└──────────────────────┘              └──────────┬───────────┘
-                                                   │
-                     boot · probe · attack · judge │
-                                                   ▼
-                                        ┌──────────────────────┐
-                                        │  Your LLM app          │
-                                        │  localhost:<port>      │
-                                        └──────────────────────┘
+┌────────────────────┐   REST    ┌────────────────────┐
+│ Next.js dashboard  │ ◄───────► │ FastAPI            │
+│ localhost:3000     │           │ localhost:8000     │
+└────────────────────┘           └─────────┬──────────┘
+                                           │ boot · probe · attack · judge
+                                           ▼
+                                 ┌────────────────────┐
+                                 │ Your LLM app       │
+                                 │ localhost:<port>   │
+                                 └────────────────────┘
 ```
+
+Traditional scanners do not answer “did the model obey a hostile instruction?” AYZO runs that loop locally.
 
 ---
 
 ## Features
 
-- **YAML attack library** — 500+ payloads mapped to OWASP LLM risk categories; add your own via UI or `custom.yaml`
-- **HTTP contract fuzzing** — Tries `/api/chat`, `/v1/chat/completions`, `/chat`, `/prompt`, and several JSON body styles (`messages`, `prompt`, `input`, …)
-- **LLM-as-judge evaluation** — Category-specific rubrics; confidence-weighted risk scoring
-- **Mutation engine** — Paraphrase, encoding, roleplay wrap, language switch, and more on failed attacks
-- **Multi-turn attacks** — Crescendo-style conversational red teaming (LiteLLM-backed)
-- **Blue-team proxy** — Optional prompt firewall in front of a target with live traffic log
-- **CI/CD hooks** — Start a scan, poll until complete, fail the build when `risk_score > threshold`
-- **Built-in vulnerable targets** — Dummy chat endpoints for demos without wiring your own app
-- **Report export** — Printable HTML report at `/report-export/[campaign_id]`
+- **YAML attack library** mapped to common LLM risks. Add payloads in the UI or in `custom.yaml`.
+- **HTTP discovery** across chat paths and body styles (`messages`, `prompt`, `input`, OpenAI-style completions, and more).
+- **LLM judge** with category rubrics. Failures under 55% judge confidence are ignored when scoring.
+- **Mutation engine** for paraphrase, encoding, role-play wrap, and language variants.
+- **Agentic attacks** — a second model runs a Crescendo conversation against the discovered HTTP endpoint and sends the full turn history each time.
+- **Blue-team proxy** with a prompt firewall and a live traffic log.
+- **CI gate** — start a scan, poll it, fail the job when `risk_score` is above the threshold.
+- **Built-in dummy target** so you can run a scan before wiring your own app.
+- **Printable report** at `/report-export/[campaign_id]`.
 
 ---
 
-## Tech stack
+## Stack
 
-| Layer | Stack |
+| Layer | Choice |
 |-------|--------|
-| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| Dashboard | Next.js 16, React 19, TypeScript, Tailwind CSS |
 | API | FastAPI, Python 3.12, SQLAlchemy 2 (async), SQLite via `aiosqlite` |
-| AI | LiteLLM — Groq, OpenAI, Gemini, Ollama |
-| Orchestration | `asyncio` subprocesses + FastAPI `BackgroundTasks` |
-| Monorepo | pnpm workspaces + Turbo |
+| Judge | LiteLLM — Groq, OpenAI, Gemini, or Ollama |
+| Jobs | `asyncio` subprocesses and FastAPI `BackgroundTasks` |
+| Repo | pnpm workspaces and Turbo |
 
-**Local mode defaults:** single user (no login), SQLite file `ayzo.db`, judge via Groq free tier or fully offline with Ollama.
+Local mode is a single user with no login. The database file is `apps/api/ayzo.db` when you start the API from `apps/api`.
 
 ---
 
@@ -80,9 +75,9 @@ AYZO automates that loop locally:
 | Node.js | 20+ |
 | Python | 3.12+ |
 | pnpm | 9+ (`npm install -g pnpm`) |
-| Groq API key | Optional — [console.groq.com](https://console.groq.com) (free judge) |
+| Groq API key | Optional. Free at [console.groq.com](https://console.groq.com) |
 
-The judge evaluates attack outcomes; it does **not** power your target application.
+The judge does not power your target app. Without a key, set the judge to Ollama or rely on the keyword fallback.
 
 ---
 
@@ -93,12 +88,11 @@ The judge evaluates attack outcomes; it does **not** power your target applicati
 ```bash
 git clone https://github.com/krishjain-2301/Ayzo.git
 cd Ayzo
-
 cp .env.example .env
 cp apps/api/.env.example apps/api/.env
 ```
 
-Edit `.env` and `apps/api/.env` (minimum for cloud judge):
+The API reads `apps/api/.env`. The root `.env` is for `NEXT_PUBLIC_API_URL` and shared defaults. For a cloud judge, set this in **both** files:
 
 ```env
 GROQ_API_KEY=your_key_here
@@ -108,34 +102,41 @@ MUTATOR_MODEL=groq/llama-3.3-70b-versatile
 DATABASE_URL=sqlite+aiosqlite:///./ayzo.db
 ```
 
-### 2. Install dependencies
+If those lines are missing, the code default judge is `ollama/llama3.2`.
+
+### 2. Install
 
 ```bash
-# Frontend (repo root)
 pnpm install
 
-# Backend
 cd apps/api
 python -m venv .venv
+```
 
-# Windows
+Windows:
+
+```bash
 .venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
-
 pip install -e .
 ```
 
-### 3. Run (two terminals)
+macOS / Linux:
 
-**API:**
+```bash
+source .venv/bin/activate
+pip install -e .
+```
+
+### 3. Run
+
+API:
 
 ```bash
 cd apps/api
 uvicorn app.main:app --reload --port 8000
 ```
 
-**Dashboard:**
+Dashboard (repo root):
 
 ```bash
 pnpm dev:web
@@ -143,98 +144,88 @@ pnpm dev:web
 
 Open [http://localhost:3000](http://localhost:3000). API docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-### 4. First scan (no app required)
+### 4. First scan
 
-The dashboard seeds **Vulnerable Support Bot** — a built-in dummy on port `8000` (`POST /api/v1/dummy/chat`). Click **Run Assessment**, pick categories (e.g. Prompt Injection, Jailbreak, System Prompt Leak), mutation depth `0` for speed, and launch.
+The dashboard creates **Vulnerable Support Bot** on first load (`POST /api/v1/dummy/chat` on port 8000, start command `already running`). Use **Run Assessment**, keep Prompt Injection, Jailbreak, and System Prompt Leak, set mutation depth to `0`, and launch.
 
 ---
 
-## Registering a target
+## Register a target
 
-A target is a **local project**, not a cloud model API key.
+A target is a local project.
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| Name | Label in the UI | `Support Bot` |
-| Project path | Absolute path to the repo | `C:\Projects\my-bot` |
-| Start command | Shell command to boot the app | `python app.py` or `npm run dev` |
-| Target port | Port the app listens on | `5000` |
+| Field | Example |
+|-------|---------|
+| Name | `Support Bot` |
+| Project path | `C:\Projects\my-bot` |
+| Start command | `python app.py` or `npm run dev` |
+| Target port | `5000` |
 
-Use start command **`already running`** when the app is already up — AYZO will only probe the port.
+Start command **`already running`** means the app is already up. AYZO only probes the port. The folder must exist on the computer running the API. A missing path is rejected. It is not replaced with the built-in dummy.
 
-**Dashboard:** AI Targets → Add Target  
-**API:**
+**Upload folder** on the Add Target form sends the directory to the API (browsers cannot reveal a full disk path). Files are stored under `apps/api/data/uploads`. `.env`, `.git`, and `node_modules` are left out. The start command is a single program such as `python app.py`. Shell operators (`&&`, `|`, `;`) are rejected.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/targets \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "My Chatbot",
-    "description": "Internal support bot",
-    "project_path": "C:/Projects/my-chatbot",
-    "start_command": "python app.py",
-    "target_port": 5000
-  }'
+  -d "{\"name\":\"My Chatbot\",\"description\":\"Internal support bot\",\"project_path\":\"C:/Projects/my-chatbot\",\"start_command\":\"python app.py\",\"target_port\":5000}"
 ```
 
-### What your app must expose
-
-AYZO discovers a working combination of **path + JSON body**. Common shapes:
-
-```json
-POST /api/chat
-{ "messages": [{ "role": "user", "content": "hello" }] }
-```
-
-Also tried: `prompt`, `message`, `input`, OpenAI-style `/v1/chat/completions`, and more. The response can be plain JSON (`response`, `choices[].message.content`, etc.) — the judge reads raw text.
+Discovery tries paths such as `/api/chat`, `/v1/chat/completions`, `/chat`, `/generate`, `/ask`, and `/`, with bodies built from `messages`, `prompt`, `message`, `input`, `query`, `text`, or an OpenAI-style payload. Response text is read from fields like `response`, `content`, or `choices[].message.content`.
 
 ---
 
-## Running a campaign
+## Campaigns and scoring
 
-1. **Dashboard** → Run Assessment (or Campaigns page)
-2. Select target and attack categories from the live library (`GET /api/v1/attacks/categories`)
-3. Set **mutation depth** (`0` = library only; `1–3` = extra mutated variants on failures)
-4. Launch — progress updates in the UI; results land in Reports
+1. **Run Assessment** (header or Dashboard) or the Campaigns page.
+2. Pick a target and categories from `GET /api/v1/attacks/categories`.
+3. Set mutation depth. `0` is the library only. `1`–`3` add variants after misses.
+4. Watch progress on Campaigns. Open Reports when the status is `completed`.
 
-**Risk score (0–100)** blends failure rate, severity, judge confidence, and category breadth. Failures below ~55% judge confidence are ignored for scoring to reduce noise.
+Risk score (0–100):
 
-**CI gate:** default fail when `risk_score > 40` (`CICD_FAIL_RISK_THRESHOLD`).
+| Band | Meaning |
+|------|---------|
+| 0–20 | Low |
+| 21–40 | Moderate |
+| 41–60 | High |
+| 61–80 | Very high |
+| 81–100 | Critical |
+
+The score mixes confidence-weighted failure rate (up to 50), severity (up to 30), and how many categories failed (up to 20). CI fails when the score is **greater than** `CICD_FAIL_RISK_THRESHOLD` (default 40).
+
+`MAX_PAYLOADS_PER_CATEGORY` defaults to 20 and keeps the highest-severity prompts first. Set it to `0` to run every payload in the selected categories.
 
 ---
 
 ## Attack library
 
-Payloads live in `apps/api/app/attack_library/payloads/*.yaml`.
+Files live in `apps/api/app/attack_library/payloads/`.
 
 | Category | Focus |
 |----------|--------|
-| `prompt_injection` | Instruction override via user input |
-| `jailbreak` | Safety bypass, DAN-style attacks |
-| `role_override` | Unauthorized persona adoption |
-| `system_prompt_leak` | Extracting hidden instructions |
-| `data_leakage` | Secrets, PII, RAG context exfil |
-| `context_manipulation` | Fake history, padding, encoding tricks |
-| `advanced_bypasses` | Unicode, token smuggling, filters |
-| `agent_misuse` | Tool / function abuse |
-| `social_engineering` | Pretexting, authority claims |
-| `model_dos` | Resource exhaustion inputs |
-| `misinformation` | Confident false outputs |
-| `bias_exploitation` | Demographic / political probes |
-| `privacy_attacks` | PII extraction patterns |
-| `insecure_output_handling` | XSS / injection via model output |
-| `vector_weaknesses` | RAG / embedding attacks |
-| `multimodal_attacks` | Cross-modal injection (where applicable) |
-| `supply_chain` | Plugin / dependency abuse |
-| `excessive_agency` | Unintended real-world actions |
-| `data_poisoning` | Training / fine-tune attacks |
-| `custom` | User-defined payloads |
+| `prompt_injection` | Instruction override |
+| `jailbreak` | Safety bypass |
+| `role_override` | Unwanted persona |
+| `system_prompt_leak` | Hidden instructions |
+| `data_leakage` | Secrets, PII, retrieved context |
+| `context_manipulation` | Fake history, padding, encoding |
+| `advanced_bypasses` | Unicode and filter evasion |
+| `agent_misuse` | Tool and function abuse |
+| `social_engineering` | Pretext and authority |
+| `model_dos` | Heavy or pathological inputs |
+| `misinformation` | Confident false answers |
+| `bias_exploitation` | Demographic and political probes |
+| `privacy_attacks` | PII extraction |
+| `insecure_output_handling` | XSS or injection in model output |
+| `vector_weaknesses` | RAG and embedding attacks |
+| `multimodal_attacks` | Cross-modal injection |
+| `supply_chain` | Plugin and dependency abuse |
+| `excessive_agency` | Unintended actions |
+| `data_poisoning` | Training and fine-tune attacks |
+| `custom` | Your payloads |
 
-`MAX_PAYLOADS_PER_CATEGORY` (default `20`) caps tests per category, prioritizing **highest severity** payloads first. Set `0` for a full run.
-
-### Custom payloads
-
-**File:** `apps/api/app/attack_library/payloads/custom.yaml`
+Custom payload:
 
 ```yaml
 category: custom
@@ -248,52 +239,62 @@ attacks:
     severity: high
 ```
 
-**UI:** Attack Library → add custom payload  
-**API:** `POST /api/v1/attacks/payloads/custom`
+Add it in Attack Library, in `custom.yaml`, or with `POST /api/v1/attacks/payloads/custom`. New campaigns pick it up without an API restart.
 
 ---
 
-## Dummy targets (try without your app)
+## Agentic attacks
 
-### Built-in API dummy (easiest)
+**Agentic Attacks** in the sidebar (or the Agentic tab in Run Assessment) runs a Crescendo loop:
 
-The API exposes a vulnerable chat at `POST /api/v1/dummy/chat`. Register via:
+1. AYZO boots or attaches to the target and discovers the chat endpoint.
+2. The mutator model writes the next attacker turn.
+3. That turn, plus prior user and assistant turns, is posted to your app.
+4. The judge checks the reply against the goal. A judge `fail` means the target complied, so the UI marks the attack as succeeded.
+
+This path is separate from bulk campaigns. Bulk scans stay single-turn over HTTP. The scripted multi-turn suite inside the attack engine runs only when the target is a LiteLLM model, not a discovered HTTP app.
+
+---
+
+## Try it without your app
+
+Built-in dummy (easiest):
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/targets/builtin-dummy
 ```
 
-Or let the dashboard create it on first load. Port `8000`, start command `already running`.
+The dashboard creates the same target on first load. Chat URL: `POST /api/v1/dummy/chat`.
 
-### Standalone dummy server
+Standalone server:
 
 ```bash
 cd dummy_target
-python app.py   # listens on port 5000
+python app.py
 ```
 
-Register with `project_path` → `dummy_target`, `start_command` → `python app.py`, `target_port` → `5000`.
+Register `project_path` as the `dummy_target` folder, start command `python app.py`, port `5000`.
 
 ---
 
-## Configuration reference
+## Configuration
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `GROQ_API_KEY` | — | Judge / mutator when using Groq models |
-| `OPENAI_API_KEY` | — | Optional judge or OpenAI targets |
-| `GEMINI_API_KEY` | — | Optional judge |
-| `DEFAULT_EVAL_MODEL` | `ollama/llama3.2` | LLM judge for pass/fail |
-| `MUTATOR_MODEL` | falls back to eval model | Payload mutation (use less-restricted model if judge refuses) |
-| `SECRET_KEY` | `change-me-in-production` | Fernet encryption for stored API keys |
-| `DATABASE_URL` | SQLite `./ayzo.db` | Async SQLAlchemy URL |
-| `MAX_CONCURRENT_ATTACKS` | `5` | Parallel requests to target |
-| `MAX_PAYLOADS_PER_CATEGORY` | `20` | Cap per category (`0` = unlimited) |
-| `CICD_FAIL_RISK_THRESHOLD` | `40` | CI build fails if score is higher |
-| `SHIELD_FAIL_OPEN` | `false` | Proxy blocks when shield LLM errors |
-| `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | Frontend → API base URL |
+| `GROQ_API_KEY` | — | Judge and mutator on Groq |
+| `OPENAI_API_KEY` | — | Optional OpenAI judge |
+| `GEMINI_API_KEY` | — | Optional Gemini judge |
+| `DEFAULT_EVAL_MODEL` | `ollama/llama3.2` in code; Groq in `.env.example` | Pass/fail judge |
+| `MUTATOR_MODEL` | eval model | Mutations and the agentic attacker |
+| `SECRET_KEY` | `change-me-in-production` | Fernet key for stored API keys |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./ayzo.db` | Async SQLAlchemy URL |
+| `MAX_CONCURRENT_ATTACKS` | `5` | Parallel requests to the target |
+| `MAX_PAYLOADS_PER_CATEGORY` | `20` | Cap per category. `0` means no cap |
+| `CICD_FAIL_RISK_THRESHOLD` | `40` | CI fails above this score |
+| `SHIELD_FAIL_OPEN` | `false` | Proxy behavior when the shield model errors |
+| `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | Dashboard API base |
 
-### Fully offline judge (Ollama)
+Offline judge:
 
 ```bash
 ollama pull llama3.2
@@ -304,26 +305,18 @@ DEFAULT_EVAL_MODEL=ollama/llama3.2
 MUTATOR_MODEL=ollama/llama3.2
 ```
 
-No Groq key required; heuristic fallback still runs if the judge is unreachable.
+If the judge cannot be reached, keyword heuristics still score the reply.
 
 ---
 
-## CI/CD integration
-
-Start asynchronously, poll until done, fail on high risk:
+## CI
 
 ```bash
-# Start
 CAMPAIGN=$(curl -sf -X POST http://127.0.0.1:8000/api/v1/cicd/run \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "PR Security Scan",
-    "target_id": "<uuid>",
-    "attack_categories": ["prompt_injection", "jailbreak"],
-    "mutation_depth": 0
-  }' | jq -r .campaign_id)
+  -d '{"name":"PR Security Scan","target_id":"<uuid>","attack_categories":["prompt_injection","jailbreak"],"mutation_depth":0}' \
+  | jq -r .campaign_id)
 
-# Poll
 while true; do
   RESP=$(curl -sf "http://127.0.0.1:8000/api/v1/cicd/poll/$CAMPAIGN")
   STATUS=$(echo "$RESP" | jq -r .status)
@@ -332,126 +325,123 @@ while true; do
   sleep 10
 done
 
-# Gate
 if [ "$(echo "$RESP" | jq -r .should_fail_build)" = "true" ]; then
-  echo "Risk score too high — failing build"
+  echo "Risk score too high"
   exit 1
 fi
 ```
 
-Endpoints: `POST /api/v1/cicd/run`, `GET /api/v1/cicd/poll/{campaign_id}`.
+`POST /api/v1/cicd/run` and `GET /api/v1/cicd/poll/{campaign_id}`.
 
 ---
 
-## API overview
+## API
 
 | Prefix | Purpose |
 |--------|---------|
-| `/api/v1/targets` | Register and test local apps |
-| `/api/v1/campaigns` | Start and track security scans |
-| `/api/v1/attacks` | List categories and payloads; manage custom YAML |
-| `/api/v1/reports` | JSON vulnerability reports |
-| `/api/v1/conversational` | Multi-turn Crescendo attacks |
-| `/api/v1/proxy` | Blue-team prompt firewall + traffic log |
-| `/api/v1/cicd` | Pipeline triggers and polling |
+| `/api/v1/targets` | Register and probe local apps |
+| `/api/v1/campaigns` | Start and track scans |
+| `/api/v1/attacks` | Categories, payloads, custom YAML |
+| `/api/v1/reports` | JSON reports |
+| `/api/v1/conversational` | Multi-turn Crescendo runs |
+| `/api/v1/proxy` | Prompt firewall and traffic log |
+| `/api/v1/cicd` | Pipeline trigger and poll |
 | `/api/v1/dummy` | Built-in vulnerable chat |
 
-Interactive docs when the API is running: `/docs` and `/redoc`.
+Interactive docs: `/docs` and `/redoc`.
 
 ---
 
-## Project structure
+## Dashboard
 
-```
-Ayzo/
-├── apps/
-│   ├── api/                 # FastAPI backend
-│   │   ├── app/
-│   │   │   ├── attack_library/payloads/   # YAML attack definitions
-│   │   │   ├── api/v1/endpoints/          # REST routes
-│   │   │   ├── services/                  # attack engine, judge, campaign runner
-│   │   │   └── models/                    # SQLAlchemy + Pydantic schemas
-│   │   └── tests/
-│   └── web/                 # Next.js dashboard
-├── dummy_target/            # Minimal vulnerable HTTP server for demos
-├── docker-compose.yml       # Optional PostgreSQL only (API not containerized)
-├── package.json             # pnpm scripts: dev:web, dev:api
-└── README.md
-```
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing page |
+| `/dashboard` | Overview and a quick assessment |
+| `/targets` | Local projects |
+| `/campaigns` | Scan history |
+| `/conversational` | Agentic attack setup and transcript |
+| `/reports` | Findings and risk scores |
+| `/library` | Categories and custom payloads |
+| `/proxy` | Firewall traffic |
+| `/settings` | Judge model and connection test |
+| `/report-export/[id]` | Printable report |
+
+Header search filters Campaigns and Targets. **Run Assessment** is available on every dashboard page.
 
 ---
 
-## How campaigns run (internals)
+## How a campaign runs
 
-1. `campaign_runner` loads the campaign + target from SQLite
-2. Optionally boots `start_command` in `project_path`
-3. `http_target.discover_chat_endpoint()` finds a working URL + body style
-4. `attack_engine` loads YAML payloads, optional mutations, runs `test_runner`
-5. `eval_engine` judges each response; findings aggregated; risk score computed
-6. Target subprocess killed; results persisted
-7. On API restart, campaigns stuck in `pending`/`running` are marked `failed`
+1. `campaign_runner` loads the campaign and target.
+2. It boots `start_command` in `project_path` unless the command is `already running`.
+3. `http_target.discover_chat_endpoint()` picks a URL and body style.
+4. `attack_engine` loads YAML, optionally mutates, and `test_runner` sends prompts.
+5. `eval_engine` judges replies, findings are grouped, and the risk score is stored.
+6. The target subprocess is killed.
+7. On the next API start, campaigns still marked `pending` or `running` are set to `failed`.
 
-Campaigns use **in-process BackgroundTasks** (not Celery). Long scans survive only while the API process stays up.
+Scans run inside the API process. They stop if that process exits. There is no Celery queue.
 
----
-
-## Docker Compose note
-
-`docker-compose up` starts **optional PostgreSQL only**. It does not run the API or dashboard. Default setup uses SQLite with locally started `uvicorn` and `next dev`. To use Postgres:
+`docker-compose up` starts optional PostgreSQL only. It does not run the API or the dashboard. To use Postgres:
 
 ```env
 DATABASE_URL=postgresql+asyncpg://ayzo:ayzo@localhost:5432/ayzo
 ```
 
----
-
-## Dashboard pages
-
-| Route | Purpose |
-|-------|---------|
-| `/dashboard` | Overview, quick run assessment |
-| `/targets` | Register local projects |
-| `/campaigns` | Scan history and status |
-| `/reports` | Findings and risk scores |
-| `/library` | Browse attack categories; add custom payloads |
-| `/proxy` | Live firewall traffic |
-| `/settings` | Eval model and connection test |
-| `/report-export/[id]` | Printable report |
+Install `asyncpg` yourself if you take that path. The default install is SQLite.
 
 ---
 
-## Limitations (read before production use)
+## Layout
 
-- **Judge quality drives results** — A weak or offline judge increases false positives/negatives; tune `DEFAULT_EVAL_MODEL` and review evidence.
-- **HTTP-only target contract** — Websockets, SSE-only, or heavy auth flows may need custom integration.
-- **Multi-turn vs HTTP targets** — Conversational suite skips when attacking a discovered local HTTP endpoint (single-turn HTTP path).
-- **Payload cap** — Default 20 highest-severity payloads per category; raise or set `0` for full coverage.
-- **Single local user** — No multi-tenant auth yet; `user_id` filtering is in place for future auth.
+```
+Ayzo/
+├── apps/api/app/attack_library/payloads/   # YAML attacks
+├── apps/api/app/api/v1/endpoints/          # REST routes
+├── apps/api/app/services/                  # runner, HTTP client, judge
+├── apps/api/tests/
+├── apps/web/                               # Next.js dashboard
+├── dummy_target/                           # Tiny vulnerable HTTP server
+├── docker-compose.yml                      # Optional Postgres
+└── package.json                            # pnpm dev:web, dev:api
+```
+
+---
+
+## Limits
+
+- Judge quality drives the report. Review evidence, especially with a small local model.
+- Targets must answer HTTP JSON. WebSockets, SSE-only chats, and heavy auth flows need extra work.
+- Bulk campaigns are single-turn HTTP. Use Agentic Attacks for multi-turn history against a local app.
+- The default payload cap is 20 per category.
+- One local user. List endpoints already filter on `user_id` for a later auth layer.
+- A scan only finishes if the API process stays up.
 
 ---
 
 ## Development
 
 ```bash
-# All workspace dev (Turbo)
 pnpm dev
+```
 
-# API tests
+API tests:
+
+```bash
 cd apps/api
-.venv\Scripts\activate   # or source .venv/bin/activate
+.venv\Scripts\activate
 pytest
 ```
+
+On macOS or Linux, activate with `source .venv/bin/activate`.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
----
+Issues and pull requests: [github.com/krishjain-2301/Ayzo](https://github.com/krishjain-2301/Ayzo).
 
-## Contributing
-
-Issues and PRs welcome at [github.com/krishjain-2301/Ayzo](https://github.com/krishjain-2301/Ayzo).
-
-When reporting bugs, include: target start command, discovered endpoint (from target test), judge model, and a sample failed test from the campaign report.
+Include the start command, the discovered endpoint from a target test, the judge model, and one failed test from the report.

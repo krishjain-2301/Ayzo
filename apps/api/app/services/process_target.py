@@ -44,14 +44,32 @@ async def wait_for_port(port: int, timeout: int = 30) -> bool:
 
 
 async def boot_target(start_command: str, project_path: str):
-    return await asyncio.create_subprocess_shell(
-        start_command,
-        cwd=project_path or None,
+    """Start the target without a shell, so the command cannot chain extra programs."""
+    from app.services.safety import safe_argv
+
+    argv = safe_argv(start_command)
+    cwd = project_path or None
+    kwargs = dict(
+        cwd=cwd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
-        preexec_fn=os.setsid if os.name != "nt" else None,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
     )
+    if os.name != "nt":
+        kwargs["preexec_fn"] = os.setsid
+    else:
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
+    try:
+        return await asyncio.create_subprocess_exec(*argv, **kwargs)
+    except FileNotFoundError:
+        # Windows launches npm/pnpm through .cmd, which exec cannot see.
+        # The command was already rejected if it contained shell operators.
+        if os.name != "nt":
+            raise
+        return await asyncio.create_subprocess_shell(
+            start_command,
+            **kwargs,
+        )
 
 
 def kill_process(pid: int) -> None:

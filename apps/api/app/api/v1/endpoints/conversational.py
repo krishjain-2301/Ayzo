@@ -11,15 +11,15 @@ from app.models.db.target import Target
 from app.services.conversational_runner import conversational_runner
 from app.services.http_target import discover_chat_endpoint
 from app.services.process_target import boot_target, kill_process, should_skip_boot, wait_for_port
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
 
 class ConversationalAttackRequest(BaseModel):
     target_id: uuid.UUID
-    goal: str
-    max_turns: int = 5
+    goal: str = Field(..., min_length=1, max_length=2000)
+    max_turns: int = Field(default=5, ge=1, le=8)
 
 
 @router.post("/run", status_code=status.HTTP_200_OK)

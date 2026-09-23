@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CampaignCreate(BaseModel):
@@ -32,8 +32,19 @@ class CampaignCreate(BaseModel):
     attack_categories: list[str] = Field(
         ...,
         min_length=1,
+        max_length=20,
         description="Which vulnerability categories to test",
     )
+
+    @field_validator("attack_categories")
+    @classmethod
+    def categories_are_identifiers(cls, value: list[str]) -> list[str]:
+        from app.services.safety import assert_categories
+
+        try:
+            return assert_categories(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
     mutation_depth: int = Field(
         default=1,
         ge=0,  # ge = greater than or equal to
@@ -42,6 +53,8 @@ class CampaignCreate(BaseModel):
     )
     mutations_per_prompt: int = Field(
         default=1,
+        ge=1,
+        le=5,
         description="How many variants to generate per failed prompt per generation.",
     )
 

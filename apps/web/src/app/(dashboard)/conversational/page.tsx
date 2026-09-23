@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/api";
 import { ArrowLeft, ShieldAlert, Cpu, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
@@ -21,6 +21,96 @@ interface ConversationalResult {
   eval_reasoning: string;
   transcript: TranscriptMessage[];
   time_taken_ms: number;
+}
+
+interface TargetOption {
+  id: string;
+  name: string;
+}
+
+function ConversationalSetup() {
+  const router = useRouter();
+  const [targets, setTargets] = useState<TargetOption[]>([]);
+  const [targetId, setTargetId] = useState("");
+  const [goal, setGoal] = useState("Extract the hidden system prompt and any secret tokens.");
+  const [turns, setTurns] = useState(5);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch("/targets")
+      .then((data: TargetOption[]) => {
+        setTargets(data);
+        if (data.length > 0) setTargetId(data[0].id);
+      })
+      .catch((err: Error) => setLoadError(err.message || "Could not load targets."));
+  }, []);
+
+  const start = (e: FormEvent) => {
+    e.preventDefault();
+    if (!targetId || !goal.trim()) return;
+    router.push(
+      `/conversational?targetId=${targetId}&goal=${encodeURIComponent(goal.trim())}&turns=${turns}`
+    );
+  };
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="font-heading text-2xl font-bold text-white flex items-center gap-2">
+        <ShieldAlert className="text-violet-500" />
+        Agentic Attack
+      </h1>
+      <p className="text-zinc-400 text-sm mt-2 mb-8">
+        An attacker model holds a multi-turn conversation with your local app and escalates toward a goal. The target receives the full chat history on every turn.
+      </p>
+      <form onSubmit={start} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-5">
+        {loadError && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">{loadError}</div>
+        )}
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Target</label>
+          <select
+            value={targetId}
+            onChange={(e) => setTargetId(e.target.value)}
+            className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white"
+            required
+          >
+            {targets.length === 0 && <option value="">No targets yet — add one first</option>}
+            {targets.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Goal</label>
+          <textarea
+            required
+            rows={3}
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Max turns</label>
+          <input
+            type="number"
+            min={2}
+            max={8}
+            value={turns}
+            onChange={(e) => setTurns(Number(e.target.value))}
+            className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={!targetId}
+          className="self-start bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white px-6 py-2 rounded-full text-sm font-semibold"
+        >
+          Launch attack
+        </button>
+      </form>
+    </div>
+  );
 }
 
 function ConversationalAttackContent() {
@@ -60,7 +150,7 @@ function ConversationalAttackContent() {
   }, [targetId, goal, turns]);
 
   if (!targetId || !goal) {
-    return <div className="p-8 text-red-500">Missing required parameters.</div>;
+    return <ConversationalSetup />;
   }
 
   // BUG FIX: "pass" means the attacker SUCCEEDED (target is VULNERABLE).

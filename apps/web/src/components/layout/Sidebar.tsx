@@ -8,6 +8,7 @@ import {
   Swords,
   FileText,
   Library,
+  MessageSquare,
   Shield,
   Settings2,
 } from "lucide-react";
@@ -28,6 +29,7 @@ export function Sidebar() {
       label: "Testing",
       items: [
         { label: "Campaigns", href: "/campaigns", icon: Swords },
+        { label: "Agentic Attacks", href: "/conversational", icon: MessageSquare },
         { label: "Reports", href: "/reports", icon: FileText },
         { label: "Attack Library", href: "/library", icon: Library },
       ],

@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useState, Suspense } from "react";
-import { Search, Plus } from "lucide-react";
+import { useEffect, useState, Suspense } from "react";
+import { Search, Plus, Swords } from "lucide-react";
 import { RunAssessmentModal } from "@/components/RunAssessmentModal";
 
 function HeaderContent() {
@@ -10,7 +10,11 @@ function HeaderContent() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
+  const [searchValue, setSearchValue] = useState("");
+
+  useEffect(() => {
+    setSearchValue(searchParams.get("q") || "");
+  }, [searchParams]);
 
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,13 +69,20 @@ function HeaderContent() {
         }} 
       />
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <button
-          className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-          onClick={() => router.push('/targets')}
+          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-zinc-200 border border-zinc-700 hover:border-zinc-500 hover:text-white transition-colors"
+          onClick={() => router.push("/targets")}
         >
           <Plus size={16} />
           Add Target
+        </button>
+        <button
+          className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+          onClick={() => setIsAssessmentModalOpen(true)}
+        >
+          <Swords size={16} />
+          Run Assessment
         </button>
       </div>
     </header>

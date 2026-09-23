@@ -10,7 +10,7 @@
     "lint": "turbo lint",
     "clean": "turbo clean",
     "dev:web": "cd apps/web && npx next dev",
-    "dev:api": "cd apps/api && python -m uvicorn app.main:app --reload --port 8000"
+    "dev:api": "cd apps/api && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
   },
   "devDependencies": {
     "turbo": "^2.5.4"
