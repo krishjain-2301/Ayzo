@@ -12,7 +12,7 @@ Since Ayzo is now an autonomous local hacker agent, the target is defined by:
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Text, ForeignKey, Integer, Uuid
+from sqlalchemy import String, DateTime, Text, ForeignKey, Integer, JSON, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -42,6 +42,16 @@ class Target(Base):
     project_path: Mapped[str] = mapped_column(Text, nullable=False)
     start_command: Mapped[str] = mapped_column(Text, nullable=False)
     target_port: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # ---- Target profile: what AYZO knows about the app ----
+    # Chat route to try first (e.g. /api/chat). Discovery still runs if unset.
+    chat_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Strings that must never appear in a reply (keys, passwords, planted markers).
+    canaries: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    # The app's system prompt, used only to detect verbatim leaks.
+    system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Plain-language description of what the app should and should not do.
+    expected_behavior: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # status: active | running | error
     status: Mapped[str] = mapped_column(

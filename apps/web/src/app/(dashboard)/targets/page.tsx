@@ -12,6 +12,8 @@ interface Target {
   project_path: string;
   start_command: string;
   target_port: number;
+  chat_path: string | null;
+  canaries: string[] | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -37,6 +39,10 @@ function TargetsContent() {
     project_path: "",
     start_command: "",
     target_port: 3000,
+    chat_path: "",
+    canaries: "",
+    system_prompt: "",
+    expected_behavior: "",
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState("");
@@ -65,6 +71,10 @@ function TargetsContent() {
       project_path: "",
       start_command: "",
       target_port: 3000,
+      chat_path: "",
+      canaries: "",
+      system_prompt: "",
+      expected_behavior: "",
     });
     setFolderFiles(null);
     setSourceMode("path");
@@ -74,6 +84,13 @@ function TargetsContent() {
     e.preventDefault();
     setFormLoading(true);
     setFormError("");
+    // What AYZO knows about the app. Empty fields are sent as null.
+    const profile = {
+      chat_path: form.chat_path.trim() || null,
+      canaries: form.canaries.split("\n").map((c) => c.trim()).filter(Boolean),
+      system_prompt: form.system_prompt.trim() || null,
+      expected_behavior: form.expected_behavior.trim() || null,
+    };
     try {
       if (sourceMode === "upload") {
         if (!folderFiles || folderFiles.length === 0) {
@@ -102,10 +119,22 @@ function TargetsContent() {
           }
           throw new Error(message);
         }
+        const created = await response.json();
+        await apiFetch(`/targets/${created.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(profile),
+        });
       } else {
         await apiFetch("/targets", {
           method: "POST",
-          body: JSON.stringify(form),
+          body: JSON.stringify({
+            name: form.name,
+            description: form.description,
+            project_path: form.project_path,
+            start_command: form.start_command,
+            target_port: form.target_port,
+            ...profile,
+          }),
         });
       }
       setShowAddModal(false);
@@ -157,7 +186,7 @@ function TargetsContent() {
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="font-heading text-2xl font-bold text-white tracking-tight">AI Targets</h1>
-          <p className="text-zinc-400 text-sm mt-1">Manage the LLMs and agents you want to assess.</p>
+          <p className="text-zinc-400 text-sm mt-1">The local LLM apps you want to test, and what each one must protect.</p>
         </div>
         <button
           className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
@@ -235,6 +264,12 @@ function TargetsContent() {
               
               <p className="text-sm text-zinc-400 flex-1 mb-6">
                 {t.description || "No description provided."}
+                <span className="block text-xs mt-2 text-zinc-500">
+                  {t.chat_path ? `Chat path ${t.chat_path}` : "Chat path: auto-detect"} &middot;{" "}
+                  {t.canaries?.length
+                    ? `${t.canaries.length} protected value${t.canaries.length === 1 ? "" : "s"}`
+                    : "no protected values set"}
+                </span>
               </p>
 
               <div className="flex justify-between items-center pt-4 border-t border-zinc-800/50">
@@ -261,7 +296,7 @@ function TargetsContent() {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="font-heading text-xl font-bold text-white mb-6">Add New Target</h2>
             
             {formError && (
@@ -368,6 +403,53 @@ function TargetsContent() {
                     value={form.target_port}
                     onChange={(e) => setForm({ ...form, target_port: Number(e.target.value) })}
                     placeholder="3000"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-800 pt-4 flex flex-col gap-4">
+                <p className="text-xs text-zinc-500">
+                  Optional, but each of these makes the results more trustworthy.
+                </p>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Chat path</label>
+                  <input
+                    type="text"
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500"
+                    value={form.chat_path}
+                    onChange={(e) => setForm({ ...form, chat_path: e.target.value })}
+                    placeholder="/api/chat (leave blank to auto-detect)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Values that must never appear in a reply</label>
+                  <textarea
+                    rows={2}
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 font-mono"
+                    value={form.canaries}
+                    onChange={(e) => setForm({ ...form, canaries: e.target.value })}
+                    placeholder={"One per line: API keys, passwords, or a marker you planted in the system prompt"}
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">A reply containing any of these is a confirmed leak, with no judge model involved.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">What the app should and should not do</label>
+                  <textarea
+                    rows={2}
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500"
+                    value={form.expected_behavior}
+                    onChange={(e) => setForm({ ...form, expected_behavior: e.target.value })}
+                    placeholder="e.g. Answers billing questions for Acme. Must not discuss other customers or give discounts."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">System prompt</label>
+                  <textarea
+                    rows={2}
+                    className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 font-mono"
+                    value={form.system_prompt}
+                    onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
+                    placeholder="Paste it to detect verbatim leaks. Stored locally only."
                   />
                 </div>
               </div>

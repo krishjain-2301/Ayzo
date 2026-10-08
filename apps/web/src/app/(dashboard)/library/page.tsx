@@ -125,7 +125,7 @@ export default function LibraryPage() {
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Attack Library</h1>
-          <p className="text-zinc-400 text-sm mt-1">Browse adversarial payloads categorized by OWASP Top 10 for LLMs.</p>
+          <p className="text-zinc-400 text-sm mt-1">Browse the attack prompts AYZO sends to your app, grouped by what they try to make it do.</p>
         </div>
         <button
           className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
@@ -225,7 +225,7 @@ export default function LibraryPage() {
                       <p className="font-mono text-zinc-300 whitespace-pre-wrap">{payload.original_prompt}</p>
                     </div>
                     <div className="p-4">
-                      <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Success Indicators (Regex)</span>
+                      <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">{payload.is_builtin ? "What success looks like (hint for the judge)" : "Success pattern (regex, exact match)"}</span>
                       <p className="font-mono text-red-400 whitespace-pre-wrap">{payload.success_indicators}</p>
                     </div>
                   </div>

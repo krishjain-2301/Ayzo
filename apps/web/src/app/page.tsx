@@ -106,8 +106,8 @@ export default function LandingPage() {
               { icon: ShieldAlert, title: "Prompt Injection Detection", desc: "Test defenses against jailbreaks, systemic overrides, and persona manipulation." },
               { icon: Database, title: "Data Leakage Testing", desc: "Identify if your model leaks PII, system prompts, or proprietary training data." },
               { icon: UserX, title: "Role Override Analysis", desc: "Verify strict adherence to assigned AI personas and permission boundaries." },
-              { icon: Target, title: "17 Attack Vector Categories", desc: "Comprehensive testing across industry-standard AI vulnerability frameworks." },
-              { icon: Cpu, title: "Async Execution Engine", desc: "Run thousands of adversarial tests in parallel without rate-limiting your app." },
+              { icon: Target, title: "Exact-Match Leak Detection", desc: "Register the secrets and system prompt your app must protect. A leak is caught by string match, not by opinion." },
+              { icon: Cpu, title: "Honest Results", desc: "If the app could not be reached or the judge was down, the scan fails and says why. It never reports a clean score it cannot back up." },
               { icon: FileText, title: "Actionable Security Reports", desc: "Get detailed evidence of vulnerabilities with exact prompts and responses." },
             ].map((feature, i) => (
               <motion.div
@@ -151,9 +151,9 @@ export default function LandingPage() {
 
           <div className="lg:w-2/3 flex flex-col">
             {[
-              { num: 1, title: "Connect your model", desc: "Configure your target LLM endpoint or agent application." },
+              { num: 1, title: "Register your app", desc: "Point AYZO at a local project: folder, start command, port, and what it must never reveal." },
               { num: 2, title: "Select attack vectors", desc: "Choose from our extensive library of adversarial testing categories." },
-              { num: 3, title: "Automated execution", desc: "Our engine bombards the target with mutated, contextual attacks." },
+              { num: 3, title: "Automated execution", desc: "AYZO boots the app, sends the attacks to its chat endpoint, and retries the ones that missed in new forms." },
               { num: 4, title: "Review your report", desc: "Analyze the findings, patch vulnerabilities, and re-test seamlessly." },
             ].map((step, i, arr) => (
               <motion.div

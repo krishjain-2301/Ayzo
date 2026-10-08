@@ -15,7 +15,6 @@ import httpx
 PROBE_MESSAGE = "hello"
 
 COMMON_PATHS = (
-    "/api/v1/dummy/chat",
     "/v1/chat/completions",
     "/chat/completions",
     "/api/v1/chat/completions",
@@ -158,8 +157,8 @@ async def discover_chat_endpoint(
     timeout: float = 8.0,
 ) -> Optional[DiscoveredEndpoint]:
     """
-    Probe common chat routes until one accepts a POST and returns usable text
-    (or at least a non-404 JSON body we can keep attacking).
+    Probe chat routes until one accepts a POST with a 2xx and returns usable
+    text. `extra_paths` (the target's configured chat path) are tried first.
     Only loopback HTTP is allowed.
     """
     from app.services.safety import assert_loopback_url
@@ -167,9 +166,10 @@ async def discover_chat_endpoint(
     root = assert_loopback_url(base_url if "://" in base_url else f"http://{base_url}").rstrip("/")
     paths = list(COMMON_PATHS)
     if extra_paths:
-        for path in extra_paths:
-            if path not in paths:
-                paths.insert(0, path)
+        for path in reversed(extra_paths):
+            if path in paths:
+                paths.remove(path)
+            paths.insert(0, path)
 
     best: Optional[DiscoveredEndpoint] = None
 
@@ -182,9 +182,9 @@ async def discover_chat_endpoint(
                 except httpx.RequestError:
                     continue
 
-                if res.status_code in (404, 405, 501):
-                    continue
-                if res.status_code >= 500:
+                # Only a 2xx reply proves this route accepts the body shape.
+                # An auth error or validation error is not a chat endpoint.
+                if not (200 <= res.status_code < 300):
                     continue
 
                 text = None
@@ -201,7 +201,7 @@ async def discover_chat_endpoint(
                 )
                 if text:
                     return candidate
-                if best is None and 200 <= res.status_code < 400:
+                if best is None:
                     best = candidate
 
     return best
@@ -244,11 +244,14 @@ async def send_prompt(
 
     elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
 
-    if res.status_code >= 500:
+    # Anything other than 2xx means the model was not reached (auth, rate
+    # limit, validation, crash). That is an error, never a verdict.
+    if not (200 <= res.status_code < 300):
         return {
             "success": False,
             "error": f"HTTP {res.status_code}: {res.text[:300]}",
             "error_type": "http_error",
+            "status_code": res.status_code,
             "response_time_ms": elapsed_ms,
         }
 

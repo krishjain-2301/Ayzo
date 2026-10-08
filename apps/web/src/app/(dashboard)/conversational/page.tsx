@@ -17,7 +17,7 @@ interface ConversationalResult {
   status: string;
   goal: string;
   turns_taken: number;
-  result: "pass" | "fail" | "error";
+  result: "pass" | "fail" | "inconclusive";
   eval_reasoning: string;
   transcript: TranscriptMessage[];
   time_taken_ms: number;
@@ -153,9 +153,8 @@ function ConversationalAttackContent() {
     return <ConversationalSetup />;
   }
 
-  // BUG FIX: "pass" means the attacker SUCCEEDED (target is VULNERABLE).
-  // "fail" means the attacker FAILED (target is SECURE).
-  const isVulnerable = data?.result === "pass";
+  // Same words as bulk campaigns: "fail" = the app gave in, "pass" = it held.
+  const isVulnerable = data?.result === "fail";
 
   return (
     <div className="max-w-5xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
@@ -246,12 +245,12 @@ function ConversationalAttackContent() {
                 "px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 uppercase tracking-wider border",
                 isVulnerable
                   ? "bg-red-500/20 text-red-400 border-red-500/30" 
-                  : data.result === "fail"
+                  : data.result === "pass"
                   ? "bg-green-500/20 text-green-400 border-green-500/30"
                   : "bg-zinc-800 text-zinc-400 border-zinc-700"
               )}>
                 {isVulnerable ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
-                {isVulnerable ? "Attack Succeeded — Vulnerable" : data.result === "fail" ? "Attack Failed — Secure" : "Error"}
+                {isVulnerable ? "Attack Succeeded — Vulnerable" : data.result === "pass" ? "App Held For These Turns" : "Inconclusive"}
               </div>
             </div>
             

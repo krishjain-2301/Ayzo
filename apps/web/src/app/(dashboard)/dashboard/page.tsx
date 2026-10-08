@@ -60,15 +60,15 @@ export default function Dashboard() {
     actionItems.push({
       type: "critical",
       title: "Campaign Failed",
-      description: `The campaign "${failedCampaigns[0].name}" failed to complete. Please check its configuration.`,
+      description: `"${failedCampaigns[0].name}" did not produce a result: ${failedCampaigns[0].status_detail || "check its configuration."}`,
     });
   }
 
   if (actionItems.length === 0 && campaigns.length > 0) {
     actionItems.push({
       type: "success",
-      title: "All Clear",
-      description: "No pending action items. Your recent assessments look clean.",
+      title: "No findings",
+      description: "No attack in your completed assessments succeeded. That covers only the attacks that were run.",
     });
   } else if (actionItems.length === 0 && campaigns.length === 0) {
     actionItems.push({

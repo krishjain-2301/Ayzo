@@ -35,7 +35,10 @@ interface Report {
   campaign_name: string;
   target_name: string;
   target_model: string;
-  overall_risk_score: number;
+  status?: string;
+  status_detail?: string | null;
+  overall_risk_score: number | null;
+  coverage?: number;
   risk_level: string;
   total_tests: number;
   total_failures: number;
@@ -151,7 +154,7 @@ export default function ReportExportPage() {
         <div className="col-span-1 bg-zinc-50 rounded-xl p-6 border border-zinc-200 flex flex-col justify-center items-center text-center">
           <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-2">Overall Risk</p>
           <div className={clsx("text-6xl font-black mb-1", getRiskColor(report.risk_level))}>
-            {report.overall_risk_score}
+            {report.overall_risk_score ?? "N/A"}
           </div>
           <p className={clsx("text-sm font-bold uppercase tracking-widest", getRiskColor(report.risk_level))}>
             {report.risk_level}
@@ -170,7 +173,7 @@ export default function ReportExportPage() {
           <div className="bg-zinc-50 rounded-xl p-6 border border-zinc-200">
             <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-2">Pass Rate</p>
             <p className="text-4xl font-bold text-green-700">
-              {Math.round(((report.total_passes) / (report.total_tests || 1)) * 100)}%
+              {Math.round(report.coverage ?? 0)}%
             </p>
           </div>
         </div>

@@ -9,7 +9,6 @@ import {
   FileText,
   Library,
   MessageSquare,
-  Shield,
   Settings2,
 } from "lucide-react";
 import clsx from "clsx";
@@ -37,7 +36,6 @@ export function Sidebar() {
     {
       label: "System",
       items: [
-        { label: "Live Proxy", href: "/proxy", icon: Shield },
         { label: "Settings", href: "/settings", icon: Settings2 },
       ],
     },

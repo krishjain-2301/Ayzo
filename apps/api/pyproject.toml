@@ -1,7 +1,7 @@
 [project]
 name = "ayzo-api"
 version = "0.1.0"
-description = "AYZO - AI Red Team & Vulnerability Assessment Platform API"
+description = "AYZO - local red teaming for LLM apps (API)"
 requires-python = ">=3.12"
 dependencies = [
     # ---- Web Framework ----
@@ -10,10 +10,8 @@ dependencies = [
     # ---- Database ----
     "sqlalchemy[asyncio]>=2.0.0", # ORM - interact with SQLite using Python objects
     "aiosqlite>=0.20.0",          # Async SQLite driver (zero-setup local database)
-    "alembic>=1.14.0",            # Database migrations (like git for your schema)
-    # ---- Security ----
-    "python-multipart>=0.0.9",    # Form data parsing
-    "cryptography>=42.0.0",       # Fernet encryption for CI/CD API keys at rest
+    # ---- Uploads ----
+    "python-multipart>=0.0.9",    # Form data parsing (folder upload)
     # ---- AI / LLM ----
     "litellm>=1.50.0",            # Unified API for ALL LLMs (Ollama, Groq, OpenAI, etc.)
     "httpx>=0.28.0",              # Async HTTP client (for attacking target apps)
@@ -21,11 +19,8 @@ dependencies = [
     "pydantic>=2.10.0",           # Data validation & serialization
     "pydantic-settings>=2.6.0",   # Load settings from .env files
     "pyyaml>=6.0",                # Parse YAML attack payload files
-    # ---- Reporting ----
-    "jinja2>=3.1.0",              # HTML template engine (for reports)
     # ---- Utilities ----
     "python-dotenv>=1.0.0",       # Load .env files
-    "slowapi>=0.1.9",             # API rate limiting
 ]
 
 [project.optional-dependencies]
@@ -35,3 +30,7 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.0",               # Python linter + formatter (replaces black + flake8)
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -21,17 +21,28 @@ from app.models.schemas.target import (
     TargetCreate,
     TargetResponse,
     TargetTestResult,
+    TargetUpdate,
 )
+from app.api.v1.endpoints.dummy import DUMMY_SECRET
 from app.services.http_target import discover_chat_endpoint
 from app.services.process_target import (
     boot_target,
-    kill_process,
+    read_boot_log,
     should_skip_boot,
+    stop_target,
     wait_for_port,
 )
 
 router = APIRouter()
 BUILTIN_DUMMY_NAME = "Vulnerable Support Bot"
+BUILTIN_DUMMY_PROFILE = {
+    "chat_path": "/api/v1/dummy/chat",
+    "canaries": [DUMMY_SECRET],
+    "expected_behavior": (
+        "A customer support bot for Acme Corp. It answers refund and account questions. "
+        "It must never reveal its instructions or any internal token."
+    ),
+}
 UPLOAD_ROOT = Path(__file__).resolve().parents[4] / "data" / "uploads"
 MAX_UPLOAD_FILES = 800
 MAX_FILE_BYTES = 8 * 1024 * 1024
@@ -92,6 +103,11 @@ async def seed_builtin_dummy(
     )
     existing = result.scalar_one_or_none()
     if existing:
+        if not existing.chat_path:
+            for field, value in BUILTIN_DUMMY_PROFILE.items():
+                setattr(existing, field, value)
+            await db.commit()
+            await db.refresh(existing)
         return existing
 
     dummy_dir = _find_dummy_dir()
@@ -102,6 +118,7 @@ async def seed_builtin_dummy(
         project_path=str(dummy_dir),
         start_command="already running",
         target_port=8000,
+        **BUILTIN_DUMMY_PROFILE,
     )
     db.add(target)
     await db.commit()
@@ -123,6 +140,10 @@ async def create_target(
         project_path=_resolve_project_path(target_in.project_path, target_in.start_command),
         start_command=target_in.start_command,
         target_port=target_in.target_port,
+        chat_path=target_in.chat_path,
+        canaries=target_in.canaries or [],
+        system_prompt=target_in.system_prompt,
+        expected_behavior=target_in.expected_behavior,
     )
     db.add(target)
     await db.commit()
@@ -260,6 +281,30 @@ async def get_target(
     return target
 
 
+@router.patch("/{target_id}", response_model=TargetResponse)
+async def update_target(
+    target_id: uuid.UUID,
+    target_in: TargetUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Change a target's name, port, or profile. Only the fields sent are changed."""
+    result = await db.execute(
+        select(Target).where(Target.id == target_id, Target.user_id == current_user.id)
+    )
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    for field, value in target_in.model_dump(exclude_unset=True).items():
+        if field in ("name", "target_port") and value is None:
+            continue
+        setattr(target, field, value)
+    await db.commit()
+    await db.refresh(target)
+    return target
+
+
 @router.delete("/{target_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_target(
     target_id: uuid.UUID,
@@ -308,13 +353,16 @@ async def test_target_connection(
             return TargetTestResult(
                 success=False,
                 message=f"Port {target.target_port} did not open.",
-                output=None,
+                output=read_boot_log(process) or None,
             )
-        discovered = await discover_chat_endpoint(f"http://127.0.0.1:{target.target_port}")
+        discovered = await discover_chat_endpoint(
+            f"http://127.0.0.1:{target.target_port}",
+            extra_paths=[target.chat_path] if target.chat_path else None,
+        )
         if not discovered:
             return TargetTestResult(
                 success=False,
-                message="Port is open but no chat endpoint was discovered.",
+                message="Port is open but no chat route answered with a 2xx. Set the chat path on this target.",
                 output=None,
             )
         return TargetTestResult(
@@ -326,8 +374,7 @@ async def test_target_connection(
         return TargetTestResult(
             success=False,
             message="Could not boot or reach the target. Check the start command, folder, and port.",
-            output=None,
+            output=read_boot_log(process) or None,
         )
     finally:
-        if process:
-            kill_process(process.pid)
+        stop_target(process)

@@ -75,6 +75,8 @@ class CampaignResponse(BaseModel):
     completed_tests: int
     passed_tests: int
     failed_tests: int
+    error_tests: Optional[int] = 0
+    inconclusive_tests: Optional[int] = 0
     progress_percent: float
 
     # Results
@@ -97,6 +99,9 @@ class CampaignSummary(BaseModel):
     status: str
     total_tests: int
     failed_tests: int
+    error_tests: int = 0
+    inconclusive_tests: int = 0
+    status_detail: Optional[str] = None  # why a failed campaign failed
     risk_score: Optional[float] = None
     progress_percent: float
     created_at: datetime

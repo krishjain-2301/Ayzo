@@ -1,1 +1,0 @@
-# Initialize attacks module

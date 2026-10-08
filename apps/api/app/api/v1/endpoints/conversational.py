@@ -10,7 +10,8 @@ from app.models.db.user import User
 from app.models.db.target import Target
 from app.services.conversational_runner import conversational_runner
 from app.services.http_target import discover_chat_endpoint
-from app.services.process_target import boot_target, kill_process, should_skip_boot, wait_for_port
+from app.services.campaign_runner import target_profile
+from app.services.process_target import boot_target, should_skip_boot, stop_target, wait_for_port
 from pydantic import BaseModel, Field
 
 router = APIRouter()
@@ -50,19 +51,19 @@ async def run_conversational_attack(
                 status_code=400,
                 detail=f"Port {target.target_port} did not open",
             )
-        discovered = await discover_chat_endpoint(f"http://127.0.0.1:{target.target_port}")
+        discovered = await discover_chat_endpoint(
+            f"http://127.0.0.1:{target.target_port}",
+            extra_paths=[target.chat_path] if target.chat_path else None,
+        )
         if not discovered:
             raise HTTPException(status_code=400, detail="No chat endpoint discovered on the target")
 
         return await conversational_runner.run_crescendo_attack(
-            target_model="http-target",
+            endpoint=discovered.url,
+            body_style=discovered.body_style,
             goal=request.goal,
             max_turns=request.max_turns,
-            target_config={
-                "http_endpoint": discovered.url,
-                "http_body_style": discovered.body_style,
-            },
+            profile=target_profile(target),
         )
     finally:
-        if process:
-            kill_process(process.pid)
+        stop_target(process)

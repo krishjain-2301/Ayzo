@@ -21,18 +21,21 @@ FIX: chat() now accepts an optional `messages` parameter so callers
 directly instead of serialising it as a plain string.
 """
 
-import json
+import os
 import time
 from typing import Optional
 
-import httpx
+# Use the bundled price table instead of downloading one at import time.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
 import litellm
 
 from app.core.config import settings
 
 
 # Suppress LiteLLM's verbose logging in production
-litellm.set_verbose = settings.DEBUG
+litellm.set_verbose = False
+litellm.suppress_debug_info = True
 
 import asyncio
 _global_lock = None
@@ -77,7 +80,6 @@ class LLMClient:
         temperature: float = 0.7,
         max_tokens: int = 1024,
         timeout: int = 60,
-        config: Optional[dict] = None,
     ) -> dict:
         """
         Send a message (or full history) to an LLM and get a response.
@@ -95,7 +97,6 @@ class LLMClient:
             temperature:    Sampling temperature (0 = deterministic).
             max_tokens:     Maximum tokens in the response.
             timeout:        Request timeout in seconds.
-            config:         Extra model-specific config dict.
 
         Returns:
             {
@@ -124,66 +125,6 @@ class LLMClient:
         start_time = time.time()
 
         try:
-            # ------------------------------------------------------------------
-            # Dummy target (in-process, no network call)
-            # ------------------------------------------------------------------
-            if model == "dummy":
-                from app.api.v1.endpoints.dummy import chat_with_dummy_ai, ChatRequest
-                # Extract the last user message for the dummy target
-                last_user = next(
-                    (m["content"] for m in reversed(final_messages) if m["role"] == "user"),
-                    "",
-                )
-                dummy_resp = await chat_with_dummy_ai(ChatRequest(prompt=last_user))
-                elapsed_ms = (time.time() - start_time) * 1000
-                return {
-                    "success": True,
-                    "response_text": dummy_resp.response,
-                    "model": "dummy",
-                    "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-                    "response_time_ms": round(elapsed_ms, 2),
-                    "finish_reason": "stop",
-                }
-
-            # ------------------------------------------------------------------
-            # Custom webhook target
-            # ------------------------------------------------------------------
-            if model == "custom_webhook":
-                if not api_base:
-                    raise ValueError("api_base (URL) is required for custom_webhook")
-
-                cfg = config or {}
-                headers = cfg.get("headers", {})
-                if api_key:
-                    headers["Authorization"] = f"Bearer {api_key}"
-
-                # Use only the last user message for webhook payloads
-                last_user = next(
-                    (m["content"] for m in reversed(final_messages) if m["role"] == "user"),
-                    "",
-                )
-                payload_template = cfg.get("payload_template", {"prompt": "{{prompt}}"})
-                payload_str = json.dumps(payload_template).replace("{{prompt}}", last_user)
-                payload = json.loads(payload_str)
-
-                async with httpx.AsyncClient(timeout=timeout) as client:
-                    resp = await client.post(api_base, json=payload, headers=headers)
-                    resp.raise_for_status()
-                    resp_data = resp.json()
-
-                json_path = cfg.get("response_json_path", "response")
-                response_text = resp_data.get(json_path, str(resp_data))
-
-                elapsed_ms = (time.time() - start_time) * 1000
-                return {
-                    "success": True,
-                    "response_text": str(response_text),
-                    "model": "custom_webhook",
-                    "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-                    "response_time_ms": round(elapsed_ms, 2),
-                    "finish_reason": "stop",
-                }
-
             # ------------------------------------------------------------------
             # Any LiteLLM-supported provider (Ollama, OpenAI, Anthropic, etc.)
             # ------------------------------------------------------------------

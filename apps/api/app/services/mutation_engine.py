@@ -98,13 +98,13 @@ class MutationEngine:
 
         mutations = []
 
-        # Distribute count across strategies
-        per_strategy = max(1, count // len(strategies))
-        remainder = count - (per_strategy * len(strategies))
+        # Pick `count` strategies at random so every strategy gets used over
+        # time and no LLM call is made for a variant that would be dropped.
+        chosen = random.sample(strategies, min(count, len(strategies)))
+        base, extra = divmod(count, len(chosen))
 
-        for strategy in strategies:
-            n = per_strategy + (1 if remainder > 0 else 0)
-            remainder -= 1
+        for index, strategy in enumerate(chosen):
+            n = base + (1 if index < extra else 0)
 
             try:
                 if strategy == "paraphrase":

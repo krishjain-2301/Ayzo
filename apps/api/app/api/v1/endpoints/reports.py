@@ -65,6 +65,8 @@ async def get_campaign_report(
         "id": campaign.id,
         "name": campaign.name,
         "risk_score": campaign.risk_score,
+        "status": campaign.status,
+        "status_detail": campaign.description if campaign.status == "failed" else None,
         "started_at": campaign.started_at,
         "completed_at": campaign.completed_at,
     }
@@ -80,6 +82,7 @@ async def get_campaign_report(
     results_dicts = [
         {
             "result": r.result,
+            "attack_name": r.attack_name,
             "attack_category": r.attack_category,
             "severity": r.severity,
             "confidence": r.confidence,

@@ -21,6 +21,7 @@ from app.models.db.campaign import Campaign
 from app.models.db.target import Target
 from app.models.db.user import User
 from app.models.schemas.campaign import CampaignCreate, CampaignResponse, CampaignSummary
+from app.services.campaign_runner import run_campaign_async
 
 router = APIRouter()
 
@@ -57,8 +58,7 @@ async def create_campaign(
     await db.commit()
     await db.refresh(campaign)
 
-    from app.services.hacker_agent import hacker_agent
-    background_tasks.add_task(hacker_agent.run_campaign_async, str(campaign.id))
+    background_tasks.add_task(run_campaign_async, str(campaign.id))
     return campaign
 
 
@@ -74,6 +74,7 @@ async def list_campaigns(
         select(Campaign)
         .where(Campaign.user_id == current_user.id)
         .options(selectinload(Campaign.target))
+        .order_by(Campaign.created_at.desc())
         .offset(skip)
         .limit(limit)
     )
@@ -91,6 +92,9 @@ async def list_campaigns(
             "status": c.status,
             "total_tests": c.total_tests,
             "failed_tests": c.failed_tests,
+            "error_tests": c.error_tests or 0,
+            "inconclusive_tests": c.inconclusive_tests or 0,
+            "status_detail": c.description if c.status == "failed" else None,
             "risk_score": c.risk_score,
             "progress_percent": c.progress_percent,
             "created_at": c.created_at,
@@ -135,6 +139,8 @@ async def delete_campaign(
 
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if campaign.status in ("pending", "running"):
+        raise HTTPException(status_code=409, detail="This campaign is still running. Wait for it to finish.")
 
     await db.delete(campaign)
     await db.commit()

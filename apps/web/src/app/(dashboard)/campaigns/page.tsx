@@ -14,6 +14,9 @@ interface CampaignSummary {
   status: string;
   total_tests: number;
   failed_tests: number;
+  error_tests: number;
+  inconclusive_tests: number;
+  status_detail: string | null;
   risk_score: number | null;
   progress_percent: number;
   created_at: string;
@@ -55,8 +58,7 @@ function CampaignsContent() {
       await apiFetch(`/campaigns/${id}`, { method: "DELETE" });
       setCampaigns(campaigns.filter((c) => c.id !== id));
     } catch (e) {
-      console.error("Failed to delete campaign", e);
-      alert("Failed to delete campaign.");
+      alert(e instanceof Error ? e.message : "Failed to delete campaign.");
     }
   };
 
@@ -66,7 +68,7 @@ function CampaignsContent() {
     if (score >= 61) return "High";
     if (score >= 41) return "Medium";
     if (score >= 21) return "Low";
-    return "Minimal";
+    return "Info";
   };
 
   const getRiskColor = (score: number | null) => {
@@ -164,10 +166,17 @@ function CampaignsContent() {
                           Completed
                         </span>
                       ) : c.status === "failed" ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                          Failed
-                        </span>
+                        <>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            Failed
+                          </span>
+                          {c.status_detail && (
+                            <p className="text-xs text-zinc-500 mt-2 max-w-xs line-clamp-3" title={c.status_detail}>
+                              {c.status_detail}
+                            </p>
+                          )}
+                        </>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
                           <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
@@ -199,10 +208,15 @@ function CampaignsContent() {
                         {c.failed_tests || 0}
                       </span>
                       <span className="text-zinc-500 text-xs ml-1">/ {c.total_tests || 0}</span>
+                      {(c.error_tests > 0 || c.inconclusive_tests > 0) && (
+                        <p className="text-[11px] text-amber-400 mt-1">
+                          {c.error_tests + c.inconclusive_tests} without a verdict
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
-                        {c.status === "completed" && (
+                        {(c.status === "completed" || c.status === "failed") && (
                           <Link
                             href={`/reports?campaign_id=${c.id}`}
                             className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-800 text-zinc-400 hover:text-white hover:bg-violet-600 transition-colors"

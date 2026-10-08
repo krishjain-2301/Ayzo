@@ -2,7 +2,7 @@
   "name": "ayzo",
   "version": "1.0.0",
   "private": true,
-  "description": "AI Red Team & Vulnerability Assessment Platform — Local Mode",
+  "description": "Local red teaming for LLM apps",
   "packageManager": "pnpm@9.12.1",
   "scripts": {
     "dev": "turbo dev",
@@ -15,6 +15,12 @@
   "devDependencies": {
     "turbo": "^2.5.4"
   },
-  "keywords": ["ai", "security", "red-team", "llm", "vulnerability"],
+  "keywords": [
+    "ai",
+    "security",
+    "red-team",
+    "llm",
+    "vulnerability"
+  ],
   "license": "MIT"
 }

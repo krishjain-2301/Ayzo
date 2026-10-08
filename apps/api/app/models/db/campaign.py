@@ -91,6 +91,9 @@ class Campaign(Base):
     completed_tests: Mapped[int] = mapped_column(Integer, default=0)
     passed_tests: Mapped[int] = mapped_column(Integer, default=0)
     failed_tests: Mapped[int] = mapped_column(Integer, default=0)
+    # Target unreachable / non-2xx, and replies with no trustworthy verdict.
+    error_tests: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0)
+    inconclusive_tests: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0)
 
     # ---- Results ----
     # Overall risk score: 0-100 (100 = extremely vulnerable)
