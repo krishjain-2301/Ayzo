@@ -39,6 +39,8 @@ ayzo_demo.db
 *.db
 *.sqlite3
 apps/api/data/uploads/
+# Model choice and API keys saved from the dashboard
+apps/api/data/settings.json
 
 # ========================
 # IDE / Editor

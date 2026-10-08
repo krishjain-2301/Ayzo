@@ -26,6 +26,11 @@ async def lifespan(app: FastAPI):
     if added:
         print(f"[*] Database upgraded, added columns: {', '.join(added)}")
 
+    from app.services import model_settings
+
+    if model_settings.apply_saved():
+        print(f"[*] Judge model (from saved settings): {settings.DEFAULT_EVAL_MODEL}")
+
     from app.services.campaign_recovery import recover_stale_campaigns
 
     recovered = await recover_stale_campaigns()
