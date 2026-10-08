@@ -51,11 +51,27 @@ Every test ends in one of four states:
 
 ---
 
+## Dashboard
+
+| Page | What it is for |
+|------|----------------|
+| Overview | Latest and highest scores, scans that produced no result, recent scans |
+| Targets | The apps you can attack. Each target's page holds its profile, reads the project folder for suggestions, and sets how to talk to the app |
+| Scans | Every scan. A scan's page shows live progress, the verdict breakdown, what changed since the previous scan, findings, and every attack with the exact prompt and reply |
+| New scan | Pick a target, attack categories, and whether to retry attacks that missed |
+| Agentic attack | A multi-turn conversation between an attacker model and your app |
+| Attack library | Browse the attacks and write your own |
+| Settings | Choose the judge and attacker models, enter API keys for online ones |
+
+Findings are labelled by how they were decided: **Confirmed** (a string match, certain) or **Judge opinion** (a model's reading of the reply, which can be wrong).
+
+---
+
 ## Stack
 
 | Layer | Choice |
 |-------|--------|
-| Dashboard | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| Dashboard | Next.js 16, React 19, TypeScript, Tailwind CSS, IBM Plex |
 | API | FastAPI, Python 3.12, SQLAlchemy 2 (async), SQLite via `aiosqlite` |
 | Judge | LiteLLM — Groq, OpenAI, Gemini, or Ollama |
 | Jobs | `asyncio` subprocesses and FastAPI `BackgroundTasks` |
@@ -107,11 +123,11 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 pnpm dev:web
 ```
 
-Open [http://localhost:3000](http://localhost:3000). API docs are at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). **Settings → Test judge connection** confirms the judge works.
+Open [http://localhost:3000](http://localhost:3000). API docs are at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). Open **Settings** to choose the judge model: any model installed in Ollama, Claude through Claude Code, or an online provider once you enter its API key. **Save and test** confirms it answers.
 
 ### 4. First scan
 
-The dashboard creates **Vulnerable Support Bot** on first load. It is a fake chat endpoint inside the API (`POST /api/v1/dummy/chat`) with its secret token registered as a protected value. Click **Run Assessment**, keep the default categories, and launch. The report shows the leaked token as an exact-match finding.
+The dashboard creates **Vulnerable Support Bot** on first load. It is a fake chat endpoint inside the API (`POST /api/v1/dummy/chat`) with its secret token registered as a protected value. Click **New scan**, keep the default categories, and start. The scan page shows each attack as it is sent, and marks the leaked token as a confirmed finding.
 
 ---
 
@@ -154,7 +170,7 @@ AYZO guesses the request shape (`messages`, `prompt`, `message`, `input`, `query
 
 Streamed replies are read automatically: Server-Sent Events and newline-delimited JSON are joined into one text.
 
-These are set through the API for now (`POST` or `PATCH /api/v1/targets`, or the form at `/docs`):
+Set them on the target's page under **How to talk to the app**, or through the API:
 
 ```bash
 curl -X PATCH http://127.0.0.1:8000/api/v1/targets/<id> \
@@ -272,7 +288,7 @@ Files live in `apps/api/app/attack_library/payloads/`.
 | `jailbreak` | Drop its restrictions (baseline check of the model) |
 | `custom` | Your own payloads |
 
-Custom payloads are added in **Attack Library**, in `custom.yaml`, or with `POST /api/v1/attacks/payloads/custom`. Their `success_indicators` field is a regex: a matching reply is a failure.
+Custom payloads are added in **Attack library**, in `custom.yaml`, or with `POST /api/v1/attacks/payloads/custom`. Their `success_indicators` field is a regex: a matching reply is a failure.
 
 ```yaml
 attacks:
@@ -312,7 +328,7 @@ Write the rules your app must keep on the target (`"rules": ["Never give a disco
 
 ## Agentic attacks
 
-**Agentic Attacks** runs a multi-turn conversation: the mutator model writes each attacker message and escalates toward a goal you set, and the target receives the full history each turn. The result uses the same words as campaigns: `fail` means the app gave in.
+**Agentic attack** runs a multi-turn conversation: the mutator model writes each attacker message and escalates toward a goal you set, and the target receives the full history each turn. The result uses the same words as campaigns: `fail` means the app gave in.
 
 ---
 
