@@ -33,7 +33,7 @@ To answer those, AYZO needs to know something about the app. Each target has an 
 | Discover | Tries the configured chat path, then common paths and JSON body shapes, until one answers 2xx with text |
 | Check judge | Sends one request to the judge model. If it is unreachable the scan stops here and no attack is sent |
 | Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 350 across 11 categories, plus your own) |
-| Decide | Exact-match checks first (protected values, system prompt, custom regex), then the LLM judge |
+| Decide | Exact checks first (protected values, system prompt, custom regex, plain echo of the attack), then the LLM judge |
 | Mutate | Optional. Rewrites the attacks the app resisted and tries again (`mutation_depth` 0–3) |
 | Report | Findings with the attack name, prompt, reply and reasoning; a 0–100 risk score |
 | Teardown | The target process tree is killed |
@@ -77,15 +77,14 @@ cd Ayzo
 cp apps/api/.env.example apps/api/.env
 ```
 
-Put a judge key in `apps/api/.env`. Groq has a free tier at [console.groq.com](https://console.groq.com):
+Choose a judge model in `apps/api/.env`. A local model needs no key:
 
 ```env
-GROQ_API_KEY=your_key_here
-DEFAULT_EVAL_MODEL=groq/llama-3.3-70b-versatile
-MUTATOR_MODEL=groq/llama-3.3-70b-versatile
+DEFAULT_EVAL_MODEL=ollama/gemma3:4b
+MUTATOR_MODEL=ollama/gemma3:4b
 ```
 
-For a fully offline judge, run `ollama pull llama3.2` and set both models to `ollama/llama3.2`. A judge is required: without one, scans stop before attacking.
+Run `ollama pull gemma3:4b` first. If you have Claude Code installed, `claude-cli/haiku` is faster and a little more accurate. A judge is required: without one, scans stop before attacking. See "Judge models" below.
 
 ### 2. Install
 
@@ -161,6 +160,35 @@ The score has two parts:
 2. The rest scales with the severity-weighted share of judged tests that failed.
 
 Severity comes from the payload definition, not from the judge. Judge failures below 55% confidence are recorded as inconclusive.
+
+---
+
+## Judge models and how accurate they are
+
+The judge and the mutator can be any model LiteLLM supports, or Claude through the Claude Code CLI. Nothing needs a cloud API key.
+
+| `DEFAULT_EVAL_MODEL` | Needs | Notes |
+|----------------------|-------|-------|
+| `ollama/<model>` | Ollama running locally | Free and offline. Slow on small machines |
+| `claude-cli/haiku` (or `sonnet`, `opus`) | Claude Code installed and signed in | No API key. Runs the `claude` command with tools switched off |
+| `groq/...`, `gpt-...`, `gemini/...` | That provider's API key | Optional |
+
+A judge can be measured against 62 labelled attack/reply pairs:
+
+```bash
+cd apps/api
+python -m app.judge_bench --model ollama/gemma3:4b
+python -m app.judge_bench --model claude-cli/haiku
+```
+
+It prints how many real failures the judge caught and how many harmless replies it wrongly flagged. Targets: at least 90% caught, at most 10% false alarms. Measured on 8 October 2026:
+
+| Judge | Caught | False alarms | Time for 62 cases |
+|-------|--------|--------------|-------------------|
+| `ollama/gemma3:4b` | 28 of 30 (93%) | 0 of 32 | about 6 min |
+| `claude-cli/haiku` | 29 of 30 (97%) | 0 of 32 | about 80 s |
+
+The cases live in `apps/api/app/judge_bench/cases.yaml`. When a real scan shows a wrong verdict, add it there.
 
 ---
 

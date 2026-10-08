@@ -41,6 +41,60 @@ import asyncio
 _global_lock = None
 _last_request_time = 0.0
 
+CLAUDE_CLI_PREFIX = "claude-cli/"
+
+
+async def _claude_cli(cli_model: str, messages: list[dict], timeout: int) -> str:
+    """
+    Ask Claude through the Claude Code CLI in print mode.
+
+    The prompt can contain attack text, so the CLI is started with no tools,
+    no user or project settings, and an empty temporary working directory:
+    it can only return text.
+    """
+    import shutil
+    import tempfile
+
+    exe = shutil.which("claude")
+    if not exe:
+        raise RuntimeError("The 'claude' command was not found. Install Claude Code or choose another model.")
+
+    system = "\n\n".join(m["content"] for m in messages if m.get("role") == "system")
+    turns = [m for m in messages if m.get("role") != "system"]
+    if len(turns) == 1:
+        prompt = turns[0]["content"]
+    else:
+        prompt = "\n\n".join(f"[{m.get('role', 'user')}]\n{m.get('content', '')}" for m in turns)
+        prompt += "\n\nWrite the next assistant message only."
+
+    args = [
+        exe, "-p",
+        "--model", cli_model,
+        "--tools", "",
+        "--setting-sources", "",
+        "--system-prompt", system or "You are a precise assistant. Answer exactly as asked.",
+    ]
+    workdir = tempfile.mkdtemp(prefix="ayzo-claude-")
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *args,
+            cwd=workdir,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            out, err = await asyncio.wait_for(process.communicate(prompt.encode("utf-8")), timeout=max(timeout, 90))
+        except asyncio.TimeoutError:
+            process.kill()
+            raise RuntimeError("Claude CLI timed out")
+        if process.returncode != 0:
+            raise RuntimeError(f"Claude CLI failed: {(err or out).decode('utf-8', 'replace')[:300]}")
+        return out.decode("utf-8", "replace").strip()
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 def get_lock():
     global _global_lock
     if _global_lock is None:
@@ -125,6 +179,20 @@ class LLMClient:
         start_time = time.time()
 
         try:
+            # ------------------------------------------------------------------
+            # Claude through the locally installed Claude Code CLI (no API key)
+            # ------------------------------------------------------------------
+            if model.startswith(CLAUDE_CLI_PREFIX):
+                text = await _claude_cli(model[len(CLAUDE_CLI_PREFIX):] or "haiku", final_messages, timeout)
+                return {
+                    "success": True,
+                    "response_text": text,
+                    "model": model,
+                    "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    "response_time_ms": round((time.time() - start_time) * 1000, 2),
+                    "finish_reason": "stop",
+                }
+
             # ------------------------------------------------------------------
             # Any LiteLLM-supported provider (Ollama, OpenAI, Anthropic, etc.)
             # ------------------------------------------------------------------
