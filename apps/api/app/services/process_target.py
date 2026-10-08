@@ -6,6 +6,7 @@ import asyncio
 import os
 import signal
 import subprocess
+import tempfile
 from typing import Optional
 
 SKIP_BOOT_COMMANDS = {
@@ -44,14 +45,58 @@ async def wait_for_port(port: int, timeout: int = 30) -> bool:
 
 
 async def boot_target(start_command: str, project_path: str):
-    return await asyncio.create_subprocess_shell(
-        start_command,
-        cwd=project_path or None,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        preexec_fn=os.setsid if os.name != "nt" else None,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
-    )
+    """Start the target without a shell, so the command cannot chain extra programs."""
+    from app.services.safety import safe_argv
+
+    argv = safe_argv(start_command)
+    cwd = project_path or None
+    # Output goes to a file. An unread pipe fills up and freezes a chatty app,
+    # and the file lets us show the user why a boot failed.
+    log = tempfile.NamedTemporaryFile(prefix="ayzo-target-", suffix=".log", delete=False)
+    kwargs = dict(cwd=cwd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+    if os.name != "nt":
+        kwargs["preexec_fn"] = os.setsid
+    else:
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
+    try:
+        process = await asyncio.create_subprocess_exec(*argv, **kwargs)
+    except FileNotFoundError:
+        # Windows launches npm/pnpm through .cmd, which exec cannot see.
+        # The command was already rejected if it contained shell operators.
+        if os.name != "nt":
+            log.close()
+            raise
+        process = await asyncio.create_subprocess_shell(start_command, **kwargs)
+    finally:
+        log.close()
+    process.ayzo_log_path = log.name
+    return process
+
+
+def read_boot_log(process, limit: int = 1500) -> str:
+    """Last `limit` characters the target wrote to stdout/stderr."""
+    path = getattr(process, "ayzo_log_path", None)
+    if not path:
+        return ""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            return handle.read()[-limit:].strip()
+    except OSError:
+        return ""
+
+
+def stop_target(process) -> None:
+    """Kill the target's process tree and remove its log file."""
+    if process is None:
+        return
+    kill_process(process.pid)
+    path = getattr(process, "ayzo_log_path", None)
+    if path:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
 
 
 def kill_process(pid: int) -> None:

@@ -1,9 +1,4 @@
-"""
-AYZO Configuration — Local Mode
-================================
-All cloud/auth/payment settings removed.
-Only what's needed to run locally remains.
-"""
+"""AYZO settings, read from apps/api/.env and the environment."""
 
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
@@ -19,7 +14,6 @@ class Settings(BaseSettings):
     # ---- App ----
     APP_NAME: str = "AYZO"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
 
     # ---- API ----
     API_PREFIX: str = "/api/v1"
@@ -44,7 +38,6 @@ class Settings(BaseSettings):
         return v
 
     # ---- Database ----
-    # SQLite by default — zero setup required
     DATABASE_URL: str = "sqlite+aiosqlite:///./ayzo.db"
 
     # ---- LLM / AI ----
@@ -57,9 +50,6 @@ class Settings(BaseSettings):
     # 0 = run every payload in selected categories
     MAX_PAYLOADS_PER_CATEGORY: int = 20
     CICD_FAIL_RISK_THRESHOLD: float = 40.0
-
-    # ---- Blue Team Proxy ----
-    SHIELD_FAIL_OPEN: bool = False
 
     class Config:
         env_file = ".env"

@@ -56,11 +56,16 @@ interface Report {
   campaign_name: string;
   target_name: string;
   target_model: string;
-  overall_risk_score: number;
+  status: string;
+  status_detail: string | null;
+  overall_risk_score: number | null;
   risk_level: string;
   total_tests: number;
   total_failures: number;
   total_passes: number;
+  total_errors: number;
+  total_inconclusive: number;
+  coverage: number;
   overall_failure_rate: number;
   category_scores: CategoryScore[];
   findings: Finding[];
@@ -155,7 +160,7 @@ function ReportsContent() {
       <div className="max-w-4xl">
         <div className="mb-8">
           <h1 className="font-heading text-2xl font-bold text-white tracking-tight">Reports</h1>
-          <p className="text-zinc-400 text-sm mt-1">Select a completed campaign to view its vulnerability report.</p>
+          <p className="text-zinc-400 text-sm mt-1">Select a finished campaign to view its report.</p>
         </div>
 
         {reportLoading && (
@@ -244,7 +249,7 @@ function ReportsContent() {
         <div className="md:col-span-1 bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col justify-center items-center text-center">
           <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Overall Risk</p>
           <div className={clsx("font-heading text-5xl font-black mb-1", getRiskColor(report.risk_level))}>
-            {report.overall_risk_score}
+            {report.overall_risk_score ?? "—"}
           </div>
           <p className={clsx("text-sm font-bold uppercase tracking-widest", getRiskColor(report.risk_level))}>
             {report.risk_level}
@@ -255,21 +260,38 @@ function ReportsContent() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
             <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Tests Run</p>
             <p className="font-heading text-3xl font-bold text-white">{report.total_tests}</p>
+            {(report.total_errors > 0 || report.total_inconclusive > 0) && (
+              <p className="text-xs text-amber-400 mt-2">
+                {report.total_errors} target errors &middot; {report.total_inconclusive} inconclusive
+              </p>
+            )}
           </div>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
             <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Vulnerabilities</p>
             <p className="font-heading text-3xl font-bold text-red-500">{report.total_failures}</p>
           </div>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-            <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Pass Rate</p>
-            <p className="font-heading text-3xl font-bold text-green-500">
-              {Math.round(((report.total_passes) / (report.total_tests || 1)) * 100)}%
+            <p className="text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2">Verdict Coverage</p>
+            <p className={clsx("font-heading text-3xl font-bold", report.coverage >= 80 ? "text-green-500" : "text-amber-500")}>
+              {Math.round(report.coverage)}%
             </p>
+            <p className="text-xs text-zinc-500 mt-2">of tests ended in a clear pass or fail</p>
           </div>
         </div>
       </div>
 
-      {report.total_failures === 0 ? (
+      {report.status === "failed" ? (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-8 mb-8 flex items-start gap-4">
+          <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-heading text-lg font-bold text-amber-300 mb-1">This scan did not produce a result</h3>
+            <p className="text-sm text-zinc-300 whitespace-pre-wrap">
+              {report.status_detail || "The campaign failed before a score could be calculated."}
+            </p>
+            <p className="text-xs text-zinc-500 mt-3">No risk score is shown because it would not mean anything.</p>
+          </div>
+        </div>
+      ) : report.total_failures === 0 ? (
         <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-8 flex flex-col items-center text-center mb-8">
           <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 mb-4">
             <ShieldCheck size={32} />
@@ -359,7 +381,14 @@ function ReportsContent() {
                               </div>
                             )}
                             <div className="p-4 border-b border-zinc-800">
-                              <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">Input Prompt</span>
+                              <span className="text-xs text-zinc-500 uppercase tracking-widest font-semibold block mb-2">
+                                {ev.attack_name || "Input Prompt"}
+                                {ev.method && ev.method !== "judge" && (
+                                  <span className="ml-2 text-red-400 normal-case tracking-normal">
+                                    exact match ({String(ev.method).replace("_", " ")})
+                                  </span>
+                                )}
+                              </span>
                               <p className="font-mono text-zinc-300 whitespace-pre-wrap pr-32">
                                 {ev.prompt || "N/A"}
                               </p>

@@ -1,80 +1,69 @@
 """
-Database Connection Setup
-=========================
-This module creates the connection to PostgreSQL and provides
-a "session" that API endpoints use to read/write data.
+Database setup: async SQLAlchemy on a local SQLite file.
 
-Key concepts:
-- Engine: The actual connection pool to PostgreSQL
-- Session: A temporary "conversation" with the database
-- Base: The parent class that all our database models inherit from
-
-We use ASYNC here because:
-- When endpoint A is waiting for a database query, the server can
-  handle endpoint B's request instead of sitting idle.
-- This is critical when running thousands of attack tests.
+Schema changes are handled by `ensure_schema`, which creates missing tables
+and adds missing nullable columns. That is enough for a single-user local
+tool and avoids a migration framework.
 """
 
 from typing import AsyncGenerator
 
+from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 
+# timeout: wait for a competing writer instead of failing with "database is locked".
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=False,
+    connect_args={"timeout": 30},
+)
 
-# ---- Create the async engine (connection pool) ----
-# `echo=True` in debug mode prints all SQL queries to the console
-# (helpful for learning what's happening under the hood!)
-# SQLite (aiosqlite) does NOT support pool_size/max_overflow, so only
-# pass those kwargs when using a real database like PostgreSQL.
-_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
-_engine_kwargs: dict = {"echo": settings.DEBUG}
-if _is_sqlite:
-    # SQLite needs check_same_thread=False in connect_args and uses StaticPool
-    _engine_kwargs["connect_args"] = {"check_same_thread": False}
-    _engine_kwargs["poolclass"] = StaticPool
-else:
-    _engine_kwargs["pool_size"] = 20
-    _engine_kwargs["max_overflow"] = 10
-
-engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
-
-# ---- Session factory ----
-# Each API request gets its own session (isolated database conversation)
 async_session_maker = async_sessionmaker(
     engine,
     class_=AsyncSession,
-    expire_on_commit=False,  # Don't expire objects after commit
+    expire_on_commit=False,
 )
 
 
-# ---- Base class for all database models ----
-# Every table we create (users, campaigns, etc.) will inherit from this
 class Base(DeclarativeBase):
     pass
 
 
-# ---- Dependency for FastAPI ----
-# This is a "dependency injection" pattern. FastAPI calls this function
-# automatically for any endpoint that needs database access.
-# The `yield` means: create a session, give it to the endpoint,
-# and when the endpoint is done, close the session cleanly.
+def _add_missing_columns(sync_conn) -> list[str]:
+    inspector = inspect(sync_conn)
+    added = []
+    for table in Base.metadata.sorted_tables:
+        existing = {col["name"] for col in inspector.get_columns(table.name)}
+        for column in table.columns:
+            if column.name in existing:
+                continue
+            if not column.nullable:
+                raise RuntimeError(
+                    f"Column {table.name}.{column.name} is new and NOT NULL. "
+                    "Delete the database file to recreate it."
+                )
+            ddl_type = column.type.compile(dialect=sync_conn.dialect)
+            sync_conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {ddl_type}'))
+            added.append(f"{table.name}.{column.name}")
+    return added
+
+
+async def ensure_schema() -> list[str]:
+    """Create missing tables, then add columns that older databases lack."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        return await conn.run_sync(_add_missing_columns)
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Provides a database session to API endpoints.
-    
-    Usage in an endpoint:
-        @router.get("/users")
-        async def list_users(db: AsyncSession = Depends(get_db)):
-            result = await db.execute(select(User))
-            return result.scalars().all()
-    """
+    """FastAPI dependency: one session per request, committed on success."""
     async with async_session_maker() as session:
         try:
             yield session
@@ -82,5 +71,3 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()

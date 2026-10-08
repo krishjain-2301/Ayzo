@@ -23,7 +23,8 @@ async def get_current_user(
 ) -> User:
     """
     Returns the single local user. Creates them on first run.
-    No tokens, no auth headers — just works.
+    List/get endpoints filter by user_id so multi-user auth can be added later
+    without changing the schema.
     """
     result = await db.execute(select(User).where(User.id == LOCAL_USER_ID))
     user = result.scalar_one_or_none()

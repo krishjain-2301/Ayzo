@@ -1,9 +1,4 @@
-"""
-AYZO API — Main Application Entry Point (Local Mode)
-======================================================
-Auth, payments, and cloud services have been removed.
-This runs fully locally — no accounts, no internet required.
-"""
+"""AYZO API entry point. Single local user, no login, loopback only."""
 
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -11,12 +6,14 @@ load_dotenv(override=True)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, ensure_schema
 
-# Import ALL models so Base.metadata.create_all() creates every table.
-from app.models.db import user, target, campaign, test_result, finding, attack  # noqa: F401
+# Import all models so ensure_schema() sees every table.
+from app.models.db import user, target, campaign, test_result, finding  # noqa: F401
 
 
 @asynccontextmanager
@@ -25,9 +22,15 @@ async def lifespan(app: FastAPI):
     db_display = settings.DATABASE_URL.split("///")[-1]
     print(f"[*] Database: {db_display}")
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("[*] Database tables verified/created.")
+    added = await ensure_schema()
+    if added:
+        print(f"[*] Database upgraded, added columns: {', '.join(added)}")
+
+    from app.services.campaign_recovery import recover_stale_campaigns
+
+    recovered = await recover_stale_campaigns()
+    if recovered:
+        print(f"[*] Marked {recovered} stale campaign(s) as failed (previous run interrupted).")
 
     yield
 
@@ -38,8 +41,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     description=(
-        "AI Red Team & Vulnerability Assessment Platform. "
-        "Runs fully locally — no accounts, no cloud, no limits."
+        "Local red teaming for LLM apps. Boots your app, attacks its chat "
+        "endpoint, and reports which attacks worked."
     ),
     version=settings.APP_VERSION,
     lifespan=lifespan,
@@ -48,14 +51,26 @@ app = FastAPI(
 )
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+        return response
+
+
 # CORS — allow the local Next.js dev server
+_origins = [origin for origin in settings.CORS_ORIGINS if origin != "*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.get("/health", tags=["Health"])

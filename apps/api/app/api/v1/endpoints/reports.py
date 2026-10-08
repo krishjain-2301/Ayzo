@@ -33,8 +33,11 @@ async def get_campaign_report(
     """
     Generate and fetch the full vulnerability report for a campaign.
     """
-    # 1. Fetch the campaign and target
-    query = select(Campaign).options(selectinload(Campaign.target)).where(Campaign.id == campaign_id)
+    # 1. Fetch the campaign and target (scoped to current user)
+    query = select(Campaign).options(selectinload(Campaign.target)).where(
+        Campaign.id == campaign_id,
+        Campaign.user_id == current_user.id,
+    )
     result = await db.execute(query)
     campaign = result.scalar_one_or_none()
 
@@ -62,20 +65,24 @@ async def get_campaign_report(
         "id": campaign.id,
         "name": campaign.name,
         "risk_score": campaign.risk_score,
+        "status": campaign.status,
+        "status_detail": campaign.description if campaign.status == "failed" else None,
         "started_at": campaign.started_at,
         "completed_at": campaign.completed_at,
     }
     
     target_data = {
         "name": campaign.target.name if campaign.target else "Unknown",
-        "provider": campaign.target.provider if campaign.target else "",
-        "model_name": campaign.target.model_name if campaign.target else "",
+        "project_path": campaign.target.project_path if campaign.target else "",
+        "target_port": campaign.target.target_port if campaign.target else None,
+        "start_command": campaign.target.start_command if campaign.target else "",
     }
     
     # Convert ORM models to dicts
     results_dicts = [
         {
             "result": r.result,
+            "attack_name": r.attack_name,
             "attack_category": r.attack_category,
             "severity": r.severity,
             "confidence": r.confidence,

@@ -39,13 +39,7 @@ class TestResult(Base):
         nullable=False,
         index=True,
     )
-    attack_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid,
-        nullable=True,  # Mutated prompts might not have a direct attack_id
-    )
-
-    # ---- The Actual Test ----
-    # The prompt that was sent to the target model
+    attack_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     prompt_sent: Mapped[str] = mapped_column(Text, nullable=False)
 
     # The model's response

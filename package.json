@@ -2,7 +2,7 @@
   "name": "ayzo",
   "version": "1.0.0",
   "private": true,
-  "description": "AI Red Team & Vulnerability Assessment Platform — Local Mode",
+  "description": "Local red teaming for LLM apps",
   "packageManager": "pnpm@9.12.1",
   "scripts": {
     "dev": "turbo dev",
@@ -10,11 +10,17 @@
     "lint": "turbo lint",
     "clean": "turbo clean",
     "dev:web": "cd apps/web && npx next dev",
-    "dev:api": "cd apps/api && python -m uvicorn app.main:app --reload --port 8000"
+    "dev:api": "cd apps/api && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
   },
   "devDependencies": {
     "turbo": "^2.5.4"
   },
-  "keywords": ["ai", "security", "red-team", "llm", "vulnerability"],
+  "keywords": [
+    "ai",
+    "security",
+    "red-team",
+    "llm",
+    "vulnerability"
+  ],
   "license": "MIT"
 }

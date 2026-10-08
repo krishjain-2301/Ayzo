@@ -326,7 +326,7 @@ export function RunAssessmentModal({
                 <input
                   type="number"
                   min="2"
-                  max="15"
+                  max="8"
                   value={maxTurns}
                   onChange={(e) => setMaxTurns(Number(e.target.value))}
                   className="w-full bg-black border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"

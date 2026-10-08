@@ -7,8 +7,8 @@ from app.api.v1.endpoints import (
     targets,
     conversational,
     cicd,
-    proxy,
     dummy,
+    system,
 )
 
 api_router = APIRouter()
@@ -20,4 +20,4 @@ api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(dummy.router, prefix="/dummy", tags=["Dummy Target"])
 api_router.include_router(conversational.router, prefix="/conversational", tags=["Conversational"])
 api_router.include_router(cicd.router, prefix="/cicd", tags=["CI/CD Integration"])
-api_router.include_router(proxy.router, prefix="/proxy", tags=["Blue Team Proxy"])
+api_router.include_router(system.router, prefix="/system", tags=["System"])

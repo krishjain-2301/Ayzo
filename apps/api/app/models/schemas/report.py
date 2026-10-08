@@ -56,13 +56,19 @@ class ReportResponse(BaseModel):
     target_model: str
 
     # Overall risk assessment
-    overall_risk_score: float = Field(..., description="0-100 risk score")
-    risk_level: str = Field(..., description="Critical/High/Medium/Low based on score")
+    # "failed" means the scan could not produce a trustworthy score.
+    status: str = "completed"
+    status_detail: Optional[str] = None
+    overall_risk_score: Optional[float] = Field(None, description="0-100, or null when the scan failed")
+    risk_level: str = Field(..., description="Critical/High/Medium/Low/Info, or Unknown")
 
     # Summary stats
     total_tests: int
     total_failures: int
     total_passes: int
+    total_errors: int = 0
+    total_inconclusive: int = 0
+    coverage: float = Field(0.0, description="Percent of tests that ended in pass or fail")
     overall_failure_rate: float
 
     # Per-category breakdown
@@ -75,20 +81,3 @@ class ReportResponse(BaseModel):
     generated_at: datetime
     campaign_started_at: Optional[datetime] = None
     campaign_completed_at: Optional[datetime] = None
-
-
-class TestResultResponse(BaseModel):
-    """Individual test result (the raw attack/response pair)."""
-    id: UUID
-    prompt_sent: str
-    model_response: Optional[str] = None
-    result: str  # pass | fail | error | inconclusive
-    severity: Optional[str] = None
-    confidence: Optional[float] = None
-    eval_reasoning: Optional[str] = None
-    attack_category: Optional[str] = None
-    mutation_generation: int
-    executed_at: datetime
-
-    class Config:
-        from_attributes = True

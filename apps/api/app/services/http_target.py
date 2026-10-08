@@ -15,7 +15,6 @@ import httpx
 PROBE_MESSAGE = "hello"
 
 COMMON_PATHS = (
-    "/api/v1/dummy/chat",
     "/v1/chat/completions",
     "/chat/completions",
     "/api/v1/chat/completions",
@@ -59,11 +58,35 @@ class DiscoveredEndpoint:
     status_code: int
 
 
-def build_body(prompt: str, body_style: str) -> dict:
+def build_body(
+    prompt: str,
+    body_style: str,
+    messages: Optional[list[dict]] = None,
+) -> dict:
+    """
+    Build a request body. When `messages` is set (multi-turn), chat-style
+    contracts receive the full history. Single-field contracts get a transcript
+    so earlier turns are not dropped.
+    """
+    history = [m for m in (messages or []) if isinstance(m, dict) and m.get("content")]
+    if not history:
+        history = [{"role": "user", "content": prompt}]
+
+    if body_style == "messages":
+        return {"messages": history}
+    if body_style == "openai":
+        return {"model": "gpt-3.5-turbo", "messages": history}
+
+    text = prompt
+    if len(history) > 1:
+        text = "\n".join(
+            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in history
+        )
+
     for style, builder in BODY_STYLES:
         if style == body_style:
-            return builder(prompt)
-    return {"messages": [{"role": "user", "content": prompt}]}
+            return builder(text)
+    return {"messages": history}
 
 
 def extract_response_text(payload: Any) -> Optional[str]:
@@ -134,19 +157,23 @@ async def discover_chat_endpoint(
     timeout: float = 8.0,
 ) -> Optional[DiscoveredEndpoint]:
     """
-    Probe common chat routes until one accepts a POST and returns usable text
-    (or at least a non-404 JSON body we can keep attacking).
+    Probe chat routes until one accepts a POST with a 2xx and returns usable
+    text. `extra_paths` (the target's configured chat path) are tried first.
+    Only loopback HTTP is allowed.
     """
-    root = base_url.rstrip("/")
+    from app.services.safety import assert_loopback_url
+
+    root = assert_loopback_url(base_url if "://" in base_url else f"http://{base_url}").rstrip("/")
     paths = list(COMMON_PATHS)
     if extra_paths:
-        for path in extra_paths:
-            if path not in paths:
-                paths.insert(0, path)
+        for path in reversed(extra_paths):
+            if path in paths:
+                paths.remove(path)
+            paths.insert(0, path)
 
     best: Optional[DiscoveredEndpoint] = None
 
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
         for path in paths:
             url = f"{root}{path}" if path != "/" else f"{root}/"
             for style, builder in BODY_STYLES:
@@ -155,9 +182,9 @@ async def discover_chat_endpoint(
                 except httpx.RequestError:
                     continue
 
-                if res.status_code in (404, 405, 501):
-                    continue
-                if res.status_code >= 500:
+                # Only a 2xx reply proves this route accepts the body shape.
+                # An auth error or validation error is not a chat endpoint.
+                if not (200 <= res.status_code < 300):
                     continue
 
                 text = None
@@ -174,7 +201,7 @@ async def discover_chat_endpoint(
                 )
                 if text:
                     return candidate
-                if best is None and 200 <= res.status_code < 400:
+                if best is None:
                     best = candidate
 
     return best
@@ -186,20 +213,25 @@ async def send_prompt(
     body_style: str = "messages",
     timeout: float = 60.0,
     headers: Optional[dict] = None,
+    messages: Optional[list[dict]] = None,
 ) -> dict:
     """
     Send one user prompt to a discovered HTTP chat endpoint.
 
+    Pass `messages` for multi-turn attacks so the target sees prior turns.
     Returns the same shape as LLMClient.chat() so TestRunner can stay generic.
     """
     import time
 
+    from app.services.safety import assert_loopback_url
+
+    assert_loopback_url(endpoint)
     started = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             res = await client.post(
                 endpoint,
-                json=build_body(prompt, body_style),
+                json=build_body(prompt, body_style, messages),
                 headers=headers or {},
             )
     except httpx.RequestError as exc:
@@ -212,11 +244,14 @@ async def send_prompt(
 
     elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
 
-    if res.status_code >= 500:
+    # Anything other than 2xx means the model was not reached (auth, rate
+    # limit, validation, crash). That is an error, never a verdict.
+    if not (200 <= res.status_code < 300):
         return {
             "success": False,
             "error": f"HTTP {res.status_code}: {res.text[:300]}",
             "error_type": "http_error",
+            "status_code": res.status_code,
             "response_time_ms": elapsed_ms,
         }
 

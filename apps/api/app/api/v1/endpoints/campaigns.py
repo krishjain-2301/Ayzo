@@ -3,40 +3,28 @@ Campaign Endpoints
 ==================
 CRUD operations and execution for security testing campaigns.
 
-When a campaign is created, we use FastAPI's BackgroundTasks to
-run the Attack Engine asynchronously. This means the API returns
-immediately (so the frontend doesn't hang), while the heavy testing
-runs in the background.
-
-FIX: target.api_key is now decrypted before being passed to the attack
-engine so the LLM client receives the raw plaintext key, not the
-"fernet:<token>" string.
+Campaigns run in-process via FastAPI BackgroundTasks (see README). On API
+restart, orphaned pending/running rows are marked failed at startup.
 """
 
 import uuid
-from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
-from app.core.database import get_db, async_session_maker
-from app.core.crypto import decrypt_api_key
+from app.core.database import get_db
 from app.models.db.campaign import Campaign
 from app.models.db.target import Target
 from app.models.db.user import User
-from app.models.db.test_result import TestResult
-from app.models.db.finding import Finding
 from app.models.schemas.campaign import CampaignCreate, CampaignResponse, CampaignSummary
-from app.services.attack_engine import attack_engine
+from app.services.campaign_runner import run_campaign_async
 
 router = APIRouter()
 
-
-# The background execution logic has been moved to app.workers.tasks.
 
 @router.post("", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
 async def create_campaign(
@@ -46,13 +34,15 @@ async def create_campaign(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new campaign and start it in the background."""
-    query = select(Target).where(Target.id == campaign_in.target_id)
+    query = select(Target).where(
+        Target.id == campaign_in.target_id,
+        Target.user_id == current_user.id,
+    )
     result = await db.execute(query)
     target = result.scalar_one_or_none()
 
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
-
 
     campaign = Campaign(
         user_id=current_user.id,
@@ -68,8 +58,7 @@ async def create_campaign(
     await db.commit()
     await db.refresh(campaign)
 
-    from app.services.hacker_agent import hacker_agent
-    background_tasks.add_task(hacker_agent.run_campaign_async, str(campaign.id))
+    background_tasks.add_task(run_campaign_async, str(campaign.id))
     return campaign
 
 
@@ -77,16 +66,18 @@ async def create_campaign(
 async def list_campaigns(
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
 ):
-    """List all campaigns with summary info."""
+    """List campaigns for the current user."""
     query = (
-            select(Campaign)
-            .options(selectinload(Campaign.target))
-            .offset(skip)
-            .limit(limit)
-        )
+        select(Campaign)
+        .where(Campaign.user_id == current_user.id)
+        .options(selectinload(Campaign.target))
+        .order_by(Campaign.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
 
     result = await db.execute(query)
     campaigns = result.scalars().all()
@@ -101,6 +92,9 @@ async def list_campaigns(
             "status": c.status,
             "total_tests": c.total_tests,
             "failed_tests": c.failed_tests,
+            "error_tests": c.error_tests or 0,
+            "inconclusive_tests": c.inconclusive_tests or 0,
+            "status_detail": c.description if c.status == "failed" else None,
             "risk_score": c.risk_score,
             "progress_percent": c.progress_percent,
             "created_at": c.created_at,
@@ -116,7 +110,10 @@ async def get_campaign(
     db: AsyncSession = Depends(get_db),
 ):
     """Get detailed campaign status."""
-    query = select(Campaign).where(Campaign.id == campaign_id)
+    query = select(Campaign).where(
+        Campaign.id == campaign_id,
+        Campaign.user_id == current_user.id,
+    )
     result = await db.execute(query)
     campaign = result.scalar_one_or_none()
 
@@ -133,12 +130,17 @@ async def delete_campaign(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a campaign and all its associated results."""
-    query = select(Campaign).where(Campaign.id == campaign_id)
+    query = select(Campaign).where(
+        Campaign.id == campaign_id,
+        Campaign.user_id == current_user.id,
+    )
     result = await db.execute(query)
     campaign = result.scalar_one_or_none()
 
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if campaign.status in ("pending", "running"):
+        raise HTTPException(status_code=409, detail="This campaign is still running. Wait for it to finish.")
 
     await db.delete(campaign)
     await db.commit()
