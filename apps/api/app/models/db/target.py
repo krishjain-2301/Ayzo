@@ -53,6 +53,19 @@ class Target(Base):
     # Plain-language description of what the app should and should not do.
     expected_behavior: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # ---- How to talk to the app (all optional; unset means discover it) ----
+    # Headers sent with every request, e.g. {"Authorization": "Bearer ..."}.
+    request_headers: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
+    # JSON field that carries the prompt, e.g. "question". "messages" = chat history.
+    request_field: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Dotted path to the reply text, e.g. "data.answer".
+    response_field: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Extra JSON fields added to every request, e.g. {"stream": true}.
+    extra_body: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
+    # "client": AYZO sends the whole conversation each turn (default).
+    # "server": the app remembers the session; AYZO sends only the new message.
+    history_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
     # status: active | running | error
     status: Mapped[str] = mapped_column(
         String(20),

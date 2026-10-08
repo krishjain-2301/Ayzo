@@ -132,6 +132,7 @@ class AttackEngine:
         profile: Optional[dict] = None,
         timeout: float = 60.0,
         progress_callback: Optional[Callable] = None,
+        http_options: Optional[dict] = None,
     ) -> dict:
         """
         Returns status ("completed" | "failed"), counts, coverage, risk_score
@@ -177,6 +178,7 @@ class AttackEngine:
                 body_style=body_style,
                 timeout=timeout,
                 profile=profile,
+                http_options=http_options,
                 progress_callback=_progress,
             )
             all_results.extend(gen_results)

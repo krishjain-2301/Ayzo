@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     # 0 = run every payload in selected categories
     MAX_PAYLOADS_PER_CATEGORY: int = 20
     CICD_FAIL_RISK_THRESHOLD: float = 40.0
+    # How long to wait for one reply from the target app.
+    TARGET_TIMEOUT_SECONDS: float = 120.0
 
     class Config:
         env_file = ".env"

@@ -140,7 +140,55 @@ curl -X POST http://127.0.0.1:8000/api/v1/targets \
 
 `PATCH /api/v1/targets/{id}` changes the profile of an existing target.
 
-The app must accept a JSON POST and answer with JSON or text. Supported request shapes: `messages`, `prompt`, `message`, `input`, `query`, `text`, and OpenAI-style. Apps that need a login, or that only stream over SSE or WebSockets, are not supported yet.
+### Apps that do not match the defaults
+
+AYZO guesses the request shape (`messages`, `prompt`, `message`, `input`, `query`, `text`, OpenAI-style). When your app is different, say so on the target:
+
+| Field | Example | Use it when |
+|-------|---------|-------------|
+| `request_headers` | `{"Authorization": "Bearer abc"}` | The app needs a key. Values are stored locally and shown masked |
+| `request_field` | `question` | The prompt goes in a field AYZO does not guess. Use `messages` to force chat history |
+| `response_field` | `data.answer` | The reply text is nested. Dotted path; list indexes allowed (`choices.0.text`) |
+| `extra_body` | `{"stream": true, "model": "x"}` | The app requires other fields in every request |
+| `history_mode` | `server` | The app remembers the conversation itself (by cookie). AYZO then sends only the new message in agentic attacks |
+
+Streamed replies are read automatically: Server-Sent Events and newline-delimited JSON are joined into one text.
+
+These are set through the API for now (`POST` or `PATCH /api/v1/targets`, or the form at `/docs`):
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/v1/targets/<id> \
+  -H "Content-Type: application/json" \
+  -d '{"chat_path":"/ask","request_field":"question","response_field":"data.answer","request_headers":{"X-Api-Key":"abc"}}'
+```
+
+Not supported yet: WebSockets, and login flows that need more than a fixed header.
+
+---
+
+## Practice bots: does AYZO work?
+
+`practice_bot/` is a real chatbot that runs on a local Ollama model. It has two modes holding the same two secrets:
+
+- **weak** (port 5001): a plain system prompt with the secrets in it.
+- **hardened** (port 5002): a defensive prompt, customer text fenced as data, and an output filter that blocks the secrets.
+
+`POST /api/v1/targets/practice-bots` registers both as targets with the secrets as protected values. To check that AYZO tells them apart:
+
+```bash
+cd apps/api
+python -m app.practice_check --runs 3 --per-category 10 --judge claude-cli/haiku
+```
+
+It scans each bot and passes when the weak bot scores higher than the hardened one in every run. Each scan takes several minutes on a small machine because the bot and the judge share the local model.
+
+Measured on 8 October 2026 (bot on `gemma3:4b`, judge `claude-cli/haiku`, 30 attacks per scan):
+
+| Run | Weak bot | Hardened bot |
+|-----|----------|--------------|
+| 1 | risk 82.1, 17 attacks worked, 11 exact-match leaks | risk 41.9, 1 attack worked, 0 leaks |
+| 2 | risk 75.2, 18 attacks worked, 10 exact-match leaks | risk 41.9, 1 attack worked, 0 leaks |
+| 3 | risk 84.2, 19 attacks worked, 13 exact-match leaks | risk 41.9, 1 attack worked, 0 leaks |
 
 ---
 
@@ -269,6 +317,7 @@ Set in `apps/api/.env`.
 | `MAX_CONCURRENT_ATTACKS` | `5` | Parallel requests to the target |
 | `MAX_PAYLOADS_PER_CATEGORY` | `20` | Cap per category. `0` means no cap |
 | `CICD_FAIL_RISK_THRESHOLD` | `40` | CI fails above this score |
+| `TARGET_TIMEOUT_SECONDS` | `120` | How long to wait for one reply from the app |
 | `CORS_ORIGINS` | localhost:3000 | Allowed dashboard origins |
 
 The dashboard reads `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`) from the root `.env`.
@@ -297,7 +346,8 @@ Ayzo/
 ├── apps/api/app/services/                  # runner, HTTP client, judge, scoring
 ├── apps/api/tests/
 ├── apps/web/                               # Next.js dashboard
-└── dummy_target/                           # Tiny vulnerable server for trying the boot flow
+├── practice_bot/                           # Real chatbot on Ollama, weak and hardened modes
+└── dummy_target/                           # Tiny scripted server for trying the boot flow
 ```
 
 `dummy_target` is a standalone example: register its folder with start command `python app.py` and port `5000`.
@@ -308,7 +358,7 @@ Ayzo/
 
 - The LLM judge can be wrong. Exact-match findings are certain; judge findings come with the reply and reasoning so you can check them.
 - Results vary between runs because the target and the mutator are not deterministic.
-- The app must answer plain HTTP JSON without authentication.
+- The app must be reachable over plain HTTP on localhost. WebSockets and interactive logins are not supported.
 - AYZO sees only the text reply. It cannot see whether a tool was really called.
 - Scans run inside the API process. If it stops, running campaigns are marked failed on the next start. Results saved up to that point are kept.
 

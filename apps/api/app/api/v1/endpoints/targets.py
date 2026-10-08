@@ -4,6 +4,7 @@ Target Endpoints
 CRUD operations for local project targets.
 """
 
+import json
 import shutil
 import uuid
 from pathlib import Path
@@ -24,6 +25,7 @@ from app.models.schemas.target import (
     TargetUpdate,
 )
 from app.api.v1.endpoints.dummy import DUMMY_SECRET
+from app.services.campaign_runner import target_http_options
 from app.services.http_target import discover_chat_endpoint
 from app.services.process_target import (
     boot_target,
@@ -126,6 +128,61 @@ async def seed_builtin_dummy(
     return target
 
 
+def _find_practice_dir() -> Path | None:
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "practice_bot"
+        if (candidate / "profile.json").is_file():
+            return candidate
+    return None
+
+
+@router.post("/practice-bots", response_model=list[TargetResponse])
+async def seed_practice_bots(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create or return the two practice targets: a real chatbot on a local
+    Ollama model, once with a weak prompt and once hardened. Both hold the
+    same secrets, registered here as protected values.
+    """
+    practice_dir = _find_practice_dir()
+    if practice_dir is None:
+        raise HTTPException(status_code=404, detail="The practice_bot folder was not found next to the API.")
+    profile = json.loads((practice_dir / "profile.json").read_text(encoding="utf-8"))
+
+    targets = []
+    for mode, label in (("weak", "Practice bot (weak)"), ("hardened", "Practice bot (hardened)")):
+        result = await db.execute(
+            select(Target).where(Target.name == label, Target.user_id == current_user.id)
+        )
+        target = result.scalar_one_or_none()
+        if target is None:
+            target = Target(
+                user_id=current_user.id,
+                name=label,
+                description=(
+                    "A real chatbot on a local Ollama model with no defences."
+                    if mode == "weak"
+                    else "The same chatbot with a defensive prompt, fenced input and an output filter."
+                ),
+                project_path=str(practice_dir),
+                start_command=f"python app.py {mode}",
+                target_port=profile[mode]["port"],
+                chat_path="/chat",
+                request_field="messages",
+                canaries=profile["secrets"],
+                system_prompt=profile[mode]["system_prompt"],
+                expected_behavior=profile["expected_behavior"],
+            )
+            db.add(target)
+        targets.append(target)
+    await db.commit()
+    for target in targets:
+        await db.refresh(target)
+    return targets
+
+
 @router.post("", response_model=TargetResponse, status_code=status.HTTP_201_CREATED)
 async def create_target(
     target_in: TargetCreate,
@@ -144,6 +201,11 @@ async def create_target(
         canaries=target_in.canaries or [],
         system_prompt=target_in.system_prompt,
         expected_behavior=target_in.expected_behavior,
+        request_headers=target_in.request_headers or {},
+        request_field=target_in.request_field,
+        response_field=target_in.response_field,
+        extra_body=target_in.extra_body or {},
+        history_mode=target_in.history_mode,
     )
     db.add(target)
     await db.commit()
@@ -358,11 +420,12 @@ async def test_target_connection(
         discovered = await discover_chat_endpoint(
             f"http://127.0.0.1:{target.target_port}",
             extra_paths=[target.chat_path] if target.chat_path else None,
+            options=target_http_options(target),
         )
         if not discovered:
             return TargetTestResult(
                 success=False,
-                message="Port is open but no chat route answered with a 2xx. Set the chat path on this target.",
+                message="Port is open but no chat route answered with a 2xx. Set the chat path and request field, and add a request header if the app needs a key.",
                 output=None,
             )
         return TargetTestResult(

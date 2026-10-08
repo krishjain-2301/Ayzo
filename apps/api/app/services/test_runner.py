@@ -34,6 +34,7 @@ class TestRunner:
         body_style: str = "messages",
         timeout: float = 60.0,
         profile: Optional[dict] = None,
+        http_options: Optional[dict] = None,
     ) -> dict:
         """
         `test` needs prompt and category; name, severity, success_indicators,
@@ -57,6 +58,7 @@ class TestRunner:
             prompt=test["prompt"],
             body_style=body_style,
             timeout=timeout,
+            options=http_options,
         )
 
         if not reply["success"]:
@@ -108,6 +110,7 @@ class TestRunner:
         body_style: str = "messages",
         timeout: float = 60.0,
         profile: Optional[dict] = None,
+        http_options: Optional[dict] = None,
         max_concurrent: Optional[int] = None,
         progress_callback=None,
     ) -> list[dict]:
@@ -119,7 +122,7 @@ class TestRunner:
             nonlocal completed
             async with semaphore:
                 try:
-                    result = await self.run_single_test(test, endpoint, body_style, timeout, profile)
+                    result = await self.run_single_test(test, endpoint, body_style, timeout, profile, http_options)
                 except Exception as exc:
                     result = {
                         "id": str(uuid.uuid4()),

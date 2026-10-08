@@ -1,13 +1,17 @@
 """API contracts for local project targets."""
 
+import json
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
 _CHAT_PATH = re.compile(r"^/[\w\-./]{0,254}$")
+_HEADER_NAME = re.compile(r"^[A-Za-z0-9-]{1,64}$")
+_REQUEST_FIELD = re.compile(r"^[A-Za-z_][\w-]{0,63}$")
+_RESPONSE_FIELD = re.compile(r"^[\w-]+(\.[\w-]+){0,9}$")
 
 
 class TargetProfile(BaseModel):
@@ -27,6 +31,13 @@ class TargetProfile(BaseModel):
     )
     system_prompt: Optional[str] = Field(None, max_length=20000)
     expected_behavior: Optional[str] = Field(None, max_length=2000)
+
+    # How to talk to the app. Unset fields are discovered by probing.
+    request_headers: Optional[dict[str, str]] = Field(None, description='Sent with every request, e.g. an Authorization header')
+    request_field: Optional[str] = Field(None, description="JSON field that carries the prompt, or 'messages' for chat history")
+    response_field: Optional[str] = Field(None, description='Dotted path to the reply text, e.g. data.answer')
+    extra_body: Optional[dict] = Field(None, description='Extra JSON fields for every request')
+    history_mode: Optional[Literal['client', 'server']] = Field(None, description="Who keeps the conversation: 'client' (default) or 'server'")
 
     @field_validator("chat_path")
     @classmethod
@@ -48,6 +59,47 @@ class TargetProfile(BaseModel):
             if not (4 <= len(canary) <= 200):
                 raise ValueError("Each protected value must be 4 to 200 characters long")
         return cleaned
+
+    @field_validator("request_headers")
+    @classmethod
+    def headers_are_safe(cls, value: Optional[dict]) -> Optional[dict]:
+        if value is None:
+            return None
+        if len(value) > 10:
+            raise ValueError("At most 10 request headers")
+        for name, header_value in value.items():
+            if not _HEADER_NAME.match(name):
+                raise ValueError(f"Header name is not valid: {name[:40]}")
+            if not isinstance(header_value, str) or len(header_value) > 2000 or "\n" in header_value or "\r" in header_value:
+                raise ValueError(f"Header value is not valid for {name}")
+        return value
+
+    @field_validator("request_field")
+    @classmethod
+    def request_field_is_a_name(cls, value: Optional[str]) -> Optional[str]:
+        value = (value or "").strip()
+        if not value:
+            return None
+        if not _REQUEST_FIELD.match(value):
+            raise ValueError("Request field must be a JSON field name such as question")
+        return value
+
+    @field_validator("response_field")
+    @classmethod
+    def response_field_is_a_path(cls, value: Optional[str]) -> Optional[str]:
+        value = (value or "").strip()
+        if not value:
+            return None
+        if not _RESPONSE_FIELD.match(value):
+            raise ValueError("Response field must be a dotted path such as data.answer")
+        return value
+
+    @field_validator("extra_body")
+    @classmethod
+    def extra_body_is_small(cls, value: Optional[dict]) -> Optional[dict]:
+        if value is not None and len(json.dumps(value)) > 2000:
+            raise ValueError("Extra body is too large")
+        return value
 
     @field_validator("system_prompt", "expected_behavior")
     @classmethod
@@ -87,12 +139,26 @@ class TargetResponse(BaseModel):
     canaries: Optional[list[str]] = None
     system_prompt: Optional[str] = None
     expected_behavior: Optional[str] = None
+    # Header values are masked: they are usually credentials.
+    request_headers: Optional[dict[str, str]] = None
+    request_field: Optional[str] = None
+    response_field: Optional[str] = None
+    extra_body: Optional[dict] = None
+    history_mode: Optional[str] = None
     status: str
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+    @field_validator("request_headers")
+    @classmethod
+    def mask_header_values(cls, value: Optional[dict]) -> Optional[dict]:
+        if not value:
+            return value
+        return {name: (v[:4] + "***" if len(v) > 8 else "***") for name, v in value.items()}
 
 
 class TargetTestResult(BaseModel):

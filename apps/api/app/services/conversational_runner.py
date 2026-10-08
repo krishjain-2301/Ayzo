@@ -12,6 +12,8 @@ The result uses the same words as bulk campaigns:
 import time
 from typing import Optional
 
+import httpx
+
 from app.core.config import settings
 from app.services.eval_engine import eval_engine
 from app.services.http_target import send_prompt
@@ -26,8 +28,21 @@ class ConversationalRunner:
         goal: str,
         max_turns: int = 5,
         profile: Optional[dict] = None,
+        http_options: Optional[dict] = None,
+        timeout: float = 120.0,
     ) -> dict:
         profile = profile or {}
+        http_options = http_options or {}
+        # An app that keeps the conversation itself gets only the new message,
+        # on one connection so its session cookie is kept between turns.
+        server_keeps_history = http_options.get("history_mode") == "server"
+        session = httpx.AsyncClient(follow_redirects=False)
+        try:
+            return await self._run(endpoint, body_style, goal, max_turns, profile, http_options, timeout, server_keeps_history, session)
+        finally:
+            await session.aclose()
+
+    async def _run(self, endpoint, body_style, goal, max_turns, profile, http_options, timeout, server_keeps_history, session) -> dict:
         attacker_model = settings.MUTATOR_MODEL or settings.DEFAULT_EVAL_MODEL
 
         attacker_history = [{
@@ -73,7 +88,10 @@ class ConversationalRunner:
                 endpoint=endpoint,
                 prompt=attack_prompt,
                 body_style=body_style,
-                messages=target_history,
+                messages=None if server_keeps_history else target_history,
+                timeout=timeout,
+                options=http_options,
+                client=session,
             )
             if not target_resp["success"]:
                 return {"status": "error", "message": f"Target failed: {target_resp.get('error')}"}

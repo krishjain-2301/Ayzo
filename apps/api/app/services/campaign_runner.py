@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.database import async_session_maker
 from app.models.db.campaign import Campaign
 from app.models.db.finding import Finding
@@ -37,6 +38,17 @@ def target_profile(target: Target) -> dict:
         "canaries": [c for c in (target.canaries or []) if isinstance(c, str) and c.strip()],
         "system_prompt": target.system_prompt,
         "expected_behavior": target.expected_behavior,
+    }
+
+
+def target_http_options(target: Target) -> dict:
+    """How to talk to the app: the parts of the profile the HTTP client needs."""
+    return {
+        "headers": dict(target.request_headers or {}),
+        "request_field": target.request_field,
+        "response_field": target.response_field,
+        "extra_body": dict(target.extra_body or {}),
+        "history_mode": target.history_mode or "client",
     }
 
 
@@ -136,14 +148,17 @@ async def run_campaign_async(campaign_id: str) -> None:
                 await fail(reason)
                 return
 
+            http_options = target_http_options(target)
             discovered = await discover_chat_endpoint(
                 f"http://127.0.0.1:{target.target_port}",
                 extra_paths=[target.chat_path] if target.chat_path else None,
+                timeout=min(settings.TARGET_TIMEOUT_SECONDS, 30),
+                options=http_options,
             )
             if not discovered:
                 await fail(
-                    "No chat endpoint answered with a 2xx. Set the target's chat path, "
-                    "and check the app does not need a login or API key."
+                    "No chat endpoint answered with a 2xx. Set the target's chat path and request field, "
+                    "and add a request header if the app needs a key."
                 )
                 return
             print(f"[CAMPAIGN] Using {discovered.path} (body={discovered.body_style})")
@@ -176,6 +191,8 @@ async def run_campaign_async(campaign_id: str) -> None:
                 mutation_depth=campaign.mutation_depth,
                 mutations_per_prompt=campaign.mutations_per_prompt,
                 profile=target_profile(target),
+                http_options=http_options,
+                timeout=settings.TARGET_TIMEOUT_SECONDS,
                 progress_callback=progress_cb,
             )
 

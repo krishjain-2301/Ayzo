@@ -10,7 +10,8 @@ from app.models.db.user import User
 from app.models.db.target import Target
 from app.services.conversational_runner import conversational_runner
 from app.services.http_target import discover_chat_endpoint
-from app.services.campaign_runner import target_profile
+from app.core.config import settings
+from app.services.campaign_runner import target_http_options, target_profile
 from app.services.process_target import boot_target, should_skip_boot, stop_target, wait_for_port
 from pydantic import BaseModel, Field
 
@@ -51,9 +52,11 @@ async def run_conversational_attack(
                 status_code=400,
                 detail=f"Port {target.target_port} did not open",
             )
+        http_options = target_http_options(target)
         discovered = await discover_chat_endpoint(
             f"http://127.0.0.1:{target.target_port}",
             extra_paths=[target.chat_path] if target.chat_path else None,
+            options=http_options,
         )
         if not discovered:
             raise HTTPException(status_code=400, detail="No chat endpoint discovered on the target")
@@ -64,6 +67,8 @@ async def run_conversational_attack(
             goal=request.goal,
             max_turns=request.max_turns,
             profile=target_profile(target),
+            http_options=http_options,
+            timeout=settings.TARGET_TIMEOUT_SECONDS,
         )
     finally:
         stop_target(process)
