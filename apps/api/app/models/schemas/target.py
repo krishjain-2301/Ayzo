@@ -31,6 +31,9 @@ class TargetProfile(BaseModel):
     )
     system_prompt: Optional[str] = Field(None, max_length=20000)
     expected_behavior: Optional[str] = Field(None, max_length=2000)
+    rules: Optional[list[str]] = Field(
+        None, max_length=10, description="Rules the app must keep; used by the business_rules category"
+    )
 
     # How to talk to the app. Unset fields are discovered by probing.
     request_headers: Optional[dict[str, str]] = Field(None, description='Sent with every request, e.g. an Authorization header')
@@ -58,6 +61,17 @@ class TargetProfile(BaseModel):
         for canary in cleaned:
             if not (4 <= len(canary) <= 200):
                 raise ValueError("Each protected value must be 4 to 200 characters long")
+        return cleaned
+
+    @field_validator("rules")
+    @classmethod
+    def rules_are_usable(cls, value: Optional[list[str]]) -> Optional[list[str]]:
+        if value is None:
+            return None
+        cleaned = [r.strip() for r in value if r and r.strip()]
+        for rule in cleaned:
+            if not (5 <= len(rule) <= 300):
+                raise ValueError("Each rule must be 5 to 300 characters long")
         return cleaned
 
     @field_validator("request_headers")
@@ -139,6 +153,7 @@ class TargetResponse(BaseModel):
     canaries: Optional[list[str]] = None
     system_prompt: Optional[str] = None
     expected_behavior: Optional[str] = None
+    rules: Optional[list[str]] = None
     # Header values are masked: they are usually credentials.
     request_headers: Optional[dict[str, str]] = None
     request_field: Optional[str] = None

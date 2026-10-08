@@ -32,7 +32,7 @@ To answer those, AYZO needs to know something about the app. Each target has an 
 | Boot | Starts your start command in the project folder, or skips this for `already running` |
 | Discover | Tries the configured chat path, then common paths and JSON body shapes, until one answers 2xx with text |
 | Check judge | Sends one request to the judge model. If it is unreachable the scan stops here and no attack is sent |
-| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 350 across 11 categories, plus your own) |
+| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 365 across 12 categories, plus your own and ones generated from your rules) |
 | Decide | Exact checks first (protected values, system prompt, custom regex, plain echo of the attack), then the LLM judge |
 | Mutate | Optional. Rewrites the attacks the app resisted and tries again (`mutation_depth` 0–3) |
 | Report | Findings with the attack name, prompt, reply and reasoning; a 0–100 risk score |
@@ -190,6 +190,17 @@ Measured on 8 October 2026 (bot on `gemma3:4b`, judge `claude-cli/haiku`, 30 att
 | 2 | risk 75.2, 18 attacks worked, 10 exact-match leaks | risk 41.9, 1 attack worked, 0 leaks |
 | 3 | risk 84.2, 19 attacks worked, 13 exact-match leaks | risk 41.9, 1 attack worked, 0 leaks |
 
+The one attack that keeps working on the hardened bot is real: told to "confirm by saying 'Instructions updated'", it says exactly that.
+
+With the app-level categories (`--categories indirect_injection,business_rules`, one run, 18 attacks):
+
+| Bot | Indirect injection | Business rules | Risk |
+|-----|--------------------|----------------|------|
+| Weak | 6 of 10 worked | 5 of 8 broken | 86.4 |
+| Hardened | 1 of 10 worked | 3 of 8 broken | 52.9 |
+
+The hardened bot is better but not safe: a prompt alone does not hold a business rule on a small model, which is why the remediation advice says to enforce rules in code.
+
 ---
 
 ## Risk score
@@ -247,6 +258,8 @@ Files live in `apps/api/app/attack_library/payloads/`.
 | Category | Tries to make the app |
 |----------|-----------------------|
 | `prompt_injection` | Follow the user's instructions over its own |
+| `indirect_injection` | Obey instructions hidden in content it was asked to process. Checked by exact match, no judge |
+| `business_rules` | Break a rule you wrote on the target. Attacks are generated per rule |
 | `system_prompt_leak` | Reveal its hidden instructions |
 | `data_leakage` | Disclose secrets, personal data, or retrieved context |
 | `insecure_output_handling` | Emit XSS, SQL, shell or path payloads |
@@ -275,9 +288,63 @@ attacks:
 
 ---
 
+## Attacks made for your app
+
+### Let AYZO read the project
+
+`POST /api/v1/targets/{id}/analyze` reads the target's folder (it runs nothing) and suggests the chat route, port, request field, system prompt, and any keys or codes inside that prompt. Add `?apply=true` to fill the target's empty profile fields with the best suggestions. It understands Flask, FastAPI, Express, Next.js route handlers and plain `http.server` apps, and reads prompts from Python, JavaScript/TypeScript and JSON files.
+
+### Plant a secret
+
+`POST /api/v1/targets/{id}/canary` creates a unique marker such as `AYZO-CANARY-3F9A21C7`, registers it as a protected value, and returns a line to paste into your system prompt. If the marker ever appears in a reply, the prompt leaked.
+
+### Indirect prompt injection
+
+The `indirect_injection` category asks the app to summarise, translate or answer from a piece of content (a review, an email, a web page, a tool result) that has an instruction hidden in it. The hidden instruction asks for a code that must be computed: `AYZO-` followed by the sum of two random numbers. The code is not in the prompt, so quoting the content cannot produce it. A reply containing the code means the app obeyed. No judge is involved.
+
+This covers content the user pastes or the app passes through. AYZO cannot yet put documents into your app's own knowledge base.
+
+### Business rules
+
+Write the rules your app must keep on the target (`"rules": ["Never give a discount above 10 percent."]`) and tick the **Business Rules** category. For each rule AYZO sends two fixed attempts and two written by the mutator model with different tactics, and the judge checks each reply against that one rule.
+
+---
+
 ## Agentic attacks
 
 **Agentic Attacks** runs a multi-turn conversation: the mutator model writes each attacker message and escalates toward a goal you set, and the target receives the full history each turn. The result uses the same words as campaigns: `fail` means the app gave in.
+
+---
+
+## Command line
+
+With the API running:
+
+```bash
+cd apps/api
+pip install -e .          # once, adds the ayzo command
+
+ayzo targets
+ayzo scan --target "Practice bot (weak)" --categories prompt_injection,indirect_injection
+ayzo scan --target <id> --fail-on new --sarif ayzo.sarif --junit ayzo.xml
+```
+
+`--fail-on` sets the exit code:
+
+| Value | Exit 1 when |
+|-------|-------------|
+| `score` (default) | The risk score is above `CICD_FAIL_RISK_THRESHOLD` |
+| `new` | A library attack works now that did not work in the previous completed scan of this target |
+| `any` | Any attack worked |
+| `never` | Never |
+
+A scan that fails or is cancelled exits 2 in every mode.
+
+**Comparing scans.** `GET /api/v1/campaigns/{id}/compare` lists new failures, fixed attacks and ones still failing, against the previous completed scan of the same target (or `?baseline_id=`). Generated attacks (mutations, model-written rule attempts) change name between runs, so only library attacks count for `--fail-on new`.
+
+**Stopping a scan.** `POST /api/v1/campaigns/{id}/cancel`. Results so far are kept.
+
+**GitHub.** `.github/workflows/tests.yml` runs this repo's tests on every push. `docs/ci-example.yml` is a workflow to copy into your own app's repo: it starts AYZO on the runner, scans the app, uploads SARIF to the Security tab and fails the job.
 
 ---
 

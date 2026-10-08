@@ -21,7 +21,9 @@ from app.models.db.campaign import Campaign
 from app.models.db.target import Target
 from app.models.db.user import User
 from app.models.schemas.campaign import CampaignCreate, CampaignResponse, CampaignSummary
-from app.services.campaign_runner import run_campaign_async
+from app.models.db.test_result import TestResult
+from app.services.campaign_runner import request_cancel, run_campaign_async
+from app.services.regression import compare_results
 
 router = APIRouter()
 
@@ -94,7 +96,7 @@ async def list_campaigns(
             "failed_tests": c.failed_tests,
             "error_tests": c.error_tests or 0,
             "inconclusive_tests": c.inconclusive_tests or 0,
-            "status_detail": c.description if c.status == "failed" else None,
+            "status_detail": c.description if c.status in ("failed", "cancelled") else None,
             "risk_score": c.risk_score,
             "progress_percent": c.progress_percent,
             "created_at": c.created_at,
@@ -121,6 +123,82 @@ async def get_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     return campaign
+
+
+def _rows(results) -> list[dict]:
+    return [
+        {
+            "attack_category": r.attack_category,
+            "attack_name": r.attack_name,
+            "prompt_sent": r.prompt_sent,
+            "result": r.result,
+            "severity": r.severity,
+            "mutation_generation": r.mutation_generation,
+            "meta_data": r.meta_data,
+        }
+        for r in results
+    ]
+
+
+@router.post("/{campaign_id}/cancel")
+async def cancel_campaign(
+    campaign_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Stop a running scan. Attacks already in flight finish; the rest are not sent."""
+    result = await db.execute(
+        select(Campaign).where(Campaign.id == campaign_id, Campaign.user_id == current_user.id)
+    )
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if campaign.status not in ("pending", "running"):
+        raise HTTPException(status_code=409, detail=f"This campaign is already {campaign.status}.")
+    request_cancel(str(campaign.id))
+    return {"campaign_id": str(campaign.id), "message": "Cancel requested."}
+
+
+@router.get("/{campaign_id}/compare")
+async def compare_campaign(
+    campaign_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+    baseline_id: uuid.UUID | None = Query(None, description="Scan to compare with. Default: the previous completed scan of the same target"),
+):
+    """What changed since an earlier scan of the same target: new failures, fixed, still failing."""
+    result = await db.execute(
+        select(Campaign).where(Campaign.id == campaign_id, Campaign.user_id == current_user.id)
+    )
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    query = select(Campaign).where(Campaign.user_id == current_user.id, Campaign.target_id == campaign.target_id)
+    if baseline_id:
+        query = query.where(Campaign.id == baseline_id)
+    else:
+        query = query.where(
+            Campaign.status == "completed",
+            Campaign.id != campaign.id,
+            Campaign.created_at < campaign.created_at,
+        ).order_by(Campaign.created_at.desc())
+    baseline = (await db.execute(query.limit(1))).scalar_one_or_none()
+    if not baseline:
+        return {"campaign_id": str(campaign.id), "baseline_id": None, "message": "No earlier completed scan of this target to compare with."}
+
+    async def results_of(cid):
+        return _rows((await db.execute(select(TestResult).where(TestResult.campaign_id == cid))).scalars().all())
+
+    comparison = compare_results(await results_of(campaign.id), await results_of(baseline.id))
+    return {
+        "campaign_id": str(campaign.id),
+        "baseline_id": str(baseline.id),
+        "baseline_name": baseline.name,
+        "risk_score": campaign.risk_score,
+        "baseline_risk_score": baseline.risk_score,
+        **comparison,
+    }
 
 
 @router.delete("/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)

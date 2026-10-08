@@ -81,6 +81,8 @@ class TestRunner:
             system_prompt=profile.get("system_prompt"),
             expected_behavior=profile.get("expected_behavior"),
             indicators_are_regex=not test.get("is_builtin", True),
+            marker=test.get("marker"),
+            rule=test.get("rule"),
         )
 
         result = verdict["result"]
@@ -100,6 +102,8 @@ class TestRunner:
                 "method": verdict.get("method", "judge"),
                 "success_indicators": test.get("success_indicators"),
                 "is_builtin": test.get("is_builtin", True),
+                "marker": test.get("marker"),
+                "rule": test.get("rule"),
             },
         }
 
@@ -113,14 +117,18 @@ class TestRunner:
         http_options: Optional[dict] = None,
         max_concurrent: Optional[int] = None,
         progress_callback=None,
+        should_stop=None,
     ) -> list[dict]:
         """Run tests concurrently, at most `max_concurrent` at a time."""
         semaphore = asyncio.Semaphore(max_concurrent or settings.MAX_CONCURRENT_ATTACKS)
         completed = 0
 
-        async def run_with_limit(test: dict) -> dict:
+        async def run_with_limit(test: dict) -> Optional[dict]:
             nonlocal completed
             async with semaphore:
+                # A cancelled scan sends nothing more; tests not yet started are dropped.
+                if should_stop and should_stop():
+                    return None
                 try:
                     result = await self.run_single_test(test, endpoint, body_style, timeout, profile, http_options)
                 except Exception as exc:
@@ -143,7 +151,8 @@ class TestRunner:
                     await progress_callback(completed, len(tests), result)
                 return result
 
-        return list(await asyncio.gather(*(run_with_limit(t) for t in tests)))
+        results = await asyncio.gather(*(run_with_limit(t) for t in tests))
+        return [r for r in results if r is not None]
 
 
 # Singleton instance

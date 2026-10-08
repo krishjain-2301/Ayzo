@@ -92,7 +92,7 @@ async def poll_cicd_assessment(
     # A scan that did not complete fails the build too: no verdict is not a pass.
     if campaign.status == "completed":
         should_fail = (campaign.risk_score or 0) > threshold
-    elif campaign.status == "failed":
+    elif campaign.status in ("failed", "cancelled"):
         should_fail = True
     else:
         should_fail = None
@@ -100,7 +100,7 @@ async def poll_cicd_assessment(
     return {
         "campaign_id": str(campaign.id),
         "status": campaign.status,
-        "detail": campaign.description if campaign.status == "failed" else None,
+        "detail": campaign.description if campaign.status in ("failed", "cancelled") else None,
         "risk_score": campaign.risk_score,
         "fail_threshold": threshold,
         "total_tests": campaign.total_tests,

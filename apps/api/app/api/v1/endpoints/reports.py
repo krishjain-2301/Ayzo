@@ -44,7 +44,7 @@ async def get_campaign_report(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
-    if campaign.status != "completed" and campaign.status != "failed":
+    if campaign.status not in ("completed", "failed", "cancelled"):
         raise HTTPException(
             status_code=400, 
             detail=f"Cannot generate report. Campaign is currently '{campaign.status}'"
@@ -66,7 +66,7 @@ async def get_campaign_report(
         "name": campaign.name,
         "risk_score": campaign.risk_score,
         "status": campaign.status,
-        "status_detail": campaign.description if campaign.status == "failed" else None,
+        "status_detail": campaign.description if campaign.status in ("failed", "cancelled") else None,
         "started_at": campaign.started_at,
         "completed_at": campaign.completed_at,
     }
@@ -116,3 +116,38 @@ async def get_campaign_report(
         results=results_dicts,
         findings=findings_dicts,
     )
+
+
+@router.get("/campaign/{campaign_id}/results")
+async def get_campaign_results(
+    campaign_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+    result: str | None = None,
+):
+    """Every test of a campaign, optionally only those with one result (fail, pass, error, inconclusive)."""
+    owned = await db.execute(
+        select(Campaign.id).where(Campaign.id == campaign_id, Campaign.user_id == current_user.id)
+    )
+    if owned.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    query = select(TestResult).where(TestResult.campaign_id == campaign_id)
+    if result:
+        query = query.where(TestResult.result == result)
+    rows = (await db.execute(query.order_by(TestResult.executed_at))).scalars().all()
+    return [
+        {
+            "attack_name": r.attack_name,
+            "attack_category": r.attack_category,
+            "result": r.result,
+            "severity": r.severity,
+            "confidence": r.confidence,
+            "method": (r.meta_data or {}).get("method"),
+            "prompt_sent": r.prompt_sent,
+            "model_response": r.model_response,
+            "eval_reasoning": r.eval_reasoning,
+            "mutation_generation": r.mutation_generation,
+        }
+        for r in rows
+    ]

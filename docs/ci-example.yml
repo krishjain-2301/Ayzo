@@ -1,0 +1,73 @@
+# Example: block a pull request when it makes your LLM app easier to attack.
+#
+# Copy this into YOUR app's repository as .github/workflows/ayzo.yml and adjust
+# the three marked places. It starts AYZO next to your app on the runner, scans
+# it, uploads the findings to the Security tab, and fails the job when an
+# attack works that did not work in the previous scan.
+#
+# A judge model is needed for most attack categories. This example installs
+# Ollama and a small model on the runner, which needs no key but is slow.
+# The indirect_injection category and protected-value leaks need no judge at
+# all, so a scan limited to them is fast and deterministic.
+
+name: ayzo
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write   # to upload SARIF
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AYZO
+        run: |
+          git clone --depth 1 https://github.com/krishjain-2301/Ayzo.git "$RUNNER_TEMP/ayzo"
+          pip install -e "$RUNNER_TEMP/ayzo/apps/api"
+
+      - name: Install a local judge model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama pull gemma3:4b
+
+      - name: Start AYZO
+        working-directory: ${{ runner.temp }}/ayzo/apps/api
+        env:
+          DEFAULT_EVAL_MODEL: ollama/gemma3:4b
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/ayzo.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
+
+      - name: Register the app as a target
+        run: |
+          # (1) your start command, port, chat path, and the values that must never leak
+          curl -sf -X POST http://127.0.0.1:8000/api/v1/targets \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"app\",\"project_path\":\"$GITHUB_WORKSPACE\",\"start_command\":\"python app.py\",\"target_port\":5000,\"chat_path\":\"/chat\",\"canaries\":[\"AYZO-CANARY-REPLACE-ME\"]}"
+
+      - name: Scan
+        run: |
+          # (2) choose categories; (3) choose what blocks the build: score, new, any
+          ayzo scan --target app \
+            --categories prompt_injection,system_prompt_leak,indirect_injection \
+            --fail-on any \
+            --sarif ayzo.sarif --junit ayzo.xml
+
+      - name: Upload findings
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ayzo.sarif
+
+# About --fail-on new: it compares with the previous completed scan of the same
+# target in AYZO's database. A fresh runner has no history, so either keep
+# apps/api/ayzo.db between runs (actions/cache) or use --fail-on any / score.

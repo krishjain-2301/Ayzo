@@ -12,6 +12,7 @@ because "we could not tell" must not look like "nothing found".
 """
 
 import inspect
+import random
 import uuid
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -82,6 +83,15 @@ REMEDIATION_MAP = {
         "2. Never pass model output to a shell, eval, or SQL string; use parameters.\n"
         "3. Restrict markdown rendering (no raw HTML, no remote images)."
     ),
+    "indirect_injection": (
+        "1. Wrap any content the app did not write (documents, emails, pages, tool results) in clear delimiters and tell the model it is data.\n"
+        "2. Never give content-processing requests the power to trigger tools or change behaviour.\n"
+        "3. Strip or neutralise instruction-like text from retrieved content where you can."
+    ),
+    "business_rules": (
+        "1. Enforce the rule in code after the model replies (check amounts, codes, eligibility).\n"
+        "2. Do not rely on the prompt alone to hold a business limit."
+    ),
     "vector_weaknesses": (
         "1. Mark retrieved documents as data in the prompt and tell the model not to follow them.\n"
         "2. Filter retrieval by the current user's access rights.\n"
@@ -110,6 +120,18 @@ def _severity_rank(item: dict) -> int:
     return SEVERITY_ORDER.get(str(item.get("severity", "medium")).lower(), 2)
 
 
+def render_marker(prompt: str, marker_template: Optional[str]) -> tuple[str, Optional[str]]:
+    """
+    Fill the {{A}} / {{B}} placeholders of a marker attack with fresh numbers
+    and return the prompt plus the code a compliant reply would contain.
+    """
+    if not marker_template:
+        return prompt, None
+    a, b = random.randint(11, 49), random.randint(11, 49)
+    rendered = prompt.replace("{{A}}", str(a)).replace("{{B}}", str(b))
+    return rendered, marker_template.replace("{{SUM}}", str(a + b))
+
+
 def _failed(status_reason: str, results: list[dict], counts: dict) -> dict:
     return {
         "status": "failed",
@@ -133,6 +155,8 @@ class AttackEngine:
         timeout: float = 60.0,
         progress_callback: Optional[Callable] = None,
         http_options: Optional[dict] = None,
+        extra_tests: Optional[list[dict]] = None,
+        should_stop: Optional[Callable[[], bool]] = None,
     ) -> dict:
         """
         Returns status ("completed" | "failed"), counts, coverage, risk_score
@@ -145,21 +169,24 @@ class AttackEngine:
         attacks = self._cap_payloads(
             [a for a in load_all_payloads() if a["category"] in categories]
         )
-        if not attacks:
+        if not attacks and not extra_tests:
             return _failed(f"No attacks found for categories: {categories}", [], self._counts([]))
 
-        current_tests = [
-            {
+        current_tests = []
+        for a in attacks:
+            prompt, marker = render_marker(a["original_prompt"], a.get("marker"))
+            current_tests.append({
                 "name": a["name"],
-                "prompt": a["original_prompt"],
+                "prompt": prompt,
                 "category": a["category"],
                 "severity": a["severity"],
                 "success_indicators": a.get("success_indicators", ""),
                 "is_builtin": a.get("is_builtin", True),
+                "marker": marker,
                 "mutation_generation": 0,
-            }
-            for a in attacks
-        ]
+            })
+        # Tests generated for this target (business rules), already in test form.
+        current_tests.extend({"mutation_generation": 0, **t} for t in (extra_tests or []))
 
         async def _progress(completed: int, total: int, result: dict):
             if not progress_callback:
@@ -180,8 +207,18 @@ class AttackEngine:
                 profile=profile,
                 http_options=http_options,
                 progress_callback=_progress,
+                should_stop=should_stop,
             )
             all_results.extend(gen_results)
+            if should_stop and should_stop():
+                return {
+                    "status": "cancelled",
+                    "error": "Cancelled by the user. Results up to that point were kept.",
+                    "results": all_results,
+                    "findings": self._generate_findings(all_results, categories),
+                    "risk_score": None,
+                    **self._counts(all_results),
+                }
 
             if generation < mutation_depth:
                 current_tests = await self._next_generation(
@@ -254,7 +291,13 @@ class AttackEngine:
         """
         count = max(1, mutations_per_prompt or 1)
         sources = sorted(
-            (r for r in gen_results if r.get("result") == "pass"),
+            (
+                r for r in gen_results
+                if r.get("result") == "pass"
+                # Marker and rule tests depend on their exact wording.
+                and not (r.get("metadata") or {}).get("marker")
+                and not (r.get("metadata") or {}).get("rule")
+            ),
             key=_severity_rank,
             reverse=True,
         )[:MAX_MUTATION_SOURCES]

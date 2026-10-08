@@ -53,6 +53,8 @@ def load_all_payloads() -> list[dict]:
                 "success_indicators": attack.get("success_indicators", ""),
                 "severity": str(attack.get("severity", "medium")).lower(),
                 "is_builtin": yaml_file.name != "custom.yaml",
+                # Template for a code the reply only contains if the app obeyed.
+                "marker": attack.get("marker"),
                 "metadata": {
                     "display_name": display_name,
                     "owasp_id": owasp_id,

@@ -23,6 +23,7 @@ from app.models.db.test_result import TestResult
 from app.services.attack_engine import attack_engine
 from app.services.eval_engine import eval_engine
 from app.services.http_target import discover_chat_endpoint
+from app.services.rule_attacks import generate_rule_tests
 from app.services.process_target import (
     boot_target,
     read_boot_log,
@@ -30,6 +31,14 @@ from app.services.process_target import (
     stop_target,
     wait_for_port,
 )
+
+
+# Campaign ids the user asked to stop. Scans run in this process, so a set is enough.
+CANCEL_REQUESTED: set[str] = set()
+
+
+def request_cancel(campaign_id: str) -> None:
+    CANCEL_REQUESTED.add(str(campaign_id))
 
 
 def target_profile(target: Target) -> dict:
@@ -70,8 +79,9 @@ def _result_row(campaign_id: uuid.UUID, res: dict) -> TestResult:
 
 def apply_engine_summary(campaign: Campaign, summary: dict) -> list[Finding]:
     """Copy the engine's totals onto the campaign row and build its findings."""
-    campaign.status = "completed" if summary.get("status") == "completed" else "failed"
-    if campaign.status == "failed":
+    status = summary.get("status")
+    campaign.status = status if status in ("completed", "cancelled") else "failed"
+    if campaign.status != "completed":
         campaign.description = summary.get("error") or "Attack engine failed"
     campaign.completed_at = datetime.now(timezone.utc)
     campaign.total_tests = summary.get("total_tests", 0)
@@ -172,6 +182,17 @@ async def run_campaign_async(campaign_id: str) -> None:
                 )
                 return
 
+            extra_tests = []
+            if "business_rules" in (campaign.attack_categories or []):
+                rules = [r for r in (target.rules or []) if isinstance(r, str) and r.strip()]
+                if not rules:
+                    await fail(
+                        "The Business Rules category needs rules on the target, and this target has none. "
+                        "Add rules to the target or untick that category."
+                    )
+                    return
+                extra_tests = await generate_rule_tests(rules)
+
             db_lock = asyncio.Lock()
 
             async def progress_cb(completed: int, total: int, res: dict):
@@ -193,6 +214,8 @@ async def run_campaign_async(campaign_id: str) -> None:
                 profile=target_profile(target),
                 http_options=http_options,
                 timeout=settings.TARGET_TIMEOUT_SECONDS,
+                extra_tests=extra_tests,
+                should_stop=lambda: campaign_id in CANCEL_REQUESTED,
                 progress_callback=progress_cb,
             )
 
@@ -210,4 +233,5 @@ async def run_campaign_async(campaign_id: str) -> None:
             await db.rollback()
             await fail(f"Error during attack execution: {exc!r}")
         finally:
+            CANCEL_REQUESTED.discard(campaign_id)
             stop_target(process)

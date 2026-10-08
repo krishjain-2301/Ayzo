@@ -52,6 +52,9 @@ class Target(Base):
     system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Plain-language description of what the app should and should not do.
     expected_behavior: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Rules the app must keep ("never give more than 10% off"). The Business
+    # Rules category generates attacks against each one.
+    rules: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
 
     # ---- How to talk to the app (all optional; unset means discover it) ----
     # Headers sent with every request, e.g. {"Authorization": "Bearer ..."}.

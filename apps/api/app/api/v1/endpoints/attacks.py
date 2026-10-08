@@ -25,7 +25,13 @@ async def list_categories(
     Get all available attack categories.
     Used by the frontend to populate the campaign creation form.
     """
-    return get_available_categories()
+    return get_available_categories() + [{
+        "id": "business_rules",
+        "name": "Business Rules",
+        "owasp_id": "",
+        "description": "Attacks generated for each rule written on the target. Needs rules on the target.",
+        "attack_count": 0,
+    }]
 
 
 @router.get("/payloads")

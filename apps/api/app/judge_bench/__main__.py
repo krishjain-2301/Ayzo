@@ -110,6 +110,9 @@ def print_report(result: dict) -> None:
 
 
 def main() -> int:
+    # Replies contain emoji and other characters a Windows console cannot encode.
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Measure a judge model against labelled cases.")
     parser.add_argument("--model", default=settings.DEFAULT_EVAL_MODEL)
     parser.add_argument("--concurrency", type=int, default=4)
