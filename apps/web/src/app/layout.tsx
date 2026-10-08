@@ -9,13 +9,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AYZO — AI Red Team & Vulnerability Assessment",
+  title: "AYZO — local red teaming for LLM apps",
   description:
-    "Automated adversarial testing for LLMs. Discover prompt injection, data leakage, and role override vulnerabilities before your AI ships.",
+    "Boots your local LLM app, attacks its chat endpoint, and reports which attacks worked.",
   openGraph: {
-    title: "AYZO — AI Red Team & Vulnerability Assessment",
+    title: "AYZO — local red teaming for LLM apps",
     description:
-      "Automated adversarial testing for LLMs. Discover prompt injection, data leakage, and role override vulnerabilities before your AI ships.",
+      "Boots your local LLM app, attacks its chat endpoint, and reports which attacks worked.",
     type: "website",
   },
 };

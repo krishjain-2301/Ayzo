@@ -44,7 +44,7 @@ export function Sidebar() {
   return (
     <aside className="w-56 h-screen flex flex-col px-4 py-6 bg-zinc-950 border-r border-zinc-800 shrink-0">
       <div className="px-2 mb-8">
-        <Link href="/" className="font-heading font-bold text-lg text-white tracking-widest">
+        <Link href="/dashboard" className="font-heading font-bold text-lg text-white tracking-widest">
           AYZO
         </Link>
       </div>
@@ -79,17 +79,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto pt-4 border-t border-zinc-800">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center font-semibold text-xs shrink-0">
-            L
-          </div>
-          <div className="min-w-0 overflow-hidden">
-            <div className="font-medium text-xs text-white truncate">Local User</div>
-            <div className="text-[10px] text-zinc-500 truncate">local mode — no auth</div>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }
