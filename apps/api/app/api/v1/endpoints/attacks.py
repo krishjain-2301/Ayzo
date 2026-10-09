@@ -31,6 +31,12 @@ async def list_categories(
         "owasp_id": "",
         "description": "Attacks generated for each rule written on the target. Needs rules on the target.",
         "attack_count": 0,
+    }, {
+        "id": "tool_abuse",
+        "name": "Tool Abuse",
+        "owasp_id": "LLM06:2025",
+        "description": "Tries to make the app call each tool you marked as forbidden. Confirmed by the tool call itself. Needs forbidden tools on the target.",
+        "attack_count": 0,
     }]
 
 

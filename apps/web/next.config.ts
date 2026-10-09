@@ -5,8 +5,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: "../..",
   },
-  // Standalone output for optimized Docker deployment
-  output: "standalone",
   // Keep the dev-mode badge away from the sidebar footer.
   devIndicators: { position: "bottom-right" },
 };

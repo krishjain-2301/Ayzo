@@ -3,14 +3,14 @@ Campaign Endpoints
 ==================
 CRUD operations and execution for security testing campaigns.
 
-Campaigns run in-process via FastAPI BackgroundTasks (see README). On API
-restart, orphaned pending/running rows are marked failed at startup.
+Scans wait in a queue and run one at a time (see services/job_queue.py). When
+the API restarts, unfinished scans are put back in the queue and continue.
 """
 
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -22,7 +22,8 @@ from app.models.db.target import Target
 from app.models.db.user import User
 from app.models.schemas.campaign import CampaignCreate, CampaignResponse, CampaignSummary
 from app.models.db.test_result import TestResult
-from app.services.campaign_runner import build_run_config, request_cancel, run_campaign_async
+from app.services import job_queue
+from app.services.campaign_runner import build_run_config, request_cancel
 from app.services.regression import compare_results
 
 router = APIRouter()
@@ -31,7 +32,6 @@ router = APIRouter()
 @router.post("", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
 async def create_campaign(
     campaign_in: CampaignCreate,
-    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
@@ -62,7 +62,7 @@ async def create_campaign(
     await db.commit()
     await db.refresh(campaign)
 
-    background_tasks.add_task(run_campaign_async, str(campaign.id))
+    job_queue.enqueue(str(campaign.id))
     return campaign
 
 

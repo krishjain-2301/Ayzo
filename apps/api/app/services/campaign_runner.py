@@ -26,6 +26,7 @@ from app.services.attack_engine import attack_engine
 from app.services.eval_engine import eval_engine
 from app.services.http_target import discover_chat_endpoint
 from app.services.rule_attacks import generate_rule_tests
+from app.services.tool_attacks import generate_tool_tests
 from app.services.process_target import (
     boot_target,
     read_boot_log,
@@ -145,8 +146,36 @@ async def run_campaign_async(campaign_id: str) -> None:
             await db.commit()
             print(f"[CAMPAIGN] Failed: {reason}")
 
+        if campaign_id in CANCEL_REQUESTED:
+            CANCEL_REQUESTED.discard(campaign_id)
+            campaign.status = "cancelled"
+            campaign.description = "Cancelled before it started."
+            campaign.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            return
+
+        # Results already saved mean this scan was interrupted and is continuing.
+        saved = (await db.execute(select(TestResult).where(TestResult.campaign_id == campaign.id))).scalars().all()
+        prior_results = [
+            {
+                "attack_name": r.attack_name,
+                "prompt_sent": r.prompt_sent,
+                "model_response": r.model_response,
+                "result": r.result,
+                "severity": r.severity,
+                "confidence": r.confidence,
+                "eval_reasoning": r.eval_reasoning,
+                "attack_category": r.attack_category,
+                "mutation_generation": r.mutation_generation,
+                "metadata": r.meta_data or {},
+            }
+            for r in saved
+        ]
+        if prior_results:
+            print(f"[CAMPAIGN] Continuing after an interruption: {len(prior_results)} results already saved")
+
         campaign.status = "running"
-        campaign.started_at = datetime.now(timezone.utc)
+        campaign.started_at = campaign.started_at or datetime.now(timezone.utc)
         await db.commit()
 
         target = campaign.target
@@ -208,6 +237,15 @@ async def run_campaign_async(campaign_id: str) -> None:
                     )
                     return
                 extra_tests = await generate_rule_tests(rules)
+            if "tool_abuse" in (campaign.attack_categories or []):
+                forbidden = [t for t in (target.forbidden_tools or []) if isinstance(t, str) and t.strip()]
+                if not forbidden:
+                    await fail(
+                        "The Tool Abuse category needs the target's list of tools a user must never trigger, "
+                        "and this target has none. Add them to the target or untick that category."
+                    )
+                    return
+                extra_tests += generate_tool_tests(forbidden)
 
             db_lock = asyncio.Lock()
 
@@ -234,6 +272,7 @@ async def run_campaign_async(campaign_id: str) -> None:
                 trials=campaign.trials or 1,
                 seed=(campaign.run_config or {}).get("seed"),
                 adaptive_rounds=(campaign.run_config or {}).get("adaptive_rounds", 0),
+                prior_results=prior_results,
                 should_stop=lambda: campaign_id in CANCEL_REQUESTED,
                 progress_callback=progress_cb,
             )

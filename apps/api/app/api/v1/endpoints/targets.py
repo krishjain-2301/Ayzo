@@ -154,7 +154,9 @@ async def seed_practice_bots(
     profile = json.loads((practice_dir / "profile.json").read_text(encoding="utf-8"))
 
     targets = []
-    for mode, label in (("weak", "Practice bot (weak)"), ("hardened", "Practice bot (hardened)")):
+    for mode, label in (("weak", "Practice bot (weak)"), ("hardened", "Practice bot (hardened)"), ("agent", "Practice bot (agent)")):
+        if mode not in profile:
+            continue
         result = await db.execute(
             select(Target).where(Target.name == label, Target.user_id == current_user.id)
         )
@@ -163,17 +165,18 @@ async def seed_practice_bots(
             target = Target(
                 user_id=current_user.id,
                 name=label,
-                description=(
-                    "A real chatbot on a local Ollama model with no defences."
-                    if mode == "weak"
-                    else "The same chatbot with a defensive prompt, fenced input and an output filter."
-                ),
+                description={
+                    "weak": "A real chatbot on a local Ollama model with no defences.",
+                    "hardened": "The same chatbot with a defensive prompt, fenced input and an output filter.",
+                    "agent": "The chatbot with four tools and nothing stopping it misusing them. Reports its tool calls.",
+                }[mode],
                 project_path=str(practice_dir),
                 start_command=f"python app.py {mode}",
                 target_port=profile[mode]["port"],
                 chat_path="/chat",
                 request_field="messages",
-                canaries=profile["secrets"],
+                canaries=profile["secrets"] if mode != "agent" else [],
+                forbidden_tools=profile.get("forbidden_tools", []) if mode == "agent" else [],
                 system_prompt=profile[mode]["system_prompt"],
                 expected_behavior=profile["expected_behavior"],
                 rules=profile.get("rules", []),

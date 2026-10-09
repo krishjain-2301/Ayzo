@@ -8,7 +8,7 @@ GET  /cicd/poll/{id}    → status + risk_score + should_fail_build
 from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -19,7 +19,8 @@ from app.models.db.user import User
 from app.models.db.target import Target
 from app.models.schemas.campaign import CampaignCreate
 from app.models.db.campaign import Campaign
-from app.services.campaign_runner import build_run_config, run_campaign_async
+from app.services import job_queue
+from app.services.campaign_runner import build_run_config
 
 router = APIRouter()
 
@@ -27,7 +28,6 @@ router = APIRouter()
 @router.post("/run", status_code=status.HTTP_202_ACCEPTED)
 async def start_cicd_assessment(
     campaign_in: CampaignCreate,
-    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
@@ -64,7 +64,7 @@ async def start_cicd_assessment(
     await db.commit()
     await db.refresh(campaign)
 
-    background_tasks.add_task(run_campaign_async, str(campaign.id))
+    job_queue.enqueue(str(campaign.id))
 
     return {
         "campaign_id": str(campaign.id),

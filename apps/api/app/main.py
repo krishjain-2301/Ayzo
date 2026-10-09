@@ -31,13 +31,15 @@ async def lifespan(app: FastAPI):
     if model_settings.apply_saved():
         print(f"[*] Judge model (from saved settings): {settings.DEFAULT_EVAL_MODEL}")
 
-    from app.services.campaign_recovery import recover_stale_campaigns
+    from app.services import job_queue
 
-    recovered = await recover_stale_campaigns()
-    if recovered:
-        print(f"[*] Marked {recovered} stale campaign(s) as failed (previous run interrupted).")
+    resumed = await job_queue.start()
+    if resumed:
+        print(f"[*] Resuming {resumed} scan(s) that were waiting or interrupted.")
 
     yield
+
+    await job_queue.stop()
 
     print("[*] AYZO API shutting down...")
     await engine.dispose()

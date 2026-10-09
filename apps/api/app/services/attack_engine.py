@@ -91,6 +91,11 @@ REMEDIATION_MAP = {
         "2. Never give content-processing requests the power to trigger tools or change behaviour.\n"
         "3. Strip or neutralise instruction-like text from retrieved content where you can."
     ),
+    "tool_abuse": (
+        "1. Check in code, on every tool call, that the signed-in user is allowed to trigger that tool with those arguments.\n"
+        "2. Do not offer the model tools the current user must never use; remove them from the tool list for that user.\n"
+        "3. Never let text from a document, ticket or web page authorise a tool call."
+    ),
     "multi_turn": (
         "1. Apply the same rules on turn ten as on turn one; do not let earlier messages grant permissions.\n"
         "2. Rebuild trusted context on the server each turn instead of trusting the running conversation."
@@ -185,6 +190,7 @@ class AttackEngine:
         trials: int = 1,
         seed: Optional[int] = None,
         adaptive_rounds: int = 0,
+        prior_results: Optional[list[dict]] = None,
     ) -> dict:
         """
         Returns status ("completed" | "failed"), counts, coverage, risk_score
@@ -196,12 +202,16 @@ class AttackEngine:
         # rewrite strategies. The target's own randomness is not ours to fix.
         if seed is not None:
             random.seed(seed)
-        all_results: list[dict] = []
+        # A scan that was interrupted continues: what it already recorded counts,
+        # and those attacks are not sent again.
+        all_results: list[dict] = list(prior_results or [])
+        already_sent = {(r.get("attack_category"), r.get("attack_name")) for r in all_results if not r.get("mutation_generation")}
+        rounds_already_begun = any(r.get("mutation_generation") for r in all_results)
 
         attacks = self._cap_payloads(
             [a for a in load_all_payloads() if a["category"] in categories]
         )
-        if not attacks and not extra_tests:
+        if not attacks and not extra_tests and not all_results:
             return _failed(f"No attacks found for categories: {categories}", [], self._counts([]))
 
         current_tests = []
@@ -218,8 +228,12 @@ class AttackEngine:
                 "turns": a.get("turns"),
                 "mutation_generation": 0,
             })
-        # Tests generated for this target (business rules), already in test form.
+        # Tests generated for this target (business rules, tool abuse), already in test form.
         current_tests.extend({"mutation_generation": 0, **t} for t in (extra_tests or []))
+        current_tests = [t for t in current_tests if (t["category"], t["name"]) not in already_sent]
+        if rounds_already_begun:
+            # Retry rounds had started before the interruption; they are not repeated.
+            mutation_depth, adaptive_rounds = 0, 0
 
         async def _progress(completed: int, total: int, result: dict):
             if not progress_callback:

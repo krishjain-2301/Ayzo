@@ -40,7 +40,7 @@ export const VERDICT_BAR: Record<Verdict, string> = {
 };
 
 export const STATUS_LABEL: Record<ScanStatus, string> = {
-  pending: "Starting",
+  pending: "Waiting in the queue",
   running: "Running",
   completed: "Completed",
   failed: "No result",

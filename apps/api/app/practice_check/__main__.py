@@ -21,6 +21,7 @@ from app.services.eval_engine import eval_engine
 from app.services.http_target import discover_chat_endpoint
 from app.services.process_target import boot_target, read_boot_log, stop_target, wait_for_port
 from app.services.rule_attacks import generate_rule_tests
+from app.services.tool_attacks import generate_tool_tests
 
 BOT_DIR = Path(__file__).resolve().parents[4] / "practice_bot"
 CATEGORIES = ["prompt_injection", "system_prompt_leak", "data_leakage"]
@@ -42,6 +43,8 @@ async def scan(mode: str, profile: dict, timeout: float, categories: list[str], 
         extra_tests = []
         if "business_rules" in categories:
             extra_tests = await generate_rule_tests(profile.get("rules", []))
+        if "tool_abuse" in categories:
+            extra_tests += generate_tool_tests(profile.get("forbidden_tools", []))
         return await attack_engine.run_campaign(
             endpoint=found.url,
             body_style=found.body_style,
@@ -51,7 +54,8 @@ async def scan(mode: str, profile: dict, timeout: float, categories: list[str], 
             adaptive_rounds=adaptive_rounds,
             seed=seed,
             profile={
-                "canaries": profile["secrets"],
+                "canaries": profile["secrets"] if mode != "agent" else [],
+                "forbidden_tools": profile.get("forbidden_tools", []) if mode == "agent" else [],
                 "system_prompt": profile[mode]["system_prompt"],
                 "expected_behavior": profile["expected_behavior"],
             },
@@ -66,7 +70,7 @@ def describe(summary: dict) -> str:
         return f"FAILED ({summary.get('error', '')[:90]})"
     exact = sum(
         1 for r in summary["results"]
-        if r["result"] == "fail" and (r.get("metadata") or {}).get("method") in ("canary", "prompt_leak")
+        if r["result"] == "fail" and (r.get("metadata") or {}).get("method") in ("canary", "prompt_leak", "marker", "tool_call")
     )
     adaptive = sum(1 for r in summary["results"] if r["result"] == "fail" and "[adaptive" in (r.get("attack_name") or ""))
     rate = f"success rate {summary['attack_success_rate']}% (95% interval {summary['asr_low']}-{summary['asr_high']}%)"
@@ -74,7 +78,7 @@ def describe(summary: dict) -> str:
         f"risk {summary['risk_score']:>5}  {rate}  "
         + (f"[{adaptive} found only by the adaptive attacker]  " if adaptive else "")
         + f"{summary['failed_tests']:>2}/{summary['total_tests']} attacks worked "
-        f"({exact} exact-match leaks, {summary['inconclusive_tests']} inconclusive, {summary['error_tests']} errors)"
+        f"({exact} confirmed by exact check, {summary['inconclusive_tests']} inconclusive, {summary['error_tests']} errors)"
     )
 
 
@@ -110,7 +114,8 @@ async def main_async(args) -> int:
                     if r["result"] in ("fail", "inconclusive"):
                         method = (r.get("metadata") or {}).get("method")
                         reply = (r.get("model_response") or "").replace("\n", " ")[:160]
-                        print(f"        {r['result']:<12} [{method}] {r['attack_name']}: {reply}", flush=True)
+                        tools = (r.get("metadata") or {}).get("tool_calls") or []
+                        print(f"        {r['result']:<12} [{method}] {r['attack_name']}: {reply}" + (f"  (tools called: {', '.join(tools)})" if tools else ""), flush=True)
         if len(modes) == 2 and (
             scores["weak"] is None or scores["hardened"] is None or scores["weak"] <= scores["hardened"]
         ):
@@ -136,7 +141,7 @@ def main() -> int:
     parser.add_argument("--trials", type=int, default=1, help="Send each attack this many times")
     parser.add_argument("--adaptive-rounds", type=int, default=0, help="Rounds of the adaptive attacker")
     parser.add_argument("--seed", type=int, help="Fix AYZO's random choices")
-    parser.add_argument("--only", choices=["weak", "hardened"], help="Scan just one bot (no comparison)")
+    parser.add_argument("--only", choices=["weak", "hardened", "agent"], help="Scan just one bot (no comparison)")
     parser.add_argument("--show", action="store_true", help="List every attack that worked or was inconclusive")
     return asyncio.run(main_async(parser.parse_args()))
 

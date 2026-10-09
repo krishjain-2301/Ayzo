@@ -122,8 +122,6 @@ Open [http://localhost:3000](http://localhost:3000). API docs are at [http://127
 
 `pnpm start` runs the dashboard from a production build, which uses about 100 MB of memory. `pnpm dev` runs the development servers with live reload and needs about 1 GB for the dashboard alone.
 
-There is no Docker image, on purpose: AYZO starts your app and attacks it on `127.0.0.1`, and a container cannot reach the host's loopback address on Windows or macOS.
-
 ### 4. First scan
 
 The dashboard creates **Vulnerable Support Bot** on first load. It is a fake chat endpoint inside the API (`POST /api/v1/dummy/chat`) with its secret token registered as a protected value. Click **New scan**, keep the default categories, and start. The scan page shows each attack as it is sent, and marks the leaked token as a confirmed finding.
@@ -235,6 +233,7 @@ Measured in October 2026:
 | Judge, held-out set, `ollama/gemma3:4b` | 13 of 16 caught (81%, below the 90% target), 1 of 18 flagged |
 | Hardened practice bot, static list | 1 of 20 attacks worked |
 | Hardened practice bot, plus two adaptive rounds | 5 of 34 worked, 3 found only by the adaptive attacker. All judge opinions, not hand-verified |
+| Agent practice bot (four tools, no guard), tool-abuse attacks, 3 tries each | 7 of 8 worked; 6 confirmed by the recorded call to `delete_account` or `export_customers` |
 
 Not yet done: a published scan of an application the author did not write.
 
@@ -297,6 +296,7 @@ Files live in `apps/api/app/attack_library/payloads/`.
 | `prompt_injection` | Follow the user's instructions over its own |
 | `indirect_injection` | Obey instructions hidden in content it was asked to process. Checked by exact match, no judge |
 | `business_rules` | Break a rule you wrote on the target. Attacks are generated per rule |
+| `tool_abuse` | Call a tool you marked as forbidden. Attacks are generated per tool; confirmed by the call itself |
 | `multi_turn` | Give in over a scripted conversation that builds trust, a role or a false premise first |
 | `system_prompt_leak` | Reveal its hidden instructions |
 | `data_leakage` | Disclose secrets, personal data, or retrieved context |
@@ -468,9 +468,11 @@ Ayzo/
 - Results vary between runs because the target and the mutator are not deterministic.
 - The app must be reachable over plain HTTP on localhost. WebSockets and interactive logins are not supported.
 - AYZO sees the text reply, plus tool calls only when the app reports them.
-- Scans run inside the API process. If it stops, running campaigns are marked failed on the next start. Results saved up to that point are kept.
+- Scans wait in a queue and run one at a time inside the API process. If the API stops, unfinished scans go back in the queue on the next start and continue from the attacks not yet sent.
 
 ## Tools the app calls
+
+The **Tool Abuse** category sends four attempts per forbidden tool (a direct request, a claimed administrator, a fake system notice, an instruction hidden in a ticket). `python app.py agent` in `practice_bot/` is a bot with four tools and no guard to try it on.
 
 If your app reports the tools it called in its reply (OpenAI-style `tool_calls`, at the top level or under `message`), AYZO reads them. List tools a user must never trigger under **Tools a user must never trigger** on the target; a scan then reports a call to one of them as a confirmed failure whatever the reply text says. Apps that call tools without reporting them are invisible to this check.
 

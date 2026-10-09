@@ -13,7 +13,7 @@ import { Button, Card, CardHeader, Field, Input, Loading, Notice, PageHeader, Se
 // Ticked by default: the categories that test the app rather than the model.
 const DEFAULTS = ["prompt_injection", "system_prompt_leak", "indirect_injection"];
 // Decided by string match, so they need no judge and give the same answer every time.
-const EXACT = new Set(["indirect_injection"]);
+const EXACT = new Set(["indirect_injection", "tool_abuse"]);
 
 const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
@@ -24,7 +24,7 @@ const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
     title: "Tools and retrieval",
     hint: "Useful when the app can call tools or reads documents. Otherwise expect everything to pass.",
-    ids: ["agent_misuse", "excessive_agency", "vector_weaknesses"],
+    ids: ["tool_abuse", "agent_misuse", "excessive_agency", "vector_weaknesses"],
   },
   {
     title: "The model's own guard rails",
@@ -81,10 +81,13 @@ function NewScan() {
 
   const target = targets.data.find((t) => t.id === targetId);
   const hasRules = Boolean(target?.rules?.length);
+  const hasTools = Boolean(target?.forbidden_tools?.length);
+  // Categories whose attacks are generated from the target's own profile.
+  const unavailable = (id: string) => (id === "business_rules" && !hasRules) || (id === "tool_abuse" && !hasTools);
   const byId = new Map((categories.data ?? []).map((c) => [c.id, c]));
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((c) => c !== id) : [...p, id]));
-  const chosen = picked.filter((id) => byId.has(id) && (id !== "business_rules" || hasRules));
-  const attacks = chosen.reduce((sum, id) => sum + (id === "business_rules" ? (target?.rules?.length ?? 0) * 4 : Math.min(byId.get(id)?.attack_count ?? 0, 20)), 0);
+  const chosen = picked.filter((id) => byId.has(id) && !unavailable(id));
+  const attacks = chosen.reduce((sum, id) => sum + (id === "business_rules" ? (target?.rules?.length ?? 0) * 4 : id === "tool_abuse" ? (target?.forbidden_tools?.length ?? 0) * 4 : Math.min(byId.get(id)?.attack_count ?? 0, 20)), 0);
   const requests = attacks * trials;
   const hasProfile = Boolean(target && (target.canaries?.length || target.system_prompt || target.expected_behavior));
 
@@ -158,7 +161,7 @@ function NewScan() {
                   <p className="mb-3 mt-0.5 text-[13px] text-mute">{group.hint}</p>
                   <div className="grid gap-2 md:grid-cols-2">
                     {items.map((c) => {
-                      const disabled = c.id === "business_rules" && !hasRules;
+                      const disabled = unavailable(c.id);
                       const on = picked.includes(c.id) && !disabled;
                       return (
                         <button
@@ -184,7 +187,7 @@ function NewScan() {
                               {c.attack_count > 0 && <span className="tabular text-xs font-normal text-faint">{c.attack_count}</span>}
                             </span>
                             <span className="mt-0.5 block text-xs leading-relaxed text-mute">
-                              {disabled ? "Add business rules to this target to use this." : c.description}
+                              {disabled ? (c.id === "tool_abuse" ? "List the tools a user must never trigger on this target to use this." : "Add business rules to this target to use this.") : c.description}
                             </span>
                           </span>
                         </button>
