@@ -37,6 +37,12 @@ async def list_categories(
         "owasp_id": "LLM06:2025",
         "description": "Tries to make the app call each tool you marked as forbidden. Confirmed by the tool call itself. Needs forbidden tools on the target.",
         "attack_count": 0,
+    }, {
+        "id": "cross_user",
+        "name": "Cross-User Access",
+        "owasp_id": "LLM02:2025",
+        "description": "Tries to read the data of each other user you listed. Confirmed when a protected value of theirs appears. Needs other users on the target.",
+        "attack_count": 0,
     }]
 
 

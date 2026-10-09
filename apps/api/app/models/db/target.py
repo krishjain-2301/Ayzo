@@ -54,6 +54,8 @@ class Target(Base):
     expected_behavior: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Tools an ordinary user must never be able to trigger ("delete_user").
     forbidden_tools: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    # Other users whose data the test user must not reach ("userId 2").
+    other_users: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     # Rules the app must keep ("never give more than 10% off"). The Business
     # Rules category generates attacks against each one.
     rules: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)

@@ -20,7 +20,7 @@ const config: Config = {
         accent: {
           DEFAULT: "rgb(var(--accent) / <alpha-value>)",
           dim: "rgb(var(--accent-dim) / <alpha-value>)",
-          ink: "#ffffff",
+          ink: "rgb(var(--accent-ink) / <alpha-value>)",
         },
         // Status. Always shown with a label, never colour alone.
         fail: "rgb(var(--fail) / <alpha-value>)",

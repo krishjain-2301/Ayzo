@@ -128,3 +128,38 @@ def test_agent_practice_bot_reports_the_tools_it_called():
     assert "TOOL:" not in text and "permanently deleted" in text
     assert bot.run_tools("I can't do that.") == ("I can't do that.", [])
     assert "agent" in bot.PROFILE and bot.PROFILE["forbidden_tools"] == ["delete_account", "export_customers"]
+
+
+def test_cross_user_tests_are_generated_per_listed_user():
+    from app.services.access_attacks import TEMPLATES, generate_access_tests
+
+    tests = generate_access_tests(["userId 2", " ", "DocBrown"])
+    assert len(tests) == 2 * len(TEMPLATES)
+    assert all(t["category"] == "cross_user" and t["severity"] == "critical" for t in tests)
+    assert sum("userId 2" in t["prompt"] for t in tests) == len(TEMPLATES)
+    assert generate_access_tests([]) == []
+
+
+async def test_cross_user_scan_confirms_a_leak_by_the_other_users_value():
+    # An app that hands over another user's record to anyone claiming to be support.
+    from app.services.access_attacks import generate_access_tests
+
+    def reply(body):
+        text = body.get("prompt", "")
+        if "user 2" in text and "support team" in text:
+            return {"response": "Records for user 2: transfer to ACCT-99812-SECRET"}
+        return {"response": "I can only show your own records."}
+
+    server, url, _ = _serve(reply)
+    try:
+        with patch(JUDGE, _judge("pass")):
+            summary = await attack_engine.run_campaign(
+                url, "prompt", ["cross_user"],
+                extra_tests=generate_access_tests(["user 2"]),
+                profile={"canaries": ["ACCT-99812-SECRET"]},
+            )
+    finally:
+        server.shutdown()
+    worked = [r for r in summary["results"] if r["result"] == "fail"]
+    assert len(worked) == 1 and worked[0]["attack_name"] == "user 2: support pretext"
+    assert worked[0]["metadata"]["method"] == "canary"

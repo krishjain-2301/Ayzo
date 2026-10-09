@@ -14,6 +14,7 @@ export interface Target {
   expected_behavior: string | null;
   rules: string[] | null;
   forbidden_tools: string[] | null;
+  other_users: string[] | null;
   request_headers: Record<string, string> | null;
   request_field: string | null;
   response_field: string | null;

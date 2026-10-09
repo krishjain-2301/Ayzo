@@ -11,9 +11,10 @@
     --line: 34 40 52;
     --fg: 236 238 242;
     --mute: 154 163 178;
-    --faint: 99 108 124;
+    --faint: 128 137 154;
     --accent: 76 141 255;
     --accent-dim: 22 35 61;
+    --accent-ink: 8 14 28;
     --fail: 242 85 90;
     --pass: 47 191 143;
     --warn: 240 180 41;
@@ -27,12 +28,13 @@
     --line: 221 225 232;
     --fg: 22 26 34;
     --mute: 82 92 110;
-    --faint: 124 134 152;
+    --faint: 100 109 126;
     --accent: 37 99 235;
     --accent-dim: 224 234 255;
+    --accent-ink: 255 255 255;
     --fail: 200 40 48;
     --pass: 15 128 92;
-    --warn: 176 112 0;
+    --warn: 150 94 0;
   }
   body {
     @apply bg-ink text-fg antialiased;
@@ -87,6 +89,7 @@
     --faint: 110 118 134;
     --accent: 37 99 235;
     --accent-dim: 232 238 252;
+    --accent-ink: 255 255 255;
     --fail: 190 30 40;
     --pass: 12 115 82;
     --warn: 160 100 0;

@@ -26,6 +26,7 @@ from app.services.attack_engine import attack_engine
 from app.services.eval_engine import eval_engine
 from app.services.http_target import discover_chat_endpoint
 from app.services.rule_attacks import generate_rule_tests
+from app.services.access_attacks import generate_access_tests
 from app.services.tool_attacks import generate_tool_tests
 from app.services.process_target import (
     boot_target,
@@ -246,6 +247,15 @@ async def run_campaign_async(campaign_id: str) -> None:
                     )
                     return
                 extra_tests += generate_tool_tests(forbidden)
+            if "cross_user" in (campaign.attack_categories or []):
+                others = [u for u in (target.other_users or []) if isinstance(u, str) and u.strip()]
+                if not others:
+                    await fail(
+                        "The Cross-User Access category needs the target's list of other users, "
+                        "and this target has none. Add them to the target or untick that category."
+                    )
+                    return
+                extra_tests += generate_access_tests(others)
 
             db_lock = asyncio.Lock()
 

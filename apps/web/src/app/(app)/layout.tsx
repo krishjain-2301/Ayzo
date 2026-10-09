@@ -139,7 +139,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
 function Brand() {
   return (
     <Link href="/dashboard" className="flex h-14 shrink-0 items-center gap-2.5 border-b border-line px-5">
-      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-ink">
         <ShieldHalf size={16} aria-hidden />
       </span>
       <span className="text-[15px] font-semibold tracking-tight text-fg">AYZO</span>
@@ -155,7 +155,7 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
 
   return (
     <div className="flex min-h-screen">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-white">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-accent-ink">
         Skip to content
       </a>
 
@@ -198,7 +198,7 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
             <ThemeToggle />
             <Link
               href="/scans/new"
-              className="flex h-9 items-center gap-2 rounded-lg bg-accent px-3.5 text-sm font-medium text-white transition-colors hover:bg-accent/85"
+              className="flex h-9 items-center gap-2 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-ink transition-colors hover:bg-accent/85"
             >
               <Plus size={15} aria-hidden /> <span className="hidden sm:inline">New scan</span>
             </Link>

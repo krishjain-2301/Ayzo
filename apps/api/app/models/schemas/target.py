@@ -37,6 +37,9 @@ class TargetProfile(BaseModel):
     rules: Optional[list[str]] = Field(
         None, max_length=10, description="Rules the app must keep; used by the business_rules category"
     )
+    other_users: Optional[list[str]] = Field(
+        None, max_length=10, description="Other users whose data the test user must not reach; used by the cross_user category"
+    )
 
     # How to talk to the app. Unset fields are discovered by probing.
     request_headers: Optional[dict[str, str]] = Field(None, description='Sent with every request, e.g. an Authorization header')
@@ -158,6 +161,7 @@ class TargetResponse(BaseModel):
     expected_behavior: Optional[str] = None
     rules: Optional[list[str]] = None
     forbidden_tools: Optional[list[str]] = None
+    other_users: Optional[list[str]] = None
     # Header values are masked: they are usually credentials.
     request_headers: Optional[dict[str, str]] = None
     request_field: Optional[str] = None

@@ -41,6 +41,7 @@ _MAP: dict[str, tuple[str, str | None]] = {
     "agent_misuse": ("LLM06", "AML.T0053"),
     "excessive_agency": ("LLM06", "AML.T0053"),
     "tool_abuse": ("LLM06", "AML.T0053"),
+    "cross_user": ("LLM02", "AML.T0057"),
     "vector_weaknesses": ("LLM08", "AML.T0051.001"),
     "rag_injection": ("LLM08", "AML.T0051.001"),
     # A broken business rule is the app acting outside what it is allowed to do.

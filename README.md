@@ -32,7 +32,7 @@ To answer those, AYZO needs to know something about the app. Each target has an 
 | Boot | Starts your start command in the project folder, or skips this for `already running` |
 | Discover | Tries the configured chat path, then common paths and JSON body shapes, until one answers 2xx with text |
 | Check judge | Sends one request to the judge model. If it is unreachable the scan stops here and no attack is sent |
-| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 370 across 13 categories, plus your own and ones generated from your rules) |
+| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 370 across 13 categories, plus your own and ones generated from your rules, forbidden tools and other users) |
 | Decide | Exact checks first (protected values, system prompt, custom regex, plain echo of the attack), then the LLM judge |
 | Repeat | Optional. Sends each attack 1–5 times, because models answer differently each time |
 | Adapt | Optional. An attacker model reads the app's refusal and tries a new angle, up to 3 rounds |
@@ -235,7 +235,9 @@ Measured in October 2026:
 | Hardened practice bot, plus two adaptive rounds | 5 of 34 worked, 3 found only by the adaptive attacker. All judge opinions, not hand-verified |
 | Agent practice bot (four tools, no guard), tool-abuse attacks, 3 tries each | 7 of 8 worked; 6 confirmed by the recorded call to `delete_account` or `export_customers` |
 
-Not yet done: a published scan of an application the author did not write.
+The dashboard is checked with axe-core (`node e2e/a11y.mjs` in `apps/web`, WCAG 2.1 A and AA, both themes): no serious or critical problems as of October 2026. That is an automated check, not a review with a screen reader.
+
+One scan of an application the author did not write is published in `docs/REAL_APPS.md`: ReversecLabs' damn-vulnerable-llm-agent. AYZO's first scan found neither of its two flags; after a Cross-User Access category was added it found one, confirmed four ways. More such scans are still needed.
 
 ---
 
@@ -297,6 +299,7 @@ Files live in `apps/api/app/attack_library/payloads/`.
 | `indirect_injection` | Obey instructions hidden in content it was asked to process. Checked by exact match, no judge |
 | `business_rules` | Break a rule you wrote on the target. Attacks are generated per rule |
 | `tool_abuse` | Call a tool you marked as forbidden. Attacks are generated per tool; confirmed by the call itself |
+| `cross_user` | Read the data of another user you listed. Six attacks are generated per user; confirmed when a protected value of theirs appears |
 | `multi_turn` | Give in over a scripted conversation that builds trust, a role or a false premise first |
 | `system_prompt_leak` | Reveal its hidden instructions |
 | `data_leakage` | Disclose secrets, personal data, or retrieved context |

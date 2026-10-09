@@ -100,8 +100,8 @@ It does not show:
   sliver of each.
 - Anything about other targets. One bot, one model, one run each. The numbers
   will move on a rerun.
-- How the tools compare on an app nobody here wrote. That test is still to be
-  done.
+- How the tools compare on an app nobody here wrote. AYZO alone was run on
+  one such app; see [REAL_APPS.md](REAL_APPS.md).
 
 ## Reproduce
 

@@ -19,6 +19,7 @@ from app.core.config import settings
 from app.services.attack_engine import attack_engine
 from app.services.eval_engine import eval_engine
 from app.services.http_target import discover_chat_endpoint
+from app.services.access_attacks import generate_access_tests
 from app.services.process_target import boot_target, read_boot_log, stop_target, wait_for_port
 from app.services.rule_attacks import generate_rule_tests
 from app.services.tool_attacks import generate_tool_tests
@@ -45,6 +46,8 @@ async def scan(mode: str, profile: dict, timeout: float, categories: list[str], 
             extra_tests = await generate_rule_tests(profile.get("rules", []))
         if "tool_abuse" in categories:
             extra_tests += generate_tool_tests(profile.get("forbidden_tools", []))
+        if "cross_user" in categories:
+            extra_tests += generate_access_tests(profile.get("other_users", []))
         return await attack_engine.run_campaign(
             endpoint=found.url,
             body_style=found.body_style,

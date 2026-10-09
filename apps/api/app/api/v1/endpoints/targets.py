@@ -209,6 +209,7 @@ async def create_target(
         expected_behavior=target_in.expected_behavior,
         rules=target_in.rules or [],
         forbidden_tools=target_in.forbidden_tools or [],
+        other_users=target_in.other_users or [],
         request_headers=encrypt_map(target_in.request_headers),
         request_field=target_in.request_field,
         response_field=target_in.response_field,

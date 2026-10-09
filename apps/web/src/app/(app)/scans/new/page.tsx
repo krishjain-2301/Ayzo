@@ -19,7 +19,7 @@ const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
     title: "Your app's own weak points",
     hint: "What only you can test: your prompt, your data, your rules.",
-    ids: ["prompt_injection", "indirect_injection", "system_prompt_leak", "data_leakage", "business_rules", "multi_turn", "insecure_output_handling", "custom"],
+    ids: ["prompt_injection", "indirect_injection", "system_prompt_leak", "data_leakage", "business_rules", "cross_user", "multi_turn", "insecure_output_handling", "custom"],
   },
   {
     title: "Tools and retrieval",
@@ -82,12 +82,13 @@ function NewScan() {
   const target = targets.data.find((t) => t.id === targetId);
   const hasRules = Boolean(target?.rules?.length);
   const hasTools = Boolean(target?.forbidden_tools?.length);
+  const hasOthers = Boolean(target?.other_users?.length);
   // Categories whose attacks are generated from the target's own profile.
-  const unavailable = (id: string) => (id === "business_rules" && !hasRules) || (id === "tool_abuse" && !hasTools);
+  const unavailable = (id: string) => (id === "business_rules" && !hasRules) || (id === "tool_abuse" && !hasTools) || (id === "cross_user" && !hasOthers);
   const byId = new Map((categories.data ?? []).map((c) => [c.id, c]));
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((c) => c !== id) : [...p, id]));
   const chosen = picked.filter((id) => byId.has(id) && !unavailable(id));
-  const attacks = chosen.reduce((sum, id) => sum + (id === "business_rules" ? (target?.rules?.length ?? 0) * 4 : id === "tool_abuse" ? (target?.forbidden_tools?.length ?? 0) * 4 : Math.min(byId.get(id)?.attack_count ?? 0, 20)), 0);
+  const attacks = chosen.reduce((sum, id) => sum + (id === "business_rules" ? (target?.rules?.length ?? 0) * 4 : id === "tool_abuse" ? (target?.forbidden_tools?.length ?? 0) * 4 : id === "cross_user" ? (target?.other_users?.length ?? 0) * 6 : Math.min(byId.get(id)?.attack_count ?? 0, 20)), 0);
   const requests = attacks * trials;
   const hasProfile = Boolean(target && (target.canaries?.length || target.system_prompt || target.expected_behavior));
 
@@ -177,7 +178,7 @@ function NewScan() {
                             disabled && "cursor-not-allowed opacity-50"
                           )}
                         >
-                          <span className={clsx("mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border", on ? "border-accent bg-accent text-white" : "border-faint")}>
+                          <span className={clsx("mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border", on ? "border-accent bg-accent text-accent-ink" : "border-faint")}>
                             {on && <Check size={12} strokeWidth={3} />}
                           </span>
                           <span className="min-w-0">
@@ -187,7 +188,7 @@ function NewScan() {
                               {EXACT.has(c.id) && <Tag tone="accent">no judge needed</Tag>}
                             </span>
                             <span className="mt-0.5 block text-xs leading-relaxed text-mute">
-                              {disabled ? (c.id === "tool_abuse" ? "List the tools a user must never trigger on this target to use this." : "Add business rules to this target to use this.") : c.description}
+                              {disabled ? (c.id === "tool_abuse" ? "List the tools a user must never trigger on this target to use this." : c.id === "cross_user" ? "List other users on this target to use this." : "Add business rules to this target to use this.") : c.description}
                             </span>
                           </span>
                         </button>

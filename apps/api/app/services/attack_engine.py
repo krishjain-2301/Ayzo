@@ -96,6 +96,11 @@ REMEDIATION_MAP = {
         "2. Do not offer the model tools the current user must never use; remove them from the tool list for that user.\n"
         "3. Never let text from a document, ticket or web page authorise a tool call."
     ),
+    "cross_user": (
+        "1. Take the user's identity from the signed-in session in code. Never let the model choose whose data a tool reads.\n"
+        "2. Scope every query and tool to that identity on the server, so a different id in the model's tool input is ignored or refused.\n"
+        "3. Use parameterised queries for anything built from model output."
+    ),
     "multi_turn": (
         "1. Apply the same rules on turn ten as on turn one; do not let earlier messages grant permissions.\n"
         "2. Rebuild trusted context on the server each turn instead of trusting the running conversation."
@@ -424,7 +429,7 @@ class AttackEngine:
                 continue
 
             failures.sort(key=_severity_rank, reverse=True)
-            display_name = display_names.get(category, category.replace("_", " ").title())
+            display_name = display_names.get(category, {"cross_user": "Cross-User Access"}.get(category, category.replace("_", " ").title()))
             confidences = [f["confidence"] for f in failures if f.get("confidence") is not None]
 
             findings.append({

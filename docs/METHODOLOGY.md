@@ -103,7 +103,7 @@ Not covered at all: LLM03 Supply Chain, LLM04 Data and Model Poisoning, LLM09 Mi
 
 ## 6. The attack library
 
-- 364 single-message attacks and 8 scripted conversations across 13 categories, plus attacks generated per business rule.
+- 364 single-message attacks and 8 scripted conversations across 13 categories, plus attacks generated per business rule, per forbidden tool and per other user.
 - A similarity check (October 2026) found no repeated names and no true duplicate prompts. About eight attacks are one instruction wrapped in different invisible-character tricks, which is intended.
 - The prompts have **not** each been reviewed by a person for quality. Many are publicly known. The `agent_misuse`, `excessive_agency` and `vector_weaknesses` prompts describe tools and stores the target may not have; against such a target they are noise that the judge should pass.
 - Beyond the static list: rewriting of resisted attacks (seven strategies), an adaptive attacker that reads the refusal and tries another angle for up to three rounds, and an agentic multi-turn attack.
@@ -118,7 +118,7 @@ Not covered at all: LLM03 Supply Chain, LLM04 Data and Model Poisoning, LLM09 Mi
 | Where AYZO is weaker | Fewer attacks, no optimisation-based attacks, far less mature, one author |
 | Where AYZO differs | It boots the app, refuses to score a scan it could not really run, and ships a check that it separates a weak app from a hardened one |
 
-This table is from general knowledge of those projects. A side-by-side run of garak, promptfoo and AYZO on the weak practice bot is written up in [COMPARISON.md](COMPARISON.md): garak flagged 27 of 61 prompts (hijacking, none aimed at the app's secrets), promptfoo's local grader flagged 5 of 5 (1 real leak), AYZO flagged 37 of 54 (31 by exact check). That run favours AYZO by construction; a comparison on an app the author did not write is still to be done. PyRIT was not run.
+This table is from general knowledge of those projects. A side-by-side run of garak, promptfoo and AYZO on the weak practice bot is written up in [COMPARISON.md](COMPARISON.md): garak flagged 27 of 61 prompts (hijacking, none aimed at the app's secrets), promptfoo's local grader flagged 5 of 5 (1 real leak), AYZO flagged 37 of 54 (31 by exact check). That run favours AYZO by construction; the three tools have not been compared on an app the author did not write. PyRIT was not run.
 
 ## 8. Secrets AYZO stores
 
@@ -126,7 +126,7 @@ Provider API keys and a target's request header are encrypted on disk with a key
 
 ## 9. Known gaps
 
-- No scan of an application the author did not write has been published.
+- Only one scan of an application the author did not write has been published ([REAL_APPS.md](REAL_APPS.md)). AYZO missed that app's main flaw until a new category was written for it, and still misses its second flag.
 - Tool calls are only seen when the app reports them.
 - Indirect injection covers content passed through the chat, not content planted in the app's own knowledge base.
 - No cross-user test.

@@ -21,6 +21,7 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
     expected_behavior: target.expected_behavior ?? "",
     rules: (target.rules ?? []).join("\n"),
     forbidden_tools: (target.forbidden_tools ?? []).join("\n"),
+    other_users: (target.other_users ?? []).join("\n"),
     system_prompt: target.system_prompt ?? "",
   });
   const [busy, setBusy] = useState(false);
@@ -38,6 +39,7 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
           expected_behavior: form.expected_behavior,
           rules: lines(form.rules),
           forbidden_tools: lines(form.forbidden_tools),
+          other_users: lines(form.other_users),
           system_prompt: form.system_prompt,
         })
       );
@@ -100,6 +102,13 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
           hint={<>One tool name per line, for apps that call tools and report them in their reply (<code>tool_calls</code>). If one of these is called during an attack, that is a confirmed failure.</>}
         >
           <Textarea mono rows={2} value={form.forbidden_tools} onChange={set("forbidden_tools")} placeholder="delete_user&#10;issue_refund" />
+        </Field>
+
+        <Field
+          label="Other users it must not expose"
+          hint={<>One per line, written the way a person would name them. The <strong>Cross-User Access</strong> category tries to read each one&apos;s data. List a value only they own in the first box above to get confirmed findings.</>}
+        >
+          <Textarea mono rows={2} value={form.other_users} onChange={set("other_users")} placeholder="userId 2&#10;jane@example.com" />
         </Field>
 
         <Field label="System prompt" hint="Used only to detect replies that repeat it word for word.">
