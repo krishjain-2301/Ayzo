@@ -49,9 +49,11 @@ jobs:
           npx eslint src e2e
           npx next build
 
+      # Launch from the synced venv directly, not `uv run`: a backgrounded `uv`
+      # process would hold the setup-uv cache lock and fail the job's post-run.
       - name: Start AYZO
         run: |
-          (cd apps/api && nohup uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &)
+          (cd apps/api && nohup .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &)
           (cd apps/web && nohup npx next start --port 3000 > "$RUNNER_TEMP/web.log" 2>&1 &)
           for i in $(seq 1 40); do curl -sf http://127.0.0.1:8000/health && curl -sf -o /dev/null http://localhost:3000/dashboard && break; sleep 1; done
 
