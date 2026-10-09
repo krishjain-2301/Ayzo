@@ -17,6 +17,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import async_session_maker
+from app.core.logging import get_logger, scan_context
 from app.core.secretbox import decrypt_map
 from app.models.db.campaign import Campaign
 from app.models.db.finding import Finding
@@ -37,6 +38,8 @@ from app.services.process_target import (
     wait_for_port,
 )
 
+
+log = get_logger(__name__)
 
 # Campaign ids the user asked to stop. Scans run in this process, so a set is enough.
 CANCEL_REQUESTED: set[str] = set()
@@ -129,7 +132,13 @@ def apply_engine_summary(campaign: Campaign, summary: dict) -> list[Finding]:
 
 
 async def run_campaign_async(campaign_id: str) -> None:
-    print(f"[CAMPAIGN] Starting {campaign_id}")
+    """Tag every log line for this scan with its id, then run it."""
+    with scan_context(campaign_id):
+        await _run_campaign(campaign_id)
+
+
+async def _run_campaign(campaign_id: str) -> None:
+    log.info("Starting scan")
     async with async_session_maker() as db:
         result = await db.execute(
             select(Campaign)
@@ -138,7 +147,7 @@ async def run_campaign_async(campaign_id: str) -> None:
         )
         campaign = result.scalar_one_or_none()
         if not campaign:
-            print("[CAMPAIGN] Campaign not found")
+            log.warning("Campaign not found")
             return
 
         async def fail(reason: str) -> None:
@@ -146,7 +155,7 @@ async def run_campaign_async(campaign_id: str) -> None:
             campaign.description = reason
             campaign.completed_at = datetime.now(timezone.utc)
             await db.commit()
-            print(f"[CAMPAIGN] Failed: {reason}")
+            log.warning("Scan failed: %s", reason)
 
         if campaign_id in CANCEL_REQUESTED:
             CANCEL_REQUESTED.discard(campaign_id)
@@ -174,7 +183,7 @@ async def run_campaign_async(campaign_id: str) -> None:
             for r in saved
         ]
         if prior_results:
-            print(f"[CAMPAIGN] Continuing after an interruption: {len(prior_results)} results already saved")
+            log.info("Continuing after an interruption: %d results already saved", len(prior_results))
 
         campaign.status = "running"
         campaign.started_at = campaign.started_at or datetime.now(timezone.utc)
@@ -190,7 +199,7 @@ async def run_campaign_async(campaign_id: str) -> None:
 
         try:
             if not skip_boot:
-                print(f"[CAMPAIGN] Booting '{target.start_command}' in {target.project_path}")
+                log.info("Booting '%s' in %s", target.start_command, target.project_path)
                 process = await boot_target(target.start_command, target.project_path)
 
             if not await wait_for_port(target.target_port, timeout=30 if not skip_boot else 5):
@@ -218,7 +227,7 @@ async def run_campaign_async(campaign_id: str) -> None:
                     "and add a request header if the app needs a key."
                 )
                 return
-            print(f"[CAMPAIGN] Using {discovered.path} (body={discovered.body_style})")
+            log.info("Using %s (body=%s)", discovered.path, discovered.body_style)
 
             # Do not send a single attack if nothing can judge the replies.
             judge_ok, judge_detail = await eval_engine.check_judge()
@@ -302,15 +311,13 @@ async def run_campaign_async(campaign_id: str) -> None:
 
             db.add_all(apply_engine_summary(campaign, summary))
             await db.commit()
-            print(
-                f"[CAMPAIGN] {campaign.status} risk={campaign.risk_score} "
-                f"fail={campaign.failed_tests}/{campaign.total_tests}"
+            log.info(
+                "%s risk=%s fail=%s/%s",
+                campaign.status, campaign.risk_score, campaign.failed_tests, campaign.total_tests,
             )
 
         except Exception as exc:
-            import traceback
-
-            traceback.print_exc()
+            log.exception("Error during attack execution")
             await db.rollback()
             await fail(f"Error during attack execution: {exc!r}")
         finally:

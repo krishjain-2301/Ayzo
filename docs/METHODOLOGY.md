@@ -88,18 +88,26 @@ Limits of this evidence: both sets were written by the same author as the judge 
 
 Every finding carries its place in two taxonomies (`app/attack_library/taxonomy.py`):
 
+This table is checked against `taxonomy.py` by a test (`tests/test_taxonomy_docs.py`): every category the code maps must appear here, so the two cannot drift apart.
+
 | AYZO category | OWASP LLM Top 10 (2025) | MITRE ATLAS |
 |---------------|-------------------------|-------------|
 | prompt_injection, context_manipulation, advanced_bypasses | LLM01 Prompt Injection | AML.T0051.000 Direct |
 | indirect_injection | LLM01 Prompt Injection | AML.T0051.001 Indirect |
-| jailbreak, role_override, multi_turn | LLM01 Prompt Injection | AML.T0054 LLM Jailbreak |
-| system_prompt_leak | LLM07 System Prompt Leakage | AML.T0056 Meta Prompt Extraction |
-| data_leakage | LLM02 Sensitive Information Disclosure | AML.T0057 LLM Data Leakage |
+| jailbreak, role_override, multi_turn, adversarial_jailbreak | LLM01 Prompt Injection | AML.T0054 LLM Jailbreak |
+| custom | LLM01 Prompt Injection | — |
+| data_leakage, cross_user | LLM02 Sensitive Information Disclosure | AML.T0057 LLM Data Leakage |
 | insecure_output_handling | LLM05 Improper Output Handling | — |
-| agent_misuse, excessive_agency, business_rules | LLM06 Excessive Agency | AML.T0053 Plugin Compromise (not business_rules) |
-| vector_weaknesses | LLM08 Vector and Embedding Weaknesses | AML.T0051.001 Indirect |
+| sql_injection | LLM05 Improper Output Handling | AML.T0053 Plugin Compromise |
+| agent_misuse, excessive_agency, tool_abuse | LLM06 Excessive Agency | AML.T0053 Plugin Compromise |
+| business_rules | LLM06 Excessive Agency | — |
+| system_prompt_leak | LLM07 System Prompt Leakage | AML.T0056 Meta Prompt Extraction |
+| rag_poisoning, rag_ingestion, rag_injection, vector_weaknesses | LLM08 Vector and Embedding Weaknesses | AML.T0051.001 Indirect |
+| harmful_content | LLM09 Misinformation | AML.T0054 LLM Jailbreak |
 
-Not covered at all: LLM03 Supply Chain, LLM04 Data and Model Poisoning, LLM09 Misinformation, LLM10 Unbounded Consumption. These cannot be tested by sending text to a chat endpoint, and AYZO does not pretend to.
+`harmful_content` and `adversarial_jailbreak` are the opt-in, by-reference benchmarks (HarmBench, JailbreakBench): they measure the base model's safety training more than your app, and `harmful_content` is filed under LLM09 as the closest fit rather than an exact one.
+
+Not covered at all: LLM03 Supply Chain, LLM04 Data and Model Poisoning, LLM10 Unbounded Consumption. These cannot be tested by sending text to a chat endpoint, and AYZO does not pretend to.
 
 ## 6. The attack library
 
@@ -126,8 +134,8 @@ Provider API keys and a target's request header are encrypted on disk with a key
 
 ## 9. Known gaps
 
-- Only one scan of an application the author did not write has been published ([REAL_APPS.md](REAL_APPS.md)). AYZO missed that app's main flaw until a new category was written for it, and still misses its second flag.
-- Tool calls are only seen when the app reports them.
-- Indirect injection covers content passed through the chat, not content planted in the app's own knowledge base.
-- No cross-user test.
-- The dashboard has not been exercised by automated browser tests.
+- **External validity is the big one.** Only one scan of an application the author did not write has been published ([REAL_APPS.md](REAL_APPS.md)). AYZO missed that app's main flaw until a new category was written for it, and still misses its second flag. Everything else is measured against bots the author wrote, so AYZO's generalisation to systems it was not built against is asserted, not demonstrated.
+- **The judge's evidence is small and self-authored.** The held-out set (§4) was written by the same author as the judge prompt, so it shows the judge is not broken, not that it is unbiased or right on your app. Every non-deterministic category rests on it.
+- Tool calls are only seen when the app reports them (§2).
+- The risk score is an ordinal comparison aid, not a calibrated probability (§3); treat the number with the caution that section spells out.
+- `cross_user` and `rag_ingestion` close two earlier gaps (an app serving another user's data, and poison planted through the app's own ingestion endpoint), but both are confirmed only when a registered value or planted nonce comes back verbatim — a paraphrased or translated leak is still missed.

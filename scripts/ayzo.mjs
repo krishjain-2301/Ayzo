@@ -30,9 +30,19 @@ function run(command, args, cwd) {
   }
 }
 
+function hasUv() {
+  return spawnSync("uv", ["--version"], { stdio: "ignore", shell: windows }).status === 0;
+}
+
 function setup() {
-  if (!existsSync(venvPython)) run(windows ? "python" : "python3", ["-m", "venv", ".venv"], api);
-  run(venvPython, ["-m", "pip", "install", "-q", "-e", ".[dev]"], api);
+  if (hasUv()) {
+    // Reproducible: install the exact pinned set from uv.lock (what CI uses).
+    run("uv", ["sync", "--locked", "--extra", "dev"], api);
+  } else {
+    // No uv: fall back to pip. Versions resolve from pyproject floors, not the lock.
+    if (!existsSync(venvPython)) run(windows ? "python" : "python3", ["-m", "venv", ".venv"], api);
+    run(venvPython, ["-m", "pip", "install", "-q", "-e", ".[dev]"], api);
+  }
   if (!existsSync(join(api, ".env"))) {
     run(venvPython, ["-c", "import shutil; shutil.copy('.env.example', '.env')"], api);
   }

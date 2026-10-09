@@ -7,9 +7,14 @@ The frontend uses this to build the "Select Attack Categories"
 checkboxes when creating a new campaign.
 """
 
+import re
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+import yaml
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
 from app.api.deps import get_current_user
 from app.models.db.user import User
 from app.attack_library.loader import get_available_categories, load_all_payloads
@@ -69,11 +74,16 @@ async def list_payloads(
     return payloads
 
 
-import os
-import yaml
-from pathlib import Path
-from pydantic import BaseModel, Field
-from fastapi import HTTPException
+CUSTOM_YAML_PATH = Path(__file__).parent.parent.parent.parent / "attack_library" / "payloads" / "custom.yaml"
+CUSTOM_PAYLOAD_LIMIT = 100
+_SEVERITIES = {"critical", "high", "medium", "low", "info"}
+_CUSTOM_DEFAULTS = {
+    "category": "custom",
+    "display_name": "Custom User Payloads",
+    "owasp_id": "LLM01:2025",
+    "description": "User-defined custom payloads created via the Dashboard UI.",
+}
+
 
 class CustomPayloadCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
@@ -81,6 +91,32 @@ class CustomPayloadCreate(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=4000)
     success_indicators: str = Field(..., min_length=1, max_length=200)
     severity: str = Field("medium")
+
+
+def _read_custom() -> dict:
+    """Load custom.yaml, filling the file header and guaranteeing an attacks list."""
+    data: dict = {}
+    if CUSTOM_YAML_PATH.exists():
+        try:
+            loaded = yaml.safe_load(CUSTOM_YAML_PATH.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError) as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to read custom.yaml: {exc}")
+        if isinstance(loaded, dict):
+            data = loaded
+    for key, value in _CUSTOM_DEFAULTS.items():
+        data.setdefault(key, value)
+    if not isinstance(data.get("attacks"), list):
+        data["attacks"] = []
+    return data
+
+
+def _write_custom(data: dict) -> None:
+    try:
+        with open(CUSTOM_YAML_PATH, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, sort_keys=False, default_flow_style=False)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save custom.yaml: {exc}")
+
 
 @router.post("/payloads/custom")
 async def create_custom_payload(
@@ -91,55 +127,27 @@ async def create_custom_payload(
     Save a new custom adversarial payload directly to the custom.yaml file.
     It will be instantly available for new campaigns.
     """
-    custom_yaml_path = Path(__file__).parent.parent.parent.parent / "attack_library" / "payloads" / "custom.yaml"
-    
-    data = {}
-    if custom_yaml_path.exists():
-        try:
-            with open(custom_yaml_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to read custom.yaml: {e}")
-            
-    if "category" not in data:
-        data["category"] = "custom"
-    if "display_name" not in data:
-        data["display_name"] = "Custom User Payloads"
-    if "owasp_id" not in data:
-        data["owasp_id"] = "LLM01:2025"
-    if "description" not in data:
-        data["description"] = "User-defined custom payloads created via the Dashboard UI."
-    if "attacks" not in data or not isinstance(data["attacks"], list):
-        data["attacks"] = []
-    if len(data["attacks"]) >= 100:
-        raise HTTPException(status_code=400, detail="Custom payload limit reached (100)")
+    data = _read_custom()
+    if len(data["attacks"]) >= CUSTOM_PAYLOAD_LIMIT:
+        raise HTTPException(status_code=400, detail=f"Custom payload limit reached ({CUSTOM_PAYLOAD_LIMIT})")
 
     severity = payload_in.severity.lower().strip()
-    if severity not in {"critical", "high", "medium", "low", "info"}:
+    if severity not in _SEVERITIES:
         raise HTTPException(status_code=400, detail="Severity must be critical, high, medium, low, or info")
-    import re
     try:
         re.compile(payload_in.success_indicators)
     except re.error:
         raise HTTPException(status_code=400, detail="success_indicators is not a valid pattern")
 
-    new_attack = {
+    data["attacks"].append({
         "name": payload_in.name,
         "subcategory": "user_defined",
         "description": payload_in.description,
         "prompt": payload_in.prompt,
         "success_indicators": payload_in.success_indicators,
         "severity": severity,
-    }
-    
-    data["attacks"].append(new_attack)
-    
-    try:
-        with open(custom_yaml_path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, sort_keys=False, default_flow_style=False)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save custom.yaml: {e}")
-        
+    })
+    _write_custom(data)
     return {"message": "Custom payload saved successfully"}
 
 
@@ -151,32 +159,16 @@ async def delete_custom_payload(
     """
     Delete a custom adversarial payload from the custom.yaml file by name.
     """
-    custom_yaml_path = Path(__file__).parent.parent.parent.parent / "attack_library" / "payloads" / "custom.yaml"
-    
-    if not custom_yaml_path.exists():
+    if not CUSTOM_YAML_PATH.exists():
         raise HTTPException(status_code=404, detail="No custom payloads found")
-        
-    try:
-        with open(custom_yaml_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read custom.yaml: {e}")
-        
-    if "attacks" not in data or not isinstance(data["attacks"], list):
-        raise HTTPException(status_code=404, detail="No custom attacks found")
-        
-    original_length = len(data["attacks"])
+
+    data = _read_custom()
+    before = len(data["attacks"])
     data["attacks"] = [attack for attack in data["attacks"] if attack.get("name") != name]
-    
-    if len(data["attacks"]) == original_length:
+    if len(data["attacks"]) == before:
         raise HTTPException(status_code=404, detail=f"Custom payload '{name}' not found")
-        
-    try:
-        with open(custom_yaml_path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, sort_keys=False, default_flow_style=False)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save custom.yaml: {e}")
-        
+
+    _write_custom(data)
     return {"message": f"Custom payload '{name}' deleted successfully"}
 
 

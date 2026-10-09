@@ -62,12 +62,15 @@ async def boot_target(start_command: str, project_path: str):
     try:
         process = await asyncio.create_subprocess_exec(*argv, **kwargs)
     except FileNotFoundError:
-        # Windows launches npm/pnpm through .cmd, which exec cannot see.
-        # The command was already rejected if it contained shell operators.
+        # Windows ships npm/pnpm/npx as .cmd shims that CreateProcess cannot launch
+        # directly. Run them through `cmd /c` with the ALREADY-VALIDATED argv list,
+        # never the raw string: safe_argv has rejected shell operators and `..`, and
+        # passing fixed args (not a string cmd re-parses) keeps the shell from
+        # chaining or re-interpreting anything.
         if os.name != "nt":
             log.close()
             raise
-        process = await asyncio.create_subprocess_shell(start_command, **kwargs)
+        process = await asyncio.create_subprocess_exec("cmd.exe", "/c", *argv, **kwargs)
     finally:
         log.close()
     process.ayzo_log_path = log.name

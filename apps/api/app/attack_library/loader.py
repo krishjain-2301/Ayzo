@@ -10,6 +10,9 @@ from pathlib import Path
 import yaml
 
 from app.attack_library.external import external_categories, load_external_payloads
+from app.core.logging import get_logger
+
+log = get_logger(__name__)
 
 # Directory containing all YAML payload files
 PAYLOADS_DIR = Path(__file__).parent / "payloads"
@@ -20,7 +23,7 @@ def _read_yaml(yaml_file: Path) -> dict | None:
         with open(yaml_file, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except (OSError, yaml.YAMLError) as e:
-        print(f"Skipping {yaml_file.name}: {e}")
+        log.warning("Skipping %s: %s", yaml_file.name, e)
         return None
     return data if isinstance(data, dict) else None
 
@@ -48,7 +51,7 @@ def load_all_payloads() -> list[dict]:
                 # Shown in the library as the whole script.
                 attack = {**attack, "prompt": "\n\n".join(f"{i + 1}. {t}" for i, t in enumerate(turns))}
             if not isinstance(attack, dict) or not attack.get("name") or not attack.get("prompt"):
-                print(f"Skipping malformed attack in {yaml_file.name}")
+                log.warning("Skipping malformed attack in %s", yaml_file.name)
                 continue
             all_attacks.append({
                 "category": category,

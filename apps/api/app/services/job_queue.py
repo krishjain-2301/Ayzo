@@ -19,7 +19,10 @@ from typing import Optional
 from sqlalchemy import select
 
 from app.core.database import async_session_maker
+from app.core.logging import get_logger
 from app.models.db.campaign import Campaign
+
+log = get_logger(__name__)
 
 _queue: Optional[asyncio.Queue] = None
 _worker: Optional[asyncio.Task] = None
@@ -44,8 +47,8 @@ async def _run_forever() -> None:
         campaign_id = await _queue.get()
         try:
             await run_campaign_async(campaign_id)
-        except Exception as exc:  # the runner reports its own failures; this is the last resort
-            print(f"[QUEUE] Scan {campaign_id} crashed the runner: {exc!r}")
+        except Exception:  # the runner reports its own failures; this is the last resort
+            log.exception("Scan %s crashed the runner", campaign_id)
         finally:
             _queue.task_done()
 

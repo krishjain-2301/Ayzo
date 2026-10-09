@@ -24,6 +24,13 @@ dependencies = [
     "python-dotenv>=1.0.0",       # Load .env files
 ]
 
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [project.scripts]
 ayzo = "app.cli:main"
 

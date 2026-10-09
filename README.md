@@ -110,7 +110,7 @@ Run `ollama pull gemma3:4b` first. If you have Claude Code installed, `claude-cl
 pnpm setup:ayzo
 ```
 
-This creates the Python environment in `apps/api/.venv`, installs both halves, copies `.env.example` to `.env` if needed, and builds the dashboard. It needs Python 3.12+, Node 20+ and pnpm.
+This creates the Python environment in `apps/api/.venv`, installs both halves, copies `.env.example` to `.env` if needed, and builds the dashboard. It needs Python 3.12+, Node 20+ and pnpm. If [uv](https://docs.astral.sh/uv/) is installed it installs the exact pinned set from `apps/api/uv.lock` (the same versions CI uses); otherwise it falls back to `pip` and the version floors in `pyproject.toml`.
 
 ### 3. Run
 
@@ -370,7 +370,7 @@ With the API running:
 
 ```bash
 cd apps/api
-pip install -e .          # once, adds the ayzo command
+uv sync --locked          # once; or: pip install -e .  (adds the ayzo command)
 
 ayzo targets
 ayzo scan --target "Practice bot (weak)" --categories prompt_injection,indirect_injection

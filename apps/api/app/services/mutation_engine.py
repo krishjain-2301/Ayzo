@@ -31,6 +31,9 @@ from typing import Optional
 
 from app.services.llm_client import llm_client
 from app.core.config import settings
+from app.core.logging import get_logger
+
+log = get_logger(__name__)
 
 
 # ---- Mutation Strategies ----
@@ -131,7 +134,7 @@ class MutationEngine:
                         "original": prompt,
                     })
             except Exception as exc:
-                print(f"⚠️  Mutation strategy '{strategy}' failed: {exc}")
+                log.warning("Mutation strategy '%s' failed: %s", strategy, exc)
                 continue
 
         return mutations[:count]

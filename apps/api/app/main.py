@@ -11,37 +11,41 @@ from starlette.requests import Request
 
 from app.core.config import settings
 from app.core.database import engine, ensure_schema
+from app.core.logging import get_logger, setup_logging
 
 # Import all models so ensure_schema() sees every table.
 from app.models.db import user, target, campaign, test_result, finding  # noqa: F401
 
+setup_logging()
+log = get_logger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"[*] AYZO API v{settings.APP_VERSION} starting (local mode)...")
+    log.info("AYZO API v%s starting (local mode)", settings.APP_VERSION)
     db_display = settings.DATABASE_URL.split("///")[-1]
-    print(f"[*] Database: {db_display}")
+    log.info("Database: %s", db_display)
 
     added = await ensure_schema()
     if added:
-        print(f"[*] Database upgraded, added columns: {', '.join(added)}")
+        log.info("Database upgraded, added columns: %s", ", ".join(added))
 
     from app.services import model_settings
 
     if model_settings.apply_saved():
-        print(f"[*] Judge model (from saved settings): {settings.DEFAULT_EVAL_MODEL}")
+        log.info("Judge model (from saved settings): %s", settings.DEFAULT_EVAL_MODEL)
 
     from app.services import job_queue
 
     resumed = await job_queue.start()
     if resumed:
-        print(f"[*] Resuming {resumed} scan(s) that were waiting or interrupted.")
+        log.info("Resuming %d scan(s) that were waiting or interrupted", resumed)
 
     yield
 
     await job_queue.stop()
 
-    print("[*] AYZO API shutting down...")
+    log.info("AYZO API shutting down")
     await engine.dispose()
 
 
