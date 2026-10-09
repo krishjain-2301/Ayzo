@@ -1,6 +1,6 @@
-allowBuilds:
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+# The dashboard installs on its own (pnpm install in this folder).
+packages:
+  - "."
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
