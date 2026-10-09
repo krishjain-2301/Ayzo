@@ -29,9 +29,12 @@ function JudgeStatus() {
         .catch(() => alive && setState({ problem: "API not reachable" }));
     load();
     const timer = setInterval(load, 20000);
+    // The settings page announces a change so this updates at once.
+    window.addEventListener("ayzo:models-changed", load);
     return () => {
       alive = false;
       clearInterval(timer);
+      window.removeEventListener("ayzo:models-changed", load);
     };
   }, []);
 

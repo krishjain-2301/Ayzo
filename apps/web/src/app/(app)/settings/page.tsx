@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import clsx from "clsx";
-import { RefreshCw } from "lucide-react";
+import { Check, Loader2, RefreshCw } from "lucide-react";
 import { post } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
 import type { ModelsOverview, Provider } from "@/lib/types";
@@ -14,35 +14,153 @@ interface Limits {
   cicd_fail_risk_threshold: number;
 }
 
+type Status = { tone: "busy" | "pass" | "fail"; text: string } | null;
+
+/** Applies a model choice. Resolves when saved; throws with a readable message otherwise. */
+type Apply = (model: string, apiKey?: { provider: string; key: string }) => Promise<void>;
+
 const CLI = `cd apps/api
 ayzo scan --target "My app" \\
   --categories prompt_injection,system_prompt_leak,indirect_injection \\
   --fail-on new --sarif ayzo.sarif`;
 
-function Choice({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+function Choice({ label, selected, busy, onClick }: { label: string; selected: boolean; busy: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={busy}
       className={clsx(
-        "rounded-md border px-3 py-1.5 font-mono text-[13px] transition-colors",
-        selected ? "border-accent/70 bg-accent-dim/40 text-fg" : "border-line text-mute hover:border-faint hover:text-fg"
+        "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-mono text-[13px] transition-colors disabled:cursor-wait",
+        selected ? "border-accent bg-accent-dim/50 text-fg" : "border-line text-mute hover:border-faint hover:text-fg"
       )}
     >
+      {selected && <Check size={13} className="text-accent" />}
       {label}
     </button>
   );
 }
 
-/** Pick one model: a local one found on this computer, or an online provider's. */
-function ModelPicker({ data, value, onChange }: { data: ModelsOverview; value: string; onChange: (model: string) => void }) {
+/** One online provider: its models, and its API key handled right here. */
+function ProviderRow({ provider, current, busy, apply, onKeyRemoved }: {
+  provider: Provider;
+  current: string;
+  busy: boolean;
+  apply: Apply;
+  onKeyRemoved: (p: Provider) => void;
+}) {
+  // The model the user clicked while this provider still had no key.
+  const [wanted, setWanted] = useState("");
+  const [key, setKey] = useState("");
+  const [custom, setCustom] = useState("");
+  const [replacing, setReplacing] = useState(false);
+
+  const pick = (name: string) => {
+    const model = `${provider.prefix}${name}`;
+    if (provider.key_set) apply(model).catch(() => {});
+    else setWanted(model);
+  };
+
+  const saveKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // With no model clicked yet, the key is saved and the current model kept.
+    await apply(wanted || current, { provider: provider.id, key: key.trim() }).then(
+      () => {
+        setKey("");
+        setWanted("");
+        setReplacing(false);
+      },
+      () => {}
+    );
+  };
+
+  return (
+    <div>
+      <p className="mb-2 flex flex-wrap items-center gap-2 text-[13px] text-fg">
+        {provider.name}
+        {provider.key_set ? <Tag tone="pass">API key added</Tag> : <Tag tone="warn">API key required</Tag>}
+        {!provider.key_set && !replacing && !wanted && (
+          <button onClick={() => setReplacing(true)} className="text-xs text-accent hover:underline">Add API key</button>
+        )}
+        {provider.key_set && !replacing && (
+          <>
+            <button onClick={() => setReplacing(true)} className="text-xs text-mute hover:text-fg">Replace key</button>
+            <button onClick={() => onKeyRemoved(provider)} className="text-xs text-mute hover:text-fail">Remove key</button>
+          </>
+        )}
+      </p>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {provider.models.map((name) => (
+          <Choice
+            key={name}
+            label={name}
+            busy={busy}
+            selected={current === `${provider.prefix}${name}` || wanted === `${provider.prefix}${name}`}
+            onClick={() => pick(name)}
+          />
+        ))}
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (custom.trim()) pick(custom.trim());
+          }}
+        >
+          <Input mono className="!w-40 !py-1.5" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="other model id" />
+          {custom.trim() && <Button size="sm" type="submit">Use</Button>}
+        </form>
+      </div>
+
+      {(wanted || replacing) && (
+        <form onSubmit={saveKey} className="mt-3 rounded-md border border-warn/30 bg-warn/5 p-3">
+          <p className="mb-2 text-[13px] text-fg">
+            {wanted ? (
+              <>To use <code>{wanted}</code>, paste your {provider.name} API key.</>
+            ) : (
+              <>{provider.name} models need an API key. Paste yours to enable them.</>
+            )}{" "}
+            <a href={provider.key_url} target="_blank" rel="noreferrer" className="text-accent hover:underline">Get a key</a>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              mono
+              type="password"
+              autoComplete="off"
+              className="!w-auto min-w-[16rem] flex-1"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder={`${provider.name} API key`}
+            />
+            <Button size="sm" variant="primary" type="submit" disabled={key.trim().length < 8} busy={busy}>
+              {wanted ? "Save key and use this model" : "Save key"}
+            </Button>
+            {(wanted || replacing) && (
+              <Button size="sm" variant="ghost" type="button" onClick={() => { setWanted(""); setReplacing(false); setKey(""); }}>Cancel</Button>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-mute">Saved only on this computer, in apps/api/data/settings.json. It is never shown again.</p>
+        </form>
+      )}
+    </div>
+  );
+}
+
+/** Click a model and it is applied at once. */
+function ModelPicker({ data, current, busy, apply, onKeyRemoved }: {
+  data: ModelsOverview;
+  current: string;
+  busy: boolean;
+  apply: Apply;
+  onKeyRemoved: (p: Provider) => void;
+}) {
   const { ollama, claude_cli } = data.local;
-  const [custom, setCustom] = useState<Record<string, string>>({});
+  const use = (model: string) => apply(model).catch(() => {});
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-3 text-xs uppercase tracking-wider text-faint">On this computer · no key needed</p>
+        <p className="mb-3 text-xs uppercase tracking-wider text-faint">Runs on this computer · free, no API key</p>
         <div className="space-y-4">
           <div>
             <p className="mb-2 text-[13px] text-fg">Ollama</p>
@@ -56,19 +174,19 @@ function ModelPicker({ data, value, onChange }: { data: ModelsOverview; value: s
             ) : (
               <div className="flex flex-wrap gap-2">
                 {ollama.models.map((name) => (
-                  <Choice key={name} label={name} selected={value === `ollama/${name}`} onClick={() => onChange(`ollama/${name}`)} />
+                  <Choice key={name} label={name} busy={busy} selected={current === `ollama/${name}`} onClick={() => use(`ollama/${name}`)} />
                 ))}
               </div>
             )}
           </div>
           <div>
             <p className="mb-2 text-[13px] text-fg">
-              Claude Code <span className="text-mute">· uses your Claude Code sign-in</span>
+              Claude Code <span className="text-mute">· uses the Claude Code sign-in on this computer</span>
             </p>
             {claude_cli.installed ? (
               <div className="flex flex-wrap gap-2">
                 {claude_cli.models.map((name) => (
-                  <Choice key={name} label={name} selected={value === `claude-cli/${name}`} onClick={() => onChange(`claude-cli/${name}`)} />
+                  <Choice key={name} label={name} busy={busy} selected={current === `claude-cli/${name}`} onClick={() => use(`claude-cli/${name}`)} />
                 ))}
               </div>
             ) : (
@@ -79,29 +197,10 @@ function ModelPicker({ data, value, onChange }: { data: ModelsOverview; value: s
       </div>
 
       <div>
-        <p className="mb-3 text-xs uppercase tracking-wider text-faint">Online · needs that provider&apos;s API key</p>
-        <div className="space-y-4">
+        <p className="mb-3 text-xs uppercase tracking-wider text-faint">Online · you need your own API key from the provider</p>
+        <div className="space-y-5">
           {data.providers.map((p) => (
-            <div key={p.id}>
-              <p className="mb-2 flex items-center gap-2 text-[13px] text-fg">
-                {p.name} <Tag tone={p.key_set ? "pass" : "mute"}>{p.key_set ? "key set" : "no key"}</Tag>
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                {p.models.map((name) => (
-                  <Choice key={name} label={name} selected={value === `${p.prefix}${name}`} onClick={() => onChange(`${p.prefix}${name}`)} />
-                ))}
-                <Input
-                  mono
-                  className="!w-44 !py-1.5"
-                  value={custom[p.id] ?? ""}
-                  placeholder="other model id"
-                  onChange={(e) => {
-                    setCustom({ ...custom, [p.id]: e.target.value });
-                    if (e.target.value.trim()) onChange(`${p.prefix}${e.target.value.trim()}`);
-                  }}
-                />
-              </div>
-            </div>
+            <ProviderRow key={p.id} provider={p} current={current} busy={busy} apply={apply} onKeyRemoved={onKeyRemoved} />
           ))}
         </div>
       </div>
@@ -109,45 +208,65 @@ function ModelPicker({ data, value, onChange }: { data: ModelsOverview; value: s
   );
 }
 
+function StatusLine({ status }: { status: Status }) {
+  if (!status) return null;
+  return (
+    <p className={clsx("flex items-start gap-2 text-[13px]", status.tone === "pass" && "text-pass", status.tone === "fail" && "text-fail", status.tone === "busy" && "text-mute")}>
+      {status.tone === "busy" && <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" />}
+      <span className="min-w-0 break-words">{status.text}</span>
+    </p>
+  );
+}
+
 function Models({ initial, onRefresh }: { initial: ModelsOverview; onRefresh: () => void }) {
   const [data, setData] = useState(initial);
-  const [judge, setJudge] = useState(initial.eval_model);
-  const [same, setSame] = useState(!initial.mutator_model);
-  const [attacker, setAttacker] = useState(initial.mutator_model || initial.eval_model);
-  const [keys, setKeys] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [judgeStatus, setJudgeStatus] = useState<Status>(null);
+  const [attackerStatus, setAttackerStatus] = useState<Status>(null);
+  const [busy, setBusy] = useState<"" | "judge" | "attacker">("");
 
-  // Online providers the current choices depend on, and which still lack a key.
-  const chosen = [judge, ...(same ? [] : [attacker])];
-  const needed = data.providers.filter((p) => chosen.some((m) => m.startsWith(p.prefix)));
-  const missing = needed.filter((p) => !p.key_set && !(keys[p.id] || "").trim());
-  const changed = judge !== data.eval_model || (same ? "" : attacker) !== data.mutator_model || Object.values(keys).some((k) => k.trim());
+  const sameAttacker = !data.mutator_model;
 
-  const save = async () => {
-    setSaving(true);
-    setMessage(null);
+  /** Save a choice, tell the sidebar, then check the model really answers. */
+  const save = async (role: "judge" | "attacker", body: Record<string, unknown>, model: string, setStatus: (s: Status) => void) => {
+    setBusy(role);
+    setStatus({ tone: "busy", text: `Switching to ${model}…` });
     try {
-      const api_keys = Object.fromEntries(Object.entries(keys).filter(([, k]) => k.trim()));
-      setData(await post<ModelsOverview>("/system/models", { eval_model: judge, mutator_model: same ? "" : attacker, api_keys }));
-      setKeys({});
-      setMessage({ ok: true, text: "Saved. Checking that the judge answers…" });
-      const test = await post<{ success: boolean; message: string }>("/system/judge-test", {});
-      setMessage({ ok: test.success, text: test.success ? `Saved. ${test.message}` : `Saved, but: ${test.message}` });
+      setData(await post<ModelsOverview>("/system/models", body));
+      window.dispatchEvent(new Event("ayzo:models-changed"));
+      setStatus({ tone: "busy", text: `Now using ${model}. Checking that it answers (a local model can take a minute to load)…` });
+      const test = await post<{ success: boolean; message: string }>("/system/judge-test", { model });
+      setStatus(
+        test.success
+          ? { tone: "pass", text: `Now using ${model}. It answered.` }
+          : { tone: "fail", text: `Switched to ${model}, but it did not answer: ${test.message}` }
+      );
     } catch (e) {
-      setMessage({ ok: false, text: e instanceof Error ? e.message : "Could not save." });
+      const text = e instanceof Error ? e.message : "Could not save.";
+      setStatus({ tone: "fail", text });
+      throw new Error(text);
     } finally {
-      setSaving(false);
+      setBusy("");
     }
+  };
+
+  const keys = (apiKey?: { provider: string; key: string }) => (apiKey ? { api_keys: { [apiKey.provider]: apiKey.key } } : {});
+  const applyJudge: Apply = (model, apiKey) => save("judge", { eval_model: model, ...keys(apiKey) }, model, setJudgeStatus);
+  const applyAttacker: Apply = (model, apiKey) => save("attacker", { mutator_model: model, ...keys(apiKey) }, model, setAttackerStatus);
+
+  const followJudge = async (follow: boolean) => {
+    const model = data.eval_model;
+    // Unticking keeps the same model for now, as an explicit choice the user can then change.
+    await save("attacker", { mutator_model: follow ? "" : model }, model, setAttackerStatus).catch(() => {});
   };
 
   const removeKey = async (p: Provider) => {
     if (!confirm(`Remove the saved ${p.name} API key?`)) return;
     try {
       setData(await post<ModelsOverview>("/system/models", { api_keys: { [p.id]: "" } }));
-      setMessage({ ok: true, text: `${p.name} key removed.` });
+      window.dispatchEvent(new Event("ayzo:models-changed"));
+      setJudgeStatus({ tone: "pass", text: `${p.name} key removed.` });
     } catch (e) {
-      setMessage({ ok: false, text: e instanceof Error ? e.message : "Could not remove the key." });
+      setJudgeStatus({ tone: "fail", text: e instanceof Error ? e.message : "Could not remove the key." });
     }
   };
 
@@ -156,11 +275,17 @@ function Models({ initial, onRefresh }: { initial: ModelsOverview; onRefresh: ()
       <Card>
         <CardHeader
           title="Judge model"
-          hint={<>Reads each reply from your app and decides whether the attack worked. Now: <code className="text-fg">{data.eval_model}</code></>}
-          right={<Button size="sm" variant="ghost" onClick={onRefresh}><RefreshCw size={13} /> Refresh</Button>}
+          hint="Reads each reply from your app and decides whether the attack worked. Click a model to switch to it."
+          right={<Button size="sm" variant="ghost" onClick={onRefresh}><RefreshCw size={13} /> Refresh list</Button>}
         />
-        <div className="p-5">
-          <ModelPicker data={data} value={judge} onChange={setJudge} />
+        <div className="space-y-5 p-5">
+          <div className="rounded-md border border-line bg-ink px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-faint">In use now</p>
+            <p className="mt-1 font-mono text-[15px] text-fg">{data.eval_model}</p>
+            {data.eval_model_missing_key && <p className="mt-1 text-[13px] text-warn">This model needs an API key that has not been added. Scans will stop before attacking.</p>}
+            <div className="mt-2"><StatusLine status={judgeStatus} /></div>
+          </div>
+          <ModelPicker data={data} current={data.eval_model} busy={busy !== ""} apply={applyJudge} onKeyRemoved={removeKey} />
         </div>
       </Card>
 
@@ -170,50 +295,23 @@ function Models({ initial, onRefresh }: { initial: ModelsOverview; onRefresh: ()
           hint="Rewrites attacks that missed, writes business-rule attacks, and plays the attacker in agentic runs. Hosted models often refuse this job; a local model usually does it better."
         />
         <div className="space-y-5 p-5">
+          <div className="rounded-md border border-line bg-ink px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-faint">In use now</p>
+            <p className="mt-1 font-mono text-[15px] text-fg">
+              {data.effective_mutator_model}
+              {sameAttacker && <span className="ml-2 font-sans text-[13px] text-mute">same as the judge</span>}
+            </p>
+            <div className="mt-2"><StatusLine status={attackerStatus} /></div>
+          </div>
           <label className="flex cursor-pointer items-center gap-3 text-sm text-fg">
-            <input type="checkbox" checked={same} onChange={(e) => setSame(e.target.checked)} className="h-4 w-4 accent-[#5cc8ff]" />
-            Use the same model as the judge
+            <input type="checkbox" checked={sameAttacker} disabled={busy !== ""} onChange={(e) => followJudge(e.target.checked)} className="h-4 w-4 accent-[#5cc8ff]" />
+            Always use the same model as the judge
           </label>
-          {!same && <ModelPicker data={data} value={attacker} onChange={setAttacker} />}
+          {!sameAttacker && (
+            <ModelPicker data={data} current={data.effective_mutator_model} busy={busy !== ""} apply={applyAttacker} onKeyRemoved={removeKey} />
+          )}
         </div>
       </Card>
-
-      <Card>
-        <CardHeader
-          title="API keys"
-          hint={<>Only for online models. Saved on this computer in <code>apps/api/data/settings.json</code> and never shown again.</>}
-        />
-        <div className="divide-y divide-line">
-          {data.providers.map((p) => {
-            const required = needed.some((n) => n.id === p.id) && !p.key_set;
-            return (
-              <div key={p.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-                <div className="w-44 text-[13px] text-fg">
-                  {p.name}
-                  {required && <span className="block text-xs text-warn">needed for your choice</span>}
-                </div>
-                <Input
-                  mono
-                  type="password"
-                  autoComplete="off"
-                  className={clsx("!w-auto min-w-[14rem] flex-1", required && !(keys[p.id] || "").trim() && "!border-warn/60")}
-                  value={keys[p.id] ?? ""}
-                  onChange={(e) => setKeys({ ...keys, [p.id]: e.target.value })}
-                  placeholder={p.key_set ? "saved — type to replace" : "paste API key"}
-                />
-                <a href={p.key_url} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">Get a key</a>
-                {p.key_set && <button onClick={() => removeKey(p)} className="text-xs text-mute hover:text-fail">Remove</button>}
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <Button variant="primary" onClick={save} busy={saving} disabled={missing.length > 0 || !changed}>Save and test</Button>
-        {missing.length > 0 && <span className="text-[13px] text-warn">Enter the {missing.map((p) => p.name).join(" and ")} API key above to use that model.</span>}
-        {message && <span className={clsx("min-w-0 break-words text-[13px]", message.ok ? "text-pass" : "text-fail")}>{message.text}</span>}
-      </div>
     </>
   );
 }
@@ -230,7 +328,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Choose which AI models AYZO uses. Changes apply to the next scan and are remembered." />
+      <PageHeader title="Settings" subtitle="Choose which AI models AYZO uses. A click switches the model straight away, and the choice is remembered." />
       {models.error && <Notice tone="fail">{models.error}</Notice>}
       {models.loading || !models.data ? (
         !models.error && <Loading />
