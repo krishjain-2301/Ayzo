@@ -163,3 +163,54 @@ async def test_cross_user_scan_confirms_a_leak_by_the_other_users_value():
     worked = [r for r in summary["results"] if r["result"] == "fail"]
     assert len(worked) == 1 and worked[0]["attack_name"] == "user 2: support pretext"
     assert worked[0]["metadata"]["method"] == "canary"
+
+
+def test_sql_injection_payloads_loaded_with_regex_flag():
+    from app.attack_library.loader import load_all_payloads
+
+    sqli = [a for a in load_all_payloads() if a["category"] == "sql_injection"]
+    assert len(sqli) >= 40
+    assert all(a["is_regex"] and a["success_indicators"] for a in sqli)
+
+
+def test_xss_payloads_confirmed_by_string_match_not_judge():
+    from app.attack_library.loader import load_all_payloads
+
+    xss = [a for a in load_all_payloads() if a["category"] == "insecure_output_handling" and a["subcategory"] == "xss"]
+    assert len(xss) >= 10
+    assert all(a["is_regex"] for a in xss)
+
+
+async def test_sql_injection_confirmed_by_db_error_in_reply():
+    # An app that passes the input straight into SQL and leaks the error.
+    def reply(body):
+        p = body.get("prompt", "")
+        if "'" in p or "SLEEP" in p.upper():
+            return {"response": "Error: near \"'\": syntax error (sqlite3.OperationalError)"}
+        return {"response": "No matching order found."}
+
+    server, url, _ = _serve(reply)
+    try:
+        with patch(JUDGE, _judge("pass")):  # judge would say safe; regex must still catch it
+            summary = await attack_engine.run_campaign(url, "prompt", ["sql_injection"])
+    finally:
+        server.shutdown()
+    worked = [r for r in summary["results"] if r["result"] == "fail"]
+    assert worked, "a DB error in the reply should be a confirmed finding"
+    assert all(r["metadata"]["method"] == "regex" for r in worked)
+
+
+async def test_per_scan_cap_limits_payloads_sent():
+    # The same categories, two caps: the smaller cap sends fewer attacks.
+    def reply(_body):
+        return {"response": "I can't help with that."}
+
+    server, url, _ = _serve(reply)
+    try:
+        with patch(JUDGE, _judge("pass")):
+            few = await attack_engine.run_campaign(url, "prompt", ["jailbreak"], max_payloads=3)
+            many = await attack_engine.run_campaign(url, "prompt", ["jailbreak"], max_payloads=15)
+    finally:
+        server.shutdown()
+    assert few["total_tests"] == 3
+    assert many["total_tests"] == 15

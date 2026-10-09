@@ -45,7 +45,7 @@ def request_cancel(campaign_id: str) -> None:
     CANCEL_REQUESTED.add(str(campaign_id))
 
 
-def build_run_config(seed: int | None, trials: int, adaptive_rounds: int = 0) -> dict:
+def build_run_config(seed: int | None, trials: int, adaptive_rounds: int = 0, max_payloads: int | None = None) -> dict:
     """What a scan was run with, so it can be repeated and its numbers explained."""
     return {
         "seed": seed if seed is not None else random.randint(0, 2**31 - 1),
@@ -53,7 +53,7 @@ def build_run_config(seed: int | None, trials: int, adaptive_rounds: int = 0) ->
         "adaptive_rounds": adaptive_rounds,
         "judge_model": settings.DEFAULT_EVAL_MODEL,
         "attacker_model": settings.MUTATOR_MODEL or settings.DEFAULT_EVAL_MODEL,
-        "max_payloads_per_category": settings.MAX_PAYLOADS_PER_CATEGORY,
+        "max_payloads_per_category": max_payloads or settings.MAX_PAYLOADS_PER_CATEGORY,
         "max_concurrent_attacks": settings.MAX_CONCURRENT_ATTACKS,
     }
 
@@ -282,6 +282,7 @@ async def run_campaign_async(campaign_id: str) -> None:
                 trials=campaign.trials or 1,
                 seed=(campaign.run_config or {}).get("seed"),
                 adaptive_rounds=(campaign.run_config or {}).get("adaptive_rounds", 0),
+                max_payloads=(campaign.run_config or {}).get("max_payloads_per_category"),
                 prior_results=prior_results,
                 should_stop=lambda: campaign_id in CANCEL_REQUESTED,
                 progress_callback=progress_cb,

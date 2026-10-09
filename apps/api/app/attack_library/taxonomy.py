@@ -38,6 +38,7 @@ _MAP: dict[str, tuple[str, str | None]] = {
     "system_prompt_leak": ("LLM07", "AML.T0056"),
     "data_leakage": ("LLM02", "AML.T0057"),
     "insecure_output_handling": ("LLM05", None),
+    "sql_injection": ("LLM05", "AML.T0053"),
     "agent_misuse": ("LLM06", "AML.T0053"),
     "excessive_agency": ("LLM06", "AML.T0053"),
     "tool_abuse": ("LLM06", "AML.T0053"),

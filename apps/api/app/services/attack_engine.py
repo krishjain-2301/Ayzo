@@ -86,6 +86,11 @@ REMEDIATION_MAP = {
         "2. Never pass model output to a shell, eval, or SQL string; use parameters.\n"
         "3. Restrict markdown rendering (no raw HTML, no remote images)."
     ),
+    "sql_injection": (
+        "1. Never build a SQL query by putting model output or user text into the string. Use parameterised queries or an ORM.\n"
+        "2. Give the app's database account the least privilege it needs, and no access to other tables.\n"
+        "3. Do not return raw database errors to the user; they confirm the injection and leak schema."
+    ),
     "indirect_injection": (
         "1. Wrap any content the app did not write (documents, emails, pages, tool results) in clear delimiters and tell the model it is data.\n"
         "2. Never give content-processing requests the power to trigger tools or change behaviour.\n"
@@ -196,6 +201,7 @@ class AttackEngine:
         seed: Optional[int] = None,
         adaptive_rounds: int = 0,
         prior_results: Optional[list[dict]] = None,
+        max_payloads: Optional[int] = None,
     ) -> dict:
         """
         Returns status ("completed" | "failed"), counts, coverage, risk_score
@@ -214,7 +220,7 @@ class AttackEngine:
         rounds_already_begun = any(r.get("mutation_generation") for r in all_results)
 
         attacks = self._cap_payloads(
-            [a for a in load_all_payloads() if a["category"] in categories]
+            [a for a in load_all_payloads() if a["category"] in categories], max_payloads
         )
         if not attacks and not extra_tests and not all_results:
             return _failed(f"No attacks found for categories: {categories}", [], self._counts([]))
@@ -228,6 +234,7 @@ class AttackEngine:
                 "category": a["category"],
                 "severity": a["severity"],
                 "success_indicators": a.get("success_indicators", ""),
+                "is_regex": a.get("is_regex", False),
                 "is_builtin": a.get("is_builtin", True),
                 "marker": marker,
                 "turns": a.get("turns"),
@@ -362,9 +369,10 @@ class AttackEngine:
             **success_rate(tally["fail"], judged),
         }
 
-    def _cap_payloads(self, attacks: list[dict]) -> list[dict]:
-        """Keep the MAX_PAYLOADS_PER_CATEGORY most severe payloads per category (0 = all)."""
-        limit = settings.MAX_PAYLOADS_PER_CATEGORY
+    def _cap_payloads(self, attacks: list[dict], limit: Optional[int] = None) -> list[dict]:
+        """Keep the `limit` most severe payloads per category (0/None = the configured default; <0 = all)."""
+        if limit is None:
+            limit = settings.MAX_PAYLOADS_PER_CATEGORY
         if not limit or limit <= 0:
             return attacks
         by_cat: dict[str, list[dict]] = {}

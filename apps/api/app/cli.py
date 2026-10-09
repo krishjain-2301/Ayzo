@@ -147,6 +147,7 @@ def cmd_scan(api: Api, args) -> int:
         "mutation_depth": args.mutation_depth,
         "trials": args.trials,
         "adaptive_rounds": args.adaptive_rounds,
+        "max_payloads_per_category": args.max_per_category,
         **({"seed": args.seed} if args.seed is not None else {}),
     })
     campaign_id = started["campaign_id"]
@@ -230,6 +231,7 @@ def main() -> int:
     scan.add_argument("--mutation-depth", type=int, default=0)
     scan.add_argument("--trials", type=int, default=1, help="Send each attack this many times (1-5)")
     scan.add_argument("--adaptive-rounds", type=int, default=0, help="Rounds of the adaptive attacker (0-3)")
+    scan.add_argument("--max-per-category", type=int, default=None, help="Attacks sent per category (default: server setting)")
     scan.add_argument("--seed", type=int, help="Repeat a scan's random choices")
     scan.add_argument("--name", help="Name for the campaign")
     scan.add_argument("--fail-on", choices=["score", "new", "any", "never"], default="score")

@@ -55,7 +55,7 @@ async def create_campaign(
         mutation_depth=campaign_in.mutation_depth,
         mutations_per_prompt=campaign_in.mutations_per_prompt,
         trials=campaign_in.trials,
-        run_config=build_run_config(campaign_in.seed, campaign_in.trials, campaign_in.adaptive_rounds),
+        run_config=build_run_config(campaign_in.seed, campaign_in.trials, campaign_in.adaptive_rounds, campaign_in.max_payloads_per_category),
         status="pending",
     )
     db.add(campaign)

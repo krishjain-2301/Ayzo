@@ -103,7 +103,7 @@ Not covered at all: LLM03 Supply Chain, LLM04 Data and Model Poisoning, LLM09 Mi
 
 ## 6. The attack library
 
-- 364 single-message attacks and 8 scripted conversations across 13 categories, plus attacks generated per business rule, per forbidden tool and per other user.
+- About 570 single-message attacks and 8 scripted conversations across 15 categories, plus attacks generated per business rule, per forbidden tool and per other user. The SQL-injection and XSS payloads are adapted from PayloadsAllTheThings (MIT) and confirmed by string match (a database error, or the active script coming back unescaped), not by a judge. How many of each category a scan sends is chosen per scan (default 20, most severe first).
 - A similarity check (October 2026) found no repeated names and no true duplicate prompts. About eight attacks are one instruction wrapped in different invisible-character tricks, which is intended.
 - The prompts have **not** each been reviewed by a person for quality. Many are publicly known. The `agent_misuse`, `excessive_agency` and `vector_weaknesses` prompts describe tools and stores the target may not have; against such a target they are noise that the judge should pass.
 - Beyond the static list: rewriting of resisted attacks (seven strategies), an adaptive attacker that reads the refusal and tries another angle for up to three rounds, and an agentic multi-turn attack.

@@ -74,7 +74,7 @@ class TestRunner:
             canaries=profile.get("canaries"),
             system_prompt=profile.get("system_prompt"),
             expected_behavior=profile.get("expected_behavior"),
-            indicators_are_regex=not test.get("is_builtin", True),
+            indicators_are_regex=test.get("is_regex", not test.get("is_builtin", True)),
             marker=test.get("marker"),
             rule=test.get("rule"),
             tool_calls=tool_calls,

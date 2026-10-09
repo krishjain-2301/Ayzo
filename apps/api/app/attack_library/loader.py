@@ -59,6 +59,7 @@ def load_all_payloads() -> list[dict]:
                 "is_builtin": yaml_file.name != "custom.yaml",
                 # Template for a code the reply only contains if the app obeyed.
                 "marker": attack.get("marker"),
+                "is_regex": bool(attack.get("is_regex", False)),
                 "turns": turns if isinstance(turns, list) and turns else None,
                 "metadata": {
                     "display_name": display_name,

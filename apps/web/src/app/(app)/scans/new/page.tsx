@@ -13,13 +13,13 @@ import { Button, Card, CardHeader, Field, Input, Loading, Notice, PageHeader, Se
 // Ticked by default: the categories that test the app rather than the model.
 const DEFAULTS = ["prompt_injection", "system_prompt_leak", "indirect_injection"];
 // Decided by string match, so they need no judge and give the same answer every time.
-const EXACT = new Set(["indirect_injection", "tool_abuse"]);
+const EXACT = new Set(["indirect_injection", "tool_abuse", "sql_injection"]);
 
 const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
     title: "Your app's own weak points",
     hint: "What only you can test: your prompt, your data, your rules.",
-    ids: ["prompt_injection", "indirect_injection", "system_prompt_leak", "data_leakage", "business_rules", "cross_user", "multi_turn", "insecure_output_handling", "custom"],
+    ids: ["prompt_injection", "indirect_injection", "system_prompt_leak", "data_leakage", "business_rules", "cross_user", "sql_injection", "multi_turn", "insecure_output_handling", "custom"],
   },
   {
     title: "Tools and retrieval",
@@ -64,6 +64,7 @@ function NewScan() {
   const [depth, setDepth] = useState(0);
   const [adaptive, setAdaptive] = useState(0);
   const [trials, setTrials] = useState(1);
+  const [perCategory, setPerCategory] = useState(20);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -88,8 +89,17 @@ function NewScan() {
   const byId = new Map((categories.data ?? []).map((c) => [c.id, c]));
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((c) => c !== id) : [...p, id]));
   const chosen = picked.filter((id) => byId.has(id) && !unavailable(id));
-  const attacks = chosen.reduce((sum, id) => sum + (id === "business_rules" ? (target?.rules?.length ?? 0) * 4 : id === "tool_abuse" ? (target?.forbidden_tools?.length ?? 0) * 4 : id === "cross_user" ? (target?.other_users?.length ?? 0) * 6 : Math.min(byId.get(id)?.attack_count ?? 0, 20)), 0);
+  // Attacks generated from the target's profile aren't capped; library categories are.
+  const cap = (n: number) => (perCategory >= 500 ? n : Math.min(n, perCategory));
+  const countFor = (id: string) =>
+    id === "business_rules" ? (target?.rules?.length ?? 0) * 4
+    : id === "tool_abuse" ? (target?.forbidden_tools?.length ?? 0) * 4
+    : id === "cross_user" ? (target?.other_users?.length ?? 0) * 6
+    : cap(byId.get(id)?.attack_count ?? 0);
+  const attacks = chosen.reduce((sum, id) => sum + countFor(id), 0);
   const requests = attacks * trials;
+  // The largest library category in this scan, so the cap options make sense.
+  const biggestLibrary = Math.max(0, ...chosen.filter((id) => !EXACT.has(id) && !["business_rules", "tool_abuse", "cross_user"].includes(id)).map((id) => byId.get(id)?.attack_count ?? 0));
   const hasProfile = Boolean(target && (target.canaries?.length || target.system_prompt || target.expected_behavior));
 
   const start = async (e: React.FormEvent) => {
@@ -104,6 +114,7 @@ function NewScan() {
         mutation_depth: depth,
         adaptive_rounds: adaptive,
         trials,
+        max_payloads_per_category: perCategory >= 500 ? 500 : perCategory,
       });
       router.push(`/scans/${scan.id}`);
     } catch (err) {
@@ -144,7 +155,7 @@ function NewScan() {
         <Card>
           <CardHeader
             title="Attacks"
-            hint="Up to 20 attacks are sent per category, most severe first."
+            hint={perCategory >= 500 ? "Every attack in each category is sent." : `Up to ${perCategory} attacks are sent per category, most severe first. Change this under “How hard to push”.`}
             right={
               <div className="flex gap-3 text-[13px]">
                 <button type="button" className="text-mute hover:text-fg" onClick={() => setPicked((categories.data ?? []).map((c) => c.id))}>Select all</button>
@@ -207,6 +218,16 @@ function NewScan() {
         <Card>
           <CardHeader title="How hard to push" />
           <div className="space-y-5 p-5">
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-fg">Attacks per category</p>
+              <Segmented label="Attacks per category" value={perCategory} onChange={setPerCategory} options={[{ value: 5, label: "5" }, { value: 10, label: "10" }, { value: 20, label: "20" }, { value: 50, label: "50" }, { value: 500, label: "All" }]} />
+              <p className="mt-1.5 text-xs leading-relaxed text-mute">
+                The most severe attacks in each category go first.{" "}
+                {biggestLibrary > 0
+                  ? `The biggest category picked has ${biggestLibrary} attacks${perCategory < biggestLibrary ? `, so ${biggestLibrary - perCategory} would be held back.` : " — all of them fit."}`
+                  : "Generated categories send every attack."}
+              </p>
+            </div>
             <div>
               <p className="mb-1.5 text-sm font-medium text-fg">Repeat each attack</p>
               <Segmented label="Repeat each attack" value={trials} onChange={setTrials} options={[{ value: 1, label: "Once" }, { value: 3, label: "3 times" }, { value: 5, label: "5 times" }]} />
