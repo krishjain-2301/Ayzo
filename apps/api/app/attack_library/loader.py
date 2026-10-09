@@ -9,6 +9,8 @@ from pathlib import Path
 
 import yaml
 
+from app.attack_library.external import external_categories, load_external_payloads
+
 # Directory containing all YAML payload files
 PAYLOADS_DIR = Path(__file__).parent / "payloads"
 
@@ -68,6 +70,7 @@ def load_all_payloads() -> list[dict]:
                 },
             })
 
+    all_attacks.extend(load_external_payloads())
     return all_attacks
 
 
@@ -85,6 +88,7 @@ def get_available_categories() -> list[dict]:
             "description": data.get("description", ""),
             "attack_count": len(data.get("attacks") or []),
         })
+    categories.extend(external_categories())
     return categories
 
 

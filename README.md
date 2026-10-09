@@ -32,7 +32,7 @@ To answer those, AYZO needs to know something about the app. Each target has an 
 | Boot | Starts your start command in the project folder, or skips this for `already running` |
 | Discover | Tries the configured chat path, then common paths and JSON body shapes, until one answers 2xx with text |
 | Check judge | Sends one request to the judge model. If it is unreachable the scan stops here and no attack is sent |
-| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 580 across 15 categories, plus your own and ones generated from your rules, forbidden tools and other users) |
+| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 580 across 15 categories, plus your own and ones generated from your rules, forbidden tools and other users, and two more loaded by reference from HarmBench/JailbreakBench). See `docs/ATTACK_SOURCES.md` |
 | Decide | Exact checks first (protected values, system prompt, custom regex, plain echo of the attack), then the LLM judge |
 | Repeat | Optional. Sends each attack 1–5 times, because models answer differently each time |
 | Adapt | Optional. An attacker model reads the app's refusal and tries a new angle, up to 3 rounds |
@@ -301,6 +301,7 @@ Files live in `apps/api/app/attack_library/payloads/`.
 | `tool_abuse` | Call a tool you marked as forbidden. Attacks are generated per tool; confirmed by the call itself |
 | `cross_user` | Read the data of another user you listed. Six attacks are generated per user; confirmed when a protected value of theirs appears |
 | `sql_injection` | Pass a SQL-injection string to a database tool. Confirmed by a database error in the reply, no judge. Payloads adapted from PayloadsAllTheThings (MIT) |
+| `harmful_content`, `adversarial_jailbreak` | HarmBench and JailbreakBench, loaded by reference from your own local clone (`AYZO_EXTERNAL_PAYLOADS`). Judged. See `docs/ATTACK_SOURCES.md` |
 | `multi_turn` | Give in over a scripted conversation that builds trust, a role or a false premise first |
 | `system_prompt_leak` | Reveal its hidden instructions |
 | `data_leakage` | Disclose secrets, personal data, or retrieved context |

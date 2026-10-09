@@ -29,7 +29,7 @@ const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
     title: "The model's own guard rails",
     hint: "Mostly measures the model vendor's safety training. A baseline, not the main event.",
-    ids: ["jailbreak", "role_override", "context_manipulation", "advanced_bypasses"],
+    ids: ["jailbreak", "adversarial_jailbreak", "harmful_content", "role_override", "context_manipulation", "advanced_bypasses"],
   },
 ];
 

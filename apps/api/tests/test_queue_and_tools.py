@@ -214,3 +214,38 @@ async def test_per_scan_cap_limits_payloads_sent():
         server.shutdown()
     assert few["total_tests"] == 3
     assert many["total_tests"] == 15
+
+
+def test_external_categories_appear_but_empty_without_a_path(monkeypatch):
+    monkeypatch.delenv("AYZO_EXTERNAL_PAYLOADS", raising=False)
+    from app.attack_library import external
+
+    cats = {c["id"]: c for c in external.external_categories()}
+    assert set(cats) == {"harmful_content", "adversarial_jailbreak"}
+    assert all(c["attack_count"] == 0 for c in cats.values())
+    assert external.load_external_payloads() == []
+
+
+def test_external_payloads_load_from_a_local_clone(tmp_path, monkeypatch):
+    # Minimal HarmBench + JailbreakBench layout, no harmful text committed here.
+    hb = tmp_path / "HarmBench" / "data" / "behavior_datasets"
+    hb.mkdir(parents=True)
+    (hb / "harmbench_behaviors_text_all.csv").write_text(
+        "Behavior,FunctionalCategory,SemanticCategory,Tags,ContextString,BehaviorID\n"
+        "PLACEHOLDER harmless probe,standard,illegal,,,probe_01\n"
+        "A copyrighted passage,standard,copyright,,,cr_01\n",
+        encoding="utf-8",
+    )
+    jb = tmp_path / "jailbreakbench" / "examples" / "prompts"
+    jb.mkdir(parents=True)
+    (jb / "llama2.json").write_text('["PLACEHOLDER adversarial prompt"]', encoding="utf-8")
+
+    monkeypatch.setenv("AYZO_EXTERNAL_PAYLOADS", str(tmp_path))
+    from app.attack_library import external
+
+    loaded = external.load_external_payloads()
+    cats = {a["category"] for a in loaded}
+    assert cats == {"harmful_content", "adversarial_jailbreak"}
+    # copyright row is skipped (needs the context file)
+    assert not any(a["subcategory"] == "copyright" for a in loaded)
+    assert all(a["is_builtin"] and not a["is_regex"] for a in loaded)

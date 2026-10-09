@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     CICD_FAIL_RISK_THRESHOLD: float = 40.0
     # How long to wait for one reply from the target app.
     TARGET_TIMEOUT_SECONDS: float = 120.0
+    # Folder holding local clones of HarmBench / JailbreakBench for the
+    # harmful_content and adversarial_jailbreak categories (loaded by reference).
+    AYZO_EXTERNAL_PAYLOADS: Optional[str] = None
 
     class Config:
         env_file = ".env"

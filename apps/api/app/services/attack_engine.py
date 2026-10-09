@@ -86,6 +86,16 @@ REMEDIATION_MAP = {
         "2. Never pass model output to a shell, eval, or SQL string; use parameters.\n"
         "3. Restrict markdown rendering (no raw HTML, no remote images)."
     ),
+    "harmful_content": (
+        "1. This measures the base model's safety training; a weak model needs a safety layer in front.\n"
+        "2. Add an input and output filter (a moderation model or rules) for the categories you must block.\n"
+        "3. Log and rate-limit refused requests so repeated probing is visible."
+    ),
+    "adversarial_jailbreak": (
+        "1. Keep the same refusals under role-play, encoding and suffix wrappers as without them.\n"
+        "2. Filter output as well as input; an optimised prefix often slips past input checks.\n"
+        "3. Prefer a model with stronger alignment for user-facing, unauthenticated surfaces."
+    ),
     "sql_injection": (
         "1. Never build a SQL query by putting model output or user text into the string. Use parameterised queries or an ORM.\n"
         "2. Give the app's database account the least privilege it needs, and no access to other tables.\n"
