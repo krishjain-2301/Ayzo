@@ -31,6 +31,9 @@ class TargetProfile(BaseModel):
     )
     system_prompt: Optional[str] = Field(None, max_length=20000)
     expected_behavior: Optional[str] = Field(None, max_length=2000)
+    forbidden_tools: Optional[list[str]] = Field(
+        None, max_length=30, description="Tool names a user must never be able to trigger"
+    )
     rules: Optional[list[str]] = Field(
         None, max_length=10, description="Rules the app must keep; used by the business_rules category"
     )
@@ -154,6 +157,7 @@ class TargetResponse(BaseModel):
     system_prompt: Optional[str] = None
     expected_behavior: Optional[str] = None
     rules: Optional[list[str]] = None
+    forbidden_tools: Optional[list[str]] = None
     # Header values are masked: they are usually credentials.
     request_headers: Optional[dict[str, str]] = None
     request_field: Optional[str] = None
@@ -173,7 +177,8 @@ class TargetResponse(BaseModel):
     def mask_header_values(cls, value: Optional[dict]) -> Optional[dict]:
         if not value:
             return value
-        return {name: (v[:4] + "***" if len(v) > 8 else "***") for name, v in value.items()}
+        # Stored encrypted; the API only ever says that a value is set.
+        return {name: "•••• set" for name in value}
 
 
 class TargetTestResult(BaseModel):

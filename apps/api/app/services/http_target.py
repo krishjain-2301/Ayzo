@@ -238,6 +238,37 @@ def read_reply(res: httpx.Response, response_field: Optional[str] = None) -> Opt
     return extract_response_text(payload)
 
 
+def extract_tool_calls(res: httpx.Response) -> list[str]:
+    """
+    Names of tools the app says it called, when its reply reports them in a
+    common shape: OpenAI-style `tool_calls` (top level, under `message`, or
+    under `choices[0].message`), or a plain list of names or {name} objects.
+    """
+    try:
+        payload = res.json()
+    except Exception:
+        return []
+    if not isinstance(payload, dict):
+        return []
+    candidates = [payload.get("tool_calls")]
+    if isinstance(payload.get("message"), dict):
+        candidates.append(payload["message"].get("tool_calls"))
+    choices = payload.get("choices")
+    if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+        candidates.append((choices[0].get("message") or {}).get("tool_calls"))
+    names: list[str] = []
+    for calls in candidates:
+        for call in calls if isinstance(calls, list) else []:
+            if isinstance(call, str):
+                names.append(call)
+            elif isinstance(call, dict):
+                name = (call.get("function") or {}).get("name") if isinstance(call.get("function"), dict) else None
+                name = name or call.get("name")
+                if isinstance(name, str):
+                    names.append(name)
+    return names
+
+
 async def discover_chat_endpoint(
     base_url: str,
     extra_paths: Optional[list[str]] = None,
@@ -359,4 +390,5 @@ async def send_prompt(
         "response_time_ms": elapsed_ms,
         "finish_reason": "stop",
         "status_code": res.status_code,
+        "tool_calls": extract_tool_calls(res),
     }

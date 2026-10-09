@@ -41,6 +41,10 @@ def load_all_payloads() -> list[dict]:
         owasp_id = data.get("owasp_id", "")
 
         for attack in data["attacks"]:
+            turns = attack.get("turns") if isinstance(attack, dict) else None
+            if isinstance(turns, list) and turns and not attack.get("prompt"):
+                # Shown in the library as the whole script.
+                attack = {**attack, "prompt": "\n\n".join(f"{i + 1}. {t}" for i, t in enumerate(turns))}
             if not isinstance(attack, dict) or not attack.get("name") or not attack.get("prompt"):
                 print(f"Skipping malformed attack in {yaml_file.name}")
                 continue
@@ -55,6 +59,7 @@ def load_all_payloads() -> list[dict]:
                 "is_builtin": yaml_file.name != "custom.yaml",
                 # Template for a code the reply only contains if the app obeyed.
                 "marker": attack.get("marker"),
+                "turns": turns if isinstance(turns, list) and turns else None,
                 "metadata": {
                     "display_name": display_name,
                     "owasp_id": owasp_id,

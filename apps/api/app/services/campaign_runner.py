@@ -8,6 +8,7 @@ run attacks, saving each result as it arrives -> findings and score -> teardown.
 from __future__ import annotations
 
 import asyncio
+import random
 import uuid
 from datetime import datetime, timezone
 
@@ -16,6 +17,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import async_session_maker
+from app.core.secretbox import decrypt_map
 from app.models.db.campaign import Campaign
 from app.models.db.finding import Finding
 from app.models.db.target import Target
@@ -41,19 +43,33 @@ def request_cancel(campaign_id: str) -> None:
     CANCEL_REQUESTED.add(str(campaign_id))
 
 
+def build_run_config(seed: int | None, trials: int, adaptive_rounds: int = 0) -> dict:
+    """What a scan was run with, so it can be repeated and its numbers explained."""
+    return {
+        "seed": seed if seed is not None else random.randint(0, 2**31 - 1),
+        "trials": trials,
+        "adaptive_rounds": adaptive_rounds,
+        "judge_model": settings.DEFAULT_EVAL_MODEL,
+        "attacker_model": settings.MUTATOR_MODEL or settings.DEFAULT_EVAL_MODEL,
+        "max_payloads_per_category": settings.MAX_PAYLOADS_PER_CATEGORY,
+        "max_concurrent_attacks": settings.MAX_CONCURRENT_ATTACKS,
+    }
+
+
 def target_profile(target: Target) -> dict:
     """What the judge and the leak checks are allowed to know about the app."""
     return {
         "canaries": [c for c in (target.canaries or []) if isinstance(c, str) and c.strip()],
         "system_prompt": target.system_prompt,
         "expected_behavior": target.expected_behavior,
+        "forbidden_tools": [t for t in (target.forbidden_tools or []) if isinstance(t, str)],
     }
 
 
 def target_http_options(target: Target) -> dict:
     """How to talk to the app: the parts of the profile the HTTP client needs."""
     return {
-        "headers": dict(target.request_headers or {}),
+        "headers": decrypt_map(target.request_headers),
         "request_field": target.request_field,
         "response_field": target.response_field,
         "extra_body": dict(target.extra_body or {}),
@@ -215,6 +231,9 @@ async def run_campaign_async(campaign_id: str) -> None:
                 http_options=http_options,
                 timeout=settings.TARGET_TIMEOUT_SECONDS,
                 extra_tests=extra_tests,
+                trials=campaign.trials or 1,
+                seed=(campaign.run_config or {}).get("seed"),
+                adaptive_rounds=(campaign.run_config or {}).get("adaptive_rounds", 0),
                 should_stop=lambda: campaign_id in CANCEL_REQUESTED,
                 progress_callback=progress_cb,
             )

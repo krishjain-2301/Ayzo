@@ -26,7 +26,8 @@ class FindingResponse(BaseModel):
     total_tests_in_category: int
     failure_rate: float  # Computed: occurrence_count / total_tests * 100
     remediation: Optional[str] = None
-    evidence: Optional[list] = None  # References to test result IDs
+    evidence: Optional[list] = None
+    taxonomy: Optional[dict] = None  # OWASP LLM Top 10 and MITRE ATLAS ids
 
     class Config:
         from_attributes = True
@@ -70,6 +71,11 @@ class ReportResponse(BaseModel):
     total_inconclusive: int = 0
     coverage: float = Field(0.0, description="Percent of tests that ended in pass or fail")
     overall_failure_rate: float
+    attack_success_rate: Optional[float] = None
+    asr_low: Optional[float] = None
+    asr_high: Optional[float] = None
+    trials: int = 1
+    run_config: Optional[dict] = None
 
     # Per-category breakdown
     category_scores: list[CategoryScore]

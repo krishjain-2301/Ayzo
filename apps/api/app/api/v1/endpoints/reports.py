@@ -19,6 +19,7 @@ from app.models.db.test_result import TestResult
 from app.models.db.finding import Finding
 from app.models.db.user import User
 from app.models.schemas.report import ReportResponse
+from app.attack_library.taxonomy import taxonomy_for
 from app.services.report_generator import report_generator
 
 router = APIRouter()
@@ -66,6 +67,8 @@ async def get_campaign_report(
         "name": campaign.name,
         "risk_score": campaign.risk_score,
         "status": campaign.status,
+        "trials": campaign.trials,
+        "run_config": campaign.run_config,
         "status_detail": campaign.description if campaign.status in ("failed", "cancelled") else None,
         "started_at": campaign.started_at,
         "completed_at": campaign.completed_at,
@@ -144,6 +147,10 @@ async def get_campaign_results(
             "severity": r.severity,
             "confidence": r.confidence,
             "method": (r.meta_data or {}).get("method"),
+            "trials": (r.meta_data or {}).get("trials", 1),
+            "worked_trials": (r.meta_data or {}).get("worked_trials"),
+            "tool_calls": (r.meta_data or {}).get("tool_calls") or [],
+            "taxonomy": taxonomy_for(r.attack_category or ""),
             "prompt_sent": r.prompt_sent,
             "model_response": r.model_response,
             "eval_reasoning": r.eval_reasoning,

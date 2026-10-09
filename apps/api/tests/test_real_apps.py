@@ -186,4 +186,4 @@ def test_target_schema_validates_and_masks_connection_settings():
         status="active", created_at=now, updated_at=now,
         request_headers={"Authorization": "Bearer abcdefghijkl", "X-Short": "abc"},
     )
-    assert shown.request_headers == {"Authorization": "Bear***", "X-Short": "***"}
+    assert shown.request_headers == {"Authorization": "•••• set", "X-Short": "•••• set"}

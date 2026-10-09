@@ -51,6 +51,12 @@ class CampaignCreate(BaseModel):
         le=3,  # le = less than or equal to (max 3 generations)
         description="How many rounds of mutation (0=originals only, 3=max)",
     )
+    adaptive_rounds: int = Field(
+        default=0, ge=0, le=3,
+        description="Rounds in which the attacker model reads the app's refusal and tries a new angle",
+    )
+    trials: int = Field(default=1, ge=1, le=5, description="How many times to send each attack")
+    seed: Optional[int] = Field(default=None, ge=0, le=2**31 - 1, description="Fix the random choices to repeat a scan")
     mutations_per_prompt: int = Field(
         default=1,
         ge=1,
@@ -69,6 +75,8 @@ class CampaignResponse(BaseModel):
     attack_categories: list[str]
     mutation_depth: int
     mutations_per_prompt: int
+    trials: Optional[int] = 1
+    run_config: Optional[dict] = None
 
     # Progress
     total_tests: int

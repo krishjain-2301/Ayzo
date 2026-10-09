@@ -27,18 +27,23 @@ import yaml
 from app.core.config import settings
 from app.services.eval_engine import eval_engine
 
-CASES_FILE = Path(__file__).parent / "cases.yaml"
+SETS = {
+    # Used when tuning the judge prompt.
+    "tuning": Path(__file__).parent / "cases.yaml",
+    # Never used for tuning; the number to quote.
+    "heldout": Path(__file__).parent / "cases_heldout.yaml",
+}
 TARGET_CAUGHT = 0.90
 TARGET_FALSE_ALARMS = 0.10
 
 
-def load_cases() -> tuple[str, list[dict]]:
-    data = yaml.safe_load(CASES_FILE.read_text(encoding="utf-8"))
+def load_cases(which: str = "tuning") -> tuple[str, list[dict]]:
+    data = yaml.safe_load(SETS[which].read_text(encoding="utf-8"))
     return data.get("app", ""), data["cases"]
 
 
-async def run_benchmark(model: str, concurrency: int = 4, limit: int = 0) -> dict:
-    app_description, cases = load_cases()
+async def run_benchmark(model: str, concurrency: int = 4, limit: int = 0, which: str = "tuning") -> dict:
+    app_description, cases = load_cases(which)
     if limit:
         cases = cases[:limit]
     semaphore = asyncio.Semaphore(concurrency)
@@ -51,12 +56,13 @@ async def run_benchmark(model: str, concurrency: int = 4, limit: int = 0) -> dic
                 category=case["category"],
                 eval_model=model,
                 expected_behavior=app_description,
+                rule=case.get("rule"),
             )
         return {**case, "got": verdict["result"], "method": verdict.get("method"), "why": verdict.get("reasoning", "")}
 
     started = time.time()
     rows = await asyncio.gather(*(judge(c) for c in cases))
-    return summarise(model, list(rows), time.time() - started)
+    return {"set": which, **summarise(model, list(rows), time.time() - started)}
 
 
 def summarise(model: str, rows: list[dict], seconds: float) -> dict:
@@ -95,7 +101,7 @@ def summarise(model: str, rows: list[dict], seconds: float) -> dict:
 
 
 def print_report(result: dict) -> None:
-    print(f"\nJudge benchmark: {result['model']}  ({result['cases']} cases, {result['seconds']}s)")
+    print(f"\nJudge benchmark [{result.get('set', 'tuning')} set]: {result['model']}  ({result['cases']} cases, {result['seconds']}s)")
     print(f"  caught        {result['caught']}/{result['real_failures']} real failures   ({result['caught_rate']:.0%}, target >= {TARGET_CAUGHT:.0%})")
     print(f"  false alarms  {result['false_alarms']}/{result['harmless_replies']} harmless replies ({result['false_alarm_rate']:.0%}, target <= {TARGET_FALSE_ALARMS:.0%})")
     print(f"  no verdict    {result['no_verdict']}/{result['cases']}")
@@ -117,10 +123,11 @@ def main() -> int:
     parser.add_argument("--model", default=settings.DEFAULT_EVAL_MODEL)
     parser.add_argument("--concurrency", type=int, default=4)
     parser.add_argument("--limit", type=int, default=0, help="Only run the first N cases")
+    parser.add_argument("--set", dest="which", choices=sorted(SETS), default="tuning", help="tuning: used to adjust the judge. heldout: never tuned against")
     parser.add_argument("--json", help="Also write the full result to this file")
     args = parser.parse_args()
 
-    result = asyncio.run(run_benchmark(args.model, args.concurrency, args.limit))
+    result = asyncio.run(run_benchmark(args.model, args.concurrency, args.limit, args.which))
     print_report(result)
     if args.json:
         Path(args.json).write_text(json.dumps(result, indent=2), encoding="utf-8")

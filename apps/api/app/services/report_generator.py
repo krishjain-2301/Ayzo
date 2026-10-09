@@ -9,7 +9,8 @@ import uuid
 from datetime import datetime, timezone
 
 from app.attack_library.loader import get_available_categories
-from app.services.attack_engine import SEVERITY_ORDER, risk_level
+from app.attack_library.taxonomy import taxonomy_for
+from app.services.attack_engine import SEVERITY_ORDER, risk_level, success_rate
 
 
 class ReportGenerator:
@@ -50,6 +51,10 @@ class ReportGenerator:
             "total_inconclusive": tally["inconclusive"],
             "coverage": round(judged / total * 100, 1) if total else 0.0,
             "overall_failure_rate": round(tally["fail"] / judged * 100, 1) if judged else 0.0,
+            # Attack success rate with a 95% interval, over attacks that got a verdict.
+            **success_rate(tally["fail"], judged),
+            "trials": campaign_data.get("trials") or 1,
+            "run_config": campaign_data.get("run_config") or {},
 
             "category_scores": self._generate_category_scores(results, findings),
             "findings": self._format_findings(findings),
@@ -101,6 +106,7 @@ class ReportGenerator:
                 "failure_rate": round(count / total * 100, 1) if total else 0.0,
                 "remediation": f.get("remediation"),
                 "evidence": f.get("evidence", []),
+                "taxonomy": taxonomy_for(f.get("category", "")),
             })
         return formatted
 

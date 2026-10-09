@@ -24,6 +24,7 @@ from typing import Optional
 import httpx
 
 from app.core.config import settings
+from app.core.secretbox import decrypt, encrypt
 
 SETTINGS_FILE = Path(__file__).resolve().parents[2] / "data" / "settings.json"
 OLLAMA_URL = os.environ.get("OLLAMA_API_BASE", "http://127.0.0.1:11434").rstrip("/")
@@ -117,6 +118,7 @@ def apply_saved() -> bool:
     if not data:
         return False
     for provider_id, key in (data.get("api_keys") or {}).items():
+        key = decrypt(key)
         if provider_id in PROVIDERS and key:
             os.environ[PROVIDERS[provider_id]["env"]] = key
     if data.get("eval_model"):
@@ -147,7 +149,7 @@ def save(
         if key:
             if len(key) < 8 or any(c.isspace() for c in key):
                 raise ValueError(f"That does not look like a {PROVIDERS[provider_id]['name']} API key.")
-            stored_keys[provider_id] = key
+            stored_keys[provider_id] = encrypt(key)
             os.environ[env] = key
         else:
             stored_keys.pop(provider_id, None)

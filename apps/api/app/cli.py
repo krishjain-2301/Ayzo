@@ -63,6 +63,13 @@ def find_target(api: Api, wanted: str) -> dict:
 def to_sarif(failures: list[dict], target: dict, source_file: str) -> dict:
     """SARIF 2.1.0, one result per attack that worked. Rules are the attack categories."""
     categories = sorted({f["attack_category"] or "unknown" for f in failures})
+    taxonomy = {f["attack_category"] or "unknown": f.get("taxonomy") or {} for f in failures}
+
+    def tags(category: str) -> list[str]:
+        tax = taxonomy.get(category) or {}
+        found = [(tax.get("owasp") or {}).get("id"), (tax.get("atlas") or {}).get("id")]
+        return ["security", "llm"] + [t for t in found if t]
+
     return {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",
@@ -71,7 +78,12 @@ def to_sarif(failures: list[dict], target: dict, source_file: str) -> dict:
                 "name": "AYZO",
                 "informationUri": "https://github.com/krishjain-2301/Ayzo",
                 "rules": [
-                    {"id": c, "name": c.replace("_", " ").title(), "shortDescription": {"text": f"{c.replace('_', ' ')} attack succeeded"}}
+                    {
+                        "id": c,
+                        "name": c.replace("_", " ").title(),
+                        "shortDescription": {"text": f"{c.replace('_', ' ')} attack succeeded"},
+                        "properties": {"tags": tags(c)},
+                    }
                     for c in categories
                 ],
             }},
@@ -133,6 +145,9 @@ def cmd_scan(api: Api, args) -> int:
         "target_id": target["id"],
         "attack_categories": categories,
         "mutation_depth": args.mutation_depth,
+        "trials": args.trials,
+        "adaptive_rounds": args.adaptive_rounds,
+        **({"seed": args.seed} if args.seed is not None else {}),
     })
     campaign_id = started["campaign_id"]
     print(f"Scanning {target['name']} ({', '.join(categories)}). Campaign {campaign_id}")
@@ -213,6 +228,9 @@ def main() -> int:
     scan.add_argument("--target", required=True, help="Target name or id")
     scan.add_argument("--categories", default="prompt_injection,system_prompt_leak,indirect_injection")
     scan.add_argument("--mutation-depth", type=int, default=0)
+    scan.add_argument("--trials", type=int, default=1, help="Send each attack this many times (1-5)")
+    scan.add_argument("--adaptive-rounds", type=int, default=0, help="Rounds of the adaptive attacker (0-3)")
+    scan.add_argument("--seed", type=int, help="Repeat a scan's random choices")
     scan.add_argument("--name", help="Name for the campaign")
     scan.add_argument("--fail-on", choices=["score", "new", "any", "never"], default="score")
     scan.add_argument("--sarif", help="Write findings as SARIF 2.1.0 to this file")

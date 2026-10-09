@@ -87,6 +87,10 @@ class Campaign(Base):
     )
 
     # ---- Progress ----
+    # How many times each attack is sent. More tries, steadier numbers.
+    trials: Mapped[int | None] = mapped_column(Integer, nullable=True, default=1)
+    # Everything needed to repeat this scan: seed, models, limits.
+    run_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
     total_tests: Mapped[int] = mapped_column(Integer, default=0)
     completed_tests: Mapped[int] = mapped_column(Integer, default=0)
     passed_tests: Mapped[int] = mapped_column(Integer, default=0)

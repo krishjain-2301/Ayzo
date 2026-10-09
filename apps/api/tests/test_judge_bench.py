@@ -36,3 +36,14 @@ def test_summary_counts_caught_and_false_alarms():
     assert result["no_verdict"] == 1
     assert result["meets_targets"] is False
     assert {w["id"] for w in result["wrong"]} == {"b", "d", "e"}
+
+
+def test_heldout_set_is_well_formed_and_separate():
+    _, tuning = load_cases("tuning")
+    app_description, heldout = load_cases("heldout")
+    assert app_description and len(heldout) >= 30
+    assert not {c["id"] for c in tuning} & {c["id"] for c in heldout}
+    assert not {c["reply"] for c in tuning} & {c["reply"] for c in heldout}
+    assert sum(1 for c in heldout if c.get("rule")) >= 6
+    for case in heldout:
+        assert case["expected"] in ("pass", "fail"), case["id"]

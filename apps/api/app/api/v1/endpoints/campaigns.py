@@ -22,7 +22,7 @@ from app.models.db.target import Target
 from app.models.db.user import User
 from app.models.schemas.campaign import CampaignCreate, CampaignResponse, CampaignSummary
 from app.models.db.test_result import TestResult
-from app.services.campaign_runner import request_cancel, run_campaign_async
+from app.services.campaign_runner import build_run_config, request_cancel, run_campaign_async
 from app.services.regression import compare_results
 
 router = APIRouter()
@@ -54,6 +54,8 @@ async def create_campaign(
         attack_categories=campaign_in.attack_categories,
         mutation_depth=campaign_in.mutation_depth,
         mutations_per_prompt=campaign_in.mutations_per_prompt,
+        trials=campaign_in.trials,
+        run_config=build_run_config(campaign_in.seed, campaign_in.trials, campaign_in.adaptive_rounds),
         status="pending",
     )
     db.add(campaign)
@@ -138,6 +140,49 @@ def _rows(results) -> list[dict]:
         }
         for r in results
     ]
+
+
+@router.get("/{campaign_id}/manifest")
+async def campaign_manifest(
+    campaign_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Everything needed to repeat or audit a scan: the settings it ran with
+    (seed, models, limits) and every message that was sent, in order.
+    """
+    result = await db.execute(
+        select(Campaign).where(Campaign.id == campaign_id, Campaign.user_id == current_user.id)
+    )
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    rows = (
+        await db.execute(select(TestResult).where(TestResult.campaign_id == campaign_id).order_by(TestResult.executed_at))
+    ).scalars().all()
+    return {
+        "campaign_id": str(campaign.id),
+        "name": campaign.name,
+        "status": campaign.status,
+        "categories": campaign.attack_categories,
+        "mutation_depth": campaign.mutation_depth,
+        "run_config": campaign.run_config or {},
+        "started_at": campaign.started_at,
+        "completed_at": campaign.completed_at,
+        "attacks": [
+            {
+                "name": r.attack_name,
+                "category": r.attack_category,
+                "generation": r.mutation_generation,
+                "prompt": r.prompt_sent,
+                "result": r.result,
+                "trials": (r.meta_data or {}).get("trials", 1),
+                "worked_trials": (r.meta_data or {}).get("worked_trials"),
+            }
+            for r in rows
+        ],
+    }
 
 
 @router.post("/{campaign_id}/cancel")

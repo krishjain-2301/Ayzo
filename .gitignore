@@ -41,6 +41,7 @@ ayzo_demo.db
 apps/api/data/uploads/
 # Model choice and API keys saved from the dashboard
 apps/api/data/settings.json
+apps/api/data/secret.key
 
 # ========================
 # IDE / Editor

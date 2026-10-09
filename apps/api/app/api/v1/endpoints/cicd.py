@@ -19,7 +19,7 @@ from app.models.db.user import User
 from app.models.db.target import Target
 from app.models.schemas.campaign import CampaignCreate
 from app.models.db.campaign import Campaign
-from app.services.campaign_runner import run_campaign_async
+from app.services.campaign_runner import build_run_config, run_campaign_async
 
 router = APIRouter()
 
@@ -56,6 +56,8 @@ async def start_cicd_assessment(
         attack_categories=campaign_in.attack_categories,
         mutation_depth=campaign_in.mutation_depth,
         mutations_per_prompt=campaign_in.mutations_per_prompt,
+        trials=campaign_in.trials,
+        run_config=build_run_config(campaign_in.seed, campaign_in.trials, campaign_in.adaptive_rounds),
         status="pending",
     )
     db.add(campaign)

@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.secretbox import encrypt_map
 from app.core.database import get_db
 from app.models.db.target import Target
 from app.models.db.user import User
@@ -204,7 +205,8 @@ async def create_target(
         system_prompt=target_in.system_prompt,
         expected_behavior=target_in.expected_behavior,
         rules=target_in.rules or [],
-        request_headers=target_in.request_headers or {},
+        forbidden_tools=target_in.forbidden_tools or [],
+        request_headers=encrypt_map(target_in.request_headers),
         request_field=target_in.request_field,
         response_field=target_in.response_field,
         extra_body=target_in.extra_body or {},
@@ -364,6 +366,8 @@ async def update_target(
     for field, value in target_in.model_dump(exclude_unset=True).items():
         if field in ("name", "target_port") and value is None:
             continue
+        if field == "request_headers":
+            value = encrypt_map(value)
         setattr(target, field, value)
     await db.commit()
     await db.refresh(target)
