@@ -1,0 +1,15 @@
+# garak run against the weak practice bot, for the side-by-side in
+# docs/COMPARISON.md.
+#
+#   cd practice_bot && python app.py weak          (in another terminal)
+#   garak --config docs/comparison/garak-run.yaml --target_type rest \
+#         -G docs/comparison/garak-weak-bot.json \
+#         --probes promptinject.HijackHateHumans,latentinjection.LatentInjectionReport,encoding.InjectBase64,dan.Dan_11_0
+#
+# Every probe here is scored by string matching, so nothing is downloaded
+# or sent to an online service. Capped at 20 prompts per probe to keep the
+# run comparable in size to an AYZO scan.
+
+run:
+  generations: 1
+  soft_probe_prompt_cap: 20

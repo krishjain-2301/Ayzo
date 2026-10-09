@@ -200,7 +200,7 @@ export default function OverviewPage() {
             hint="Most recent completed scan of each app."
             right={<Link href="/targets" className="flex items-center gap-1 text-[13px] text-mute hover:text-fg">Manage <ArrowRight size={13} /></Link>}
           />
-          <div className="overflow-x-auto"><table className="w-full min-w-[640px]">
+          <div className="overflow-x-auto"><table className="w-full min-w-[420px]">
             <thead>
               <tr className="border-b border-line">
                 <th className={TH}>Target</th>

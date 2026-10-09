@@ -430,7 +430,7 @@ class AttackEngine:
             findings.append({
                 "id": str(uuid.uuid4()),
                 "category": category,
-                "title": f"{display_name}: {len(failures)} attack(s) succeeded",
+                "title": f"{display_name}: {len(failures)} attack{'' if len(failures) == 1 else 's'} succeeded",
                 "description": (
                     f"{len(failures)} of {len(judged)} judged {display_name.lower()} tests succeeded "
                     f"against the app ({round(len(failures) / len(judged) * 100, 1)}%)."

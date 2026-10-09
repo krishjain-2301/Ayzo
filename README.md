@@ -218,7 +218,7 @@ The hardened bot is better but not safe: a prompt alone does not hold a business
 
 ## How much to trust a result
 
-`docs/METHODOLOGY.md` is the full account: the threat model, every check and when it is wrong, how results are counted, what the risk score is and is not, how good the judge is, and how AYZO compares with garak, PyRIT and promptfoo. The short version:
+`docs/METHODOLOGY.md` is the full account: the threat model, every check and when it is wrong, how results are counted, what the risk score is and is not, how good the judge is, and how AYZO compares with garak, PyRIT and promptfoo. `docs/COMPARISON.md` is a real run of garak, promptfoo and AYZO against the same bot. The short version:
 
 - **Confirmed** findings are string matches (a protected value, the system prompt, a computed marker, a forbidden tool call). **Judge opinion** findings are a model's reading of the reply and can be wrong.
 - One try per attack is weak evidence. Use **Repeat each attack** for anything you will act on.

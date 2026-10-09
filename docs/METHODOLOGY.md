@@ -118,7 +118,7 @@ Not covered at all: LLM03 Supply Chain, LLM04 Data and Model Poisoning, LLM09 Mi
 | Where AYZO is weaker | Fewer attacks, no optimisation-based attacks, far less mature, one author |
 | Where AYZO differs | It boots the app, refuses to score a scan it could not really run, and ships a check that it separates a weak app from a hardened one |
 
-This table is from general knowledge of those projects, not from running them side by side. A side-by-side run on the same target is still to be done.
+This table is from general knowledge of those projects. A side-by-side run of garak, promptfoo and AYZO on the weak practice bot is written up in [COMPARISON.md](COMPARISON.md): garak flagged 27 of 61 prompts (hijacking, none aimed at the app's secrets), promptfoo's local grader flagged 5 of 5 (1 real leak), AYZO flagged 37 of 54 (31 by exact check). That run favours AYZO by construction; a comparison on an app the author did not write is still to be done. PyRIT was not run.
 
 ## 8. Secrets AYZO stores
 

@@ -43,7 +43,7 @@ function Segmented<T extends number>({ value, options, onChange, label }: { valu
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={clsx("flex-1 rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors", value === o.value ? "bg-raised text-fg shadow-sm" : "text-mute hover:text-fg")}
+          className={clsx("flex-1 rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors", value === o.value ? "bg-raised text-fg shadow-sm ring-1 ring-line" : "text-mute hover:text-fg")}
         >
           {o.label}
         </button>
@@ -183,8 +183,8 @@ function NewScan() {
                           <span className="min-w-0">
                             <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-fg">
                               {c.name}
-                              {EXACT.has(c.id) && <Tag tone="accent">no judge needed</Tag>}
                               {c.attack_count > 0 && <span className="tabular text-xs font-normal text-faint">{c.attack_count}</span>}
+                              {EXACT.has(c.id) && <Tag tone="accent">no judge needed</Tag>}
                             </span>
                             <span className="mt-0.5 block text-xs leading-relaxed text-mute">
                               {disabled ? (c.id === "tool_abuse" ? "List the tools a user must never trigger on this target to use this." : "Add business rules to this target to use this.") : c.description}
