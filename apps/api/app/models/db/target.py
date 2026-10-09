@@ -72,6 +72,11 @@ class Target(Base):
     # "client": AYZO sends the whole conversation each turn (default).
     # "server": the app remembers the session; AYZO sends only the new message.
     history_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Route that adds a document to the app's knowledge base, e.g. /ingest. When
+    # set, the RAG Ingestion category plants a poisoned document here.
+    ingest_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # JSON field the ingestion request carries the document text in (default "text").
+    ingest_field: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # status: active | running | error
     status: Mapped[str] = mapped_column(

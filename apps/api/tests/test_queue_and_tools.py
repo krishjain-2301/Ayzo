@@ -277,3 +277,83 @@ async def test_rag_poisoning_fails_when_reply_repeats_the_false_answer():
     worked = [r for r in summary["results"] if r["result"] == "fail"]
     assert worked, "a reply carrying the planted false answer should be a confirmed finding"
     assert all(r["metadata"]["method"] == "regex" for r in worked)
+
+
+def test_ingestion_tests_carry_a_plant_and_a_nonce():
+    from app.services.ingestion_attacks import generate_ingestion_tests
+
+    tests = generate_ingestion_tests("http://127.0.0.1:9/ingest", "body", headers={"X-Key": "k"})
+    assert tests and all(t["category"] == "rag_ingestion" and t["is_regex"] for t in tests)
+    for t in tests:
+        ingest = t["ingest"]
+        assert ingest["url"].endswith("/ingest") and ingest["field"] == "body"
+        assert ingest["headers"] == {"X-Key": "k"}
+        # The nonce the reply is checked for is planted in the document, and the
+        # question never mentions it, so a reply can only contain it by retrieval.
+        nonce = t["success_indicators"].replace("\\", "")
+        assert nonce in ingest["document"]
+        assert nonce not in t["prompt"]
+
+
+def _serve_rag():
+    """A vulnerable knowledge base: anyone can POST a document to /ingest, and
+    /chat answers with whatever stored document shares a word with the question."""
+    store: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            if self.path == "/ingest":
+                store.append(body.get("text", ""))
+                payload = {"ok": True}
+            else:
+                prompt_words = {w for w in body.get("prompt", "").split() if len(w) >= 6}
+                hits = [d for d in store if prompt_words & set(d.split())]
+                payload = {"response": " ".join(hits) if hits else "I don't know."}
+            data = json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    port = server.server_address[1]
+    return server, port
+
+
+async def test_rag_ingestion_fails_when_the_app_serves_back_the_planted_document():
+    from app.services.ingestion_attacks import generate_ingestion_tests
+
+    server, port = _serve_rag()
+    try:
+        tests = generate_ingestion_tests(f"http://127.0.0.1:{port}/ingest", "text")
+        with patch(JUDGE, _judge("pass")):  # judge would pass; the planted nonce must still catch it
+            summary = await attack_engine.run_campaign(
+                f"http://127.0.0.1:{port}/chat", "prompt", ["rag_ingestion"], extra_tests=tests
+            )
+    finally:
+        server.shutdown()
+    worked = [r for r in summary["results"] if r["result"] == "fail"]
+    assert worked, "the app served back a document we planted; that is a confirmed finding"
+    assert all(r["metadata"]["method"] == "regex" for r in worked)
+
+
+async def test_rag_ingestion_errors_when_the_ingestion_endpoint_is_unreachable():
+    # /chat works but the ingestion endpoint points nowhere: the plant fails, so
+    # the attack never ran. That is an error, never a silent pass.
+    from app.services.ingestion_attacks import generate_ingestion_tests
+
+    server, url, _ = _serve(lambda body: {"response": "I don't know."})
+    try:
+        tests = generate_ingestion_tests("http://127.0.0.1:9/ingest", "text")  # closed port
+        with patch(JUDGE, _judge("pass")):
+            summary = await attack_engine.run_campaign(url, "prompt", ["rag_ingestion"], extra_tests=tests)
+    finally:
+        server.shutdown()
+    assert summary["status"] == "failed"  # coverage check: nothing produced a verdict
+    assert all(r["result"] == "error" for r in summary["results"])

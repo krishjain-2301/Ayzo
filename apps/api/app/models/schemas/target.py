@@ -47,6 +47,8 @@ class TargetProfile(BaseModel):
     response_field: Optional[str] = Field(None, description='Dotted path to the reply text, e.g. data.answer')
     extra_body: Optional[dict] = Field(None, description='Extra JSON fields for every request')
     history_mode: Optional[Literal['client', 'server']] = Field(None, description="Who keeps the conversation: 'client' (default) or 'server'")
+    ingest_path: Optional[str] = Field(None, description="Route that adds a document to the knowledge base, e.g. /ingest; used by the rag_ingestion category")
+    ingest_field: Optional[str] = Field(None, description="JSON field the ingestion request carries the document in (default 'text')")
 
     @field_validator("chat_path")
     @classmethod
@@ -94,14 +96,24 @@ class TargetProfile(BaseModel):
                 raise ValueError(f"Header value is not valid for {name}")
         return value
 
-    @field_validator("request_field")
+    @field_validator("request_field", "ingest_field")
     @classmethod
     def request_field_is_a_name(cls, value: Optional[str]) -> Optional[str]:
         value = (value or "").strip()
         if not value:
             return None
         if not _REQUEST_FIELD.match(value):
-            raise ValueError("Request field must be a JSON field name such as question")
+            raise ValueError("Field must be a JSON field name such as question")
+        return value
+
+    @field_validator("ingest_path")
+    @classmethod
+    def ingest_path_is_a_path(cls, value: Optional[str]) -> Optional[str]:
+        value = (value or "").strip()
+        if not value:
+            return None
+        if not _CHAT_PATH.match(value) or ".." in value:
+            raise ValueError("Ingestion endpoint must look like /ingest")
         return value
 
     @field_validator("response_field")
@@ -168,6 +180,8 @@ class TargetResponse(BaseModel):
     response_field: Optional[str] = None
     extra_body: Optional[dict] = None
     history_mode: Optional[str] = None
+    ingest_path: Optional[str] = None
+    ingest_field: Optional[str] = None
     status: str
     created_at: datetime
     updated_at: datetime

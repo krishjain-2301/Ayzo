@@ -43,6 +43,12 @@ async def list_categories(
         "owasp_id": "LLM02:2025",
         "description": "Tries to read the data of each other user you listed. Confirmed when a protected value of theirs appears. Needs other users on the target.",
         "attack_count": 0,
+    }, {
+        "id": "rag_ingestion",
+        "name": "RAG Ingestion Poisoning",
+        "owasp_id": "LLM08:2025",
+        "description": "Plants a document through the app's own ingestion endpoint, then asks a question only that document can answer. Confirmed when the planted value appears. Needs a document ingestion endpoint on the target.",
+        "attack_count": 0,
     }]
 
 

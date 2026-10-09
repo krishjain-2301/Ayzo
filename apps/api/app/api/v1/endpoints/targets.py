@@ -154,7 +154,7 @@ async def seed_practice_bots(
     profile = json.loads((practice_dir / "profile.json").read_text(encoding="utf-8"))
 
     targets = []
-    for mode, label in (("weak", "Practice bot (weak)"), ("hardened", "Practice bot (hardened)"), ("agent", "Practice bot (agent)")):
+    for mode, label in (("weak", "Practice bot (weak)"), ("hardened", "Practice bot (hardened)"), ("agent", "Practice bot (agent)"), ("rag", "Practice bot (RAG)")):
         if mode not in profile:
             continue
         result = await db.execute(
@@ -169,17 +169,20 @@ async def seed_practice_bots(
                     "weak": "A real chatbot on a local Ollama model with no defences.",
                     "hardened": "The same chatbot with a defensive prompt, fenced input and an output filter.",
                     "agent": "The chatbot with four tools and nothing stopping it misusing them. Reports its tool calls.",
+                    "rag": "Answers from a knowledge base that anyone can write to through /ingest, with no provenance checks.",
                 }[mode],
                 project_path=str(practice_dir),
                 start_command=f"python app.py {mode}",
                 target_port=profile[mode]["port"],
                 chat_path="/chat",
                 request_field="messages",
-                canaries=profile["secrets"] if mode != "agent" else [],
+                canaries=profile["secrets"] if mode in ("weak", "hardened") else [],
                 forbidden_tools=profile.get("forbidden_tools", []) if mode == "agent" else [],
                 system_prompt=profile[mode]["system_prompt"],
                 expected_behavior=profile["expected_behavior"],
                 rules=profile.get("rules", []),
+                ingest_path="/ingest" if mode == "rag" else None,
+                ingest_field=profile.get("rag", {}).get("ingest_field", "text") if mode == "rag" else None,
             )
             db.add(target)
         targets.append(target)
@@ -215,6 +218,8 @@ async def create_target(
         response_field=target_in.response_field,
         extra_body=target_in.extra_body or {},
         history_mode=target_in.history_mode,
+        ingest_path=target_in.ingest_path,
+        ingest_field=target_in.ingest_field,
     )
     db.add(target)
     await db.commit()

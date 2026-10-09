@@ -222,6 +222,8 @@ function ConnectionCard({ target, onSaved }: { target: Target; onSaved: (t: Targ
     response_field: target.response_field ?? "",
     history_mode: target.history_mode ?? "client",
     extra_body: target.extra_body && Object.keys(target.extra_body).length ? JSON.stringify(target.extra_body) : "",
+    ingest_path: target.ingest_path ?? "",
+    ingest_field: target.ingest_field ?? "",
     header_name: "",
     header_value: "",
   });
@@ -248,6 +250,8 @@ function ConnectionCard({ target, onSaved }: { target: Target; onSaved: (t: Targ
         response_field: form.response_field,
         history_mode: form.history_mode,
         extra_body: extraBody,
+        ingest_path: form.ingest_path,
+        ingest_field: form.ingest_field,
         ...extra,
       };
       if (form.header_name.trim() && form.header_value.trim() && !("request_headers" in extra)) {
@@ -289,6 +293,15 @@ function ConnectionCard({ target, onSaved }: { target: Target; onSaved: (t: Targ
               <option value="client">AYZO sends the whole conversation each turn</option>
               <option value="server">The app remembers it (by cookie)</option>
             </Select>
+          </Field>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Document ingestion endpoint" hint={<>For apps that answer from a knowledge base. The <strong>RAG Ingestion</strong> category plants a document here, then checks whether the app serves it back.</>}>
+            <Input mono value={form.ingest_path} onChange={set("ingest_path")} placeholder="/ingest" />
+          </Field>
+          <Field label="Document field" hint={<>JSON field the document text goes in. Defaults to <code>text</code>.</>}>
+            <Input mono value={form.ingest_field} onChange={set("ingest_field")} placeholder="text" />
           </Field>
         </div>
 

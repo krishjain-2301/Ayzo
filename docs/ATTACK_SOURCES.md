@@ -67,4 +67,16 @@ These were reviewed but left out:
 
 ### A note on RAG poisoning
 
-`rag_poisoning` plants the poisoned passages **inline** in the prompt as retrieved context, so it works against any chat target. A higher-fidelity test would plant documents through the app's own ingestion endpoint and let its retriever surface them; that needs an ingestion feature AYZO does not have yet.
+There are two RAG categories, and they differ in how the poison gets in:
+
+- **`rag_poisoning`** plants the poisoned passages **inline** in the prompt as
+  retrieved context, so it works against any chat target without extra setup.
+  Payloads are adapted from PoisonedRAG (see the table above).
+- **`rag_ingestion`** is higher fidelity and hand-written, not an import. It
+  plants a document through the app's **own ingestion endpoint** and then asks
+  a question only that document can answer, testing the real path
+  (ingest → index → retrieve → answer). Each planted document carries a unique
+  nonce the model cannot know otherwise, so a reply containing it is a confirmed
+  finding by exact match, no judge. It needs a document ingestion endpoint set
+  on the target (see the target's "How to talk to it" tab), and there is a
+  practice target for it: `python app.py rag` in `practice_bot/`.

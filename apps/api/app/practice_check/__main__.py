@@ -20,6 +20,7 @@ from app.services.attack_engine import attack_engine
 from app.services.eval_engine import eval_engine
 from app.services.http_target import discover_chat_endpoint
 from app.services.access_attacks import generate_access_tests
+from app.services.ingestion_attacks import generate_ingestion_tests
 from app.services.process_target import boot_target, read_boot_log, stop_target, wait_for_port
 from app.services.rule_attacks import generate_rule_tests
 from app.services.tool_attacks import generate_tool_tests
@@ -48,6 +49,10 @@ async def scan(mode: str, profile: dict, timeout: float, categories: list[str], 
             extra_tests += generate_tool_tests(profile.get("forbidden_tools", []))
         if "cross_user" in categories:
             extra_tests += generate_access_tests(profile.get("other_users", []))
+        if "rag_ingestion" in categories:
+            extra_tests += generate_ingestion_tests(
+                f"http://127.0.0.1:{port}/ingest", profile.get("rag", {}).get("ingest_field", "text")
+            )
         return await attack_engine.run_campaign(
             endpoint=found.url,
             body_style=found.body_style,
@@ -57,7 +62,7 @@ async def scan(mode: str, profile: dict, timeout: float, categories: list[str], 
             adaptive_rounds=adaptive_rounds,
             seed=seed,
             profile={
-                "canaries": profile["secrets"] if mode != "agent" else [],
+                "canaries": profile["secrets"] if mode in ("weak", "hardened") else [],
                 "forbidden_tools": profile.get("forbidden_tools", []) if mode == "agent" else [],
                 "system_prompt": profile[mode]["system_prompt"],
                 "expected_behavior": profile["expected_behavior"],
@@ -73,7 +78,7 @@ def describe(summary: dict) -> str:
         return f"FAILED ({summary.get('error', '')[:90]})"
     exact = sum(
         1 for r in summary["results"]
-        if r["result"] == "fail" and (r.get("metadata") or {}).get("method") in ("canary", "prompt_leak", "marker", "tool_call")
+        if r["result"] == "fail" and (r.get("metadata") or {}).get("method") in ("canary", "prompt_leak", "marker", "tool_call", "regex")
     )
     adaptive = sum(1 for r in summary["results"] if r["result"] == "fail" and "[adaptive" in (r.get("attack_name") or ""))
     rate = f"success rate {summary['attack_success_rate']}% (95% interval {summary['asr_low']}-{summary['asr_high']}%)"
@@ -144,7 +149,7 @@ def main() -> int:
     parser.add_argument("--trials", type=int, default=1, help="Send each attack this many times")
     parser.add_argument("--adaptive-rounds", type=int, default=0, help="Rounds of the adaptive attacker")
     parser.add_argument("--seed", type=int, help="Fix AYZO's random choices")
-    parser.add_argument("--only", choices=["weak", "hardened", "agent"], help="Scan just one bot (no comparison)")
+    parser.add_argument("--only", choices=["weak", "hardened", "agent", "rag"], help="Scan just one bot (no comparison)")
     parser.add_argument("--show", action="store_true", help="List every attack that worked or was inconclusive")
     return asyncio.run(main_async(parser.parse_args()))
 

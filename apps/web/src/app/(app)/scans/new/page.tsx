@@ -13,7 +13,9 @@ import { Button, Card, CardHeader, Field, Input, Loading, Notice, PageHeader, Se
 // Ticked by default: the categories that test the app rather than the model.
 const DEFAULTS = ["prompt_injection", "system_prompt_leak", "indirect_injection"];
 // Decided by string match, so they need no judge and give the same answer every time.
-const EXACT = new Set(["indirect_injection", "tool_abuse", "sql_injection", "rag_poisoning"]);
+const EXACT = new Set(["indirect_injection", "tool_abuse", "sql_injection", "rag_poisoning", "rag_ingestion"]);
+// How many documents the RAG Ingestion category plants (one per fact template).
+const RAG_INGESTION_COUNT = 8;
 
 const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
@@ -24,7 +26,7 @@ const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
     title: "Tools and retrieval",
     hint: "Useful when the app can call tools or reads documents. Otherwise expect everything to pass.",
-    ids: ["tool_abuse", "agent_misuse", "excessive_agency", "vector_weaknesses", "rag_poisoning"],
+    ids: ["tool_abuse", "agent_misuse", "excessive_agency", "vector_weaknesses", "rag_poisoning", "rag_ingestion"],
   },
   {
     title: "The model's own guard rails",
@@ -84,8 +86,9 @@ function NewScan() {
   const hasRules = Boolean(target?.rules?.length);
   const hasTools = Boolean(target?.forbidden_tools?.length);
   const hasOthers = Boolean(target?.other_users?.length);
+  const hasIngest = Boolean(target?.ingest_path);
   // Categories whose attacks are generated from the target's own profile.
-  const unavailable = (id: string) => (id === "business_rules" && !hasRules) || (id === "tool_abuse" && !hasTools) || (id === "cross_user" && !hasOthers);
+  const unavailable = (id: string) => (id === "business_rules" && !hasRules) || (id === "tool_abuse" && !hasTools) || (id === "cross_user" && !hasOthers) || (id === "rag_ingestion" && !hasIngest);
   const byId = new Map((categories.data ?? []).map((c) => [c.id, c]));
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((c) => c !== id) : [...p, id]));
   const chosen = picked.filter((id) => byId.has(id) && !unavailable(id));
@@ -95,6 +98,7 @@ function NewScan() {
     id === "business_rules" ? (target?.rules?.length ?? 0) * 4
     : id === "tool_abuse" ? (target?.forbidden_tools?.length ?? 0) * 4
     : id === "cross_user" ? (target?.other_users?.length ?? 0) * 6
+    : id === "rag_ingestion" ? RAG_INGESTION_COUNT
     : cap(byId.get(id)?.attack_count ?? 0);
   const attacks = chosen.reduce((sum, id) => sum + countFor(id), 0);
   const requests = attacks * trials;
@@ -199,7 +203,7 @@ function NewScan() {
                               {EXACT.has(c.id) && <Tag tone="accent">no judge needed</Tag>}
                             </span>
                             <span className="mt-0.5 block text-xs leading-relaxed text-mute">
-                              {disabled ? (c.id === "tool_abuse" ? "List the tools a user must never trigger on this target to use this." : c.id === "cross_user" ? "List other users on this target to use this." : "Add business rules to this target to use this.") : c.description}
+                              {disabled ? (c.id === "tool_abuse" ? "List the tools a user must never trigger on this target to use this." : c.id === "cross_user" ? "List other users on this target to use this." : c.id === "rag_ingestion" ? "Set a document ingestion endpoint on this target to use this." : "Add business rules to this target to use this.") : c.description}
                             </span>
                           </span>
                         </button>

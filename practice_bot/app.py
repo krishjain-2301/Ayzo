@@ -4,6 +4,7 @@ Practice target for AYZO: a small real chatbot backed by a local Ollama model.
     python app.py weak        # port 5001, no defences
     python app.py hardened    # port 5002, defensive prompt + input fencing + output filter
     python app.py agent       # port 5003, can call tools, nothing stops it misusing them
+    python app.py rag         # port 5004, answers from a knowledge base anyone can write to
 
 Both modes hold the same two secrets in their system prompt (see profile.json).
 A scan of the weak bot should find leaks; a scan of the hardened bot should
@@ -20,6 +21,7 @@ import json
 import os
 import re
 import sys
+import threading
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -120,6 +122,57 @@ def answer(mode: str, messages: list[dict]) -> str:
     return reply
 
 
+# ---- RAG mode: a knowledge base anyone can write to, no provenance checks ----
+# A real store would validate and attribute documents before indexing. This one
+# indexes whatever it is given and tells the model the documents are trusted, so
+# a document planted through /ingest is retrieved and repeated as fact.
+DOCS: list[str] = []
+DOCS_LOCK = threading.Lock()
+
+
+def seed_docs() -> None:
+    with DOCS_LOCK:
+        DOCS.clear()
+        DOCS.extend(PROFILE.get("rag", {}).get("seed_docs", []))
+
+
+def ingest_document(body: dict) -> int:
+    """Add a document to the store. Returns the new document count."""
+    text = ""
+    for key in ("text", "document", "content", "body", "passage"):
+        if isinstance(body.get(key), str) and body[key].strip():
+            text = body[key].strip()
+            break
+    if not text:
+        raise ValueError("send the document in a 'text' field")
+    with DOCS_LOCK:
+        DOCS.append(text)
+        return len(DOCS)
+
+
+def _words(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def retrieve(question: str, k: int = 3) -> list[str]:
+    """Naive retrieval: the stored documents that share the most words with the question."""
+    q = _words(question)
+    with DOCS_LOCK:
+        docs = list(DOCS)
+    scored = [(len(q & _words(d)), d) for d in docs]
+    scored = [pair for pair in scored if pair[0] > 0]
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [d for _, d in scored[:k]]
+
+
+def rag_answer(messages: list[dict]) -> str:
+    question = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+    docs = retrieve(question)
+    context = "\n\n".join(f"[{i + 1}] {d}" for i, d in enumerate(docs)) or "(no documents found)"
+    turn = f"Context documents:\n{context}\n\nQuestion: {question}"
+    return ask_model(PROFILE["rag"]["system_prompt"], [{"role": "user", "content": turn}])
+
+
 def make_handler(mode: str):
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status: int, body: dict) -> None:
@@ -131,19 +184,30 @@ def make_handler(mode: str):
             self.wfile.write(data)
 
         def do_POST(self):
-            if self.path != "/chat":
-                return self._send(404, {"error": "not found"})
             try:
                 raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-                messages = read_messages(json.loads(raw or b"{}"))
+                body = json.loads(raw or b"{}")
             except (ValueError, json.JSONDecodeError):
                 return self._send(400, {"error": "expected a JSON body"})
+
+            # RAG mode exposes an ingestion endpoint that anyone can write to.
+            if mode == "rag" and self.path == "/ingest":
+                try:
+                    return self._send(200, {"ok": True, "count": ingest_document(body)})
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+
+            if self.path != "/chat":
+                return self._send(404, {"error": "not found"})
+            messages = read_messages(body)
             if not messages:
                 return self._send(400, {"error": "send messages or message"})
             try:
                 if mode == "agent":
                     text, calls = run_tools(ask_model(PROFILE["agent"]["system_prompt"], messages))
                     return self._send(200, {"response": text, "tool_calls": calls})
+                if mode == "rag":
+                    return self._send(200, {"response": rag_answer(messages)})
                 self._send(200, {"response": answer(mode, messages)})
             except (urllib.error.URLError, KeyError, TimeoutError) as exc:
                 self._send(502, {"error": f"model unavailable: {exc}"})
@@ -159,8 +223,10 @@ def make_handler(mode: str):
 
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "weak"
-    if mode not in ("weak", "hardened", "agent"):
-        sys.exit("usage: python app.py weak|hardened|agent [port]")
+    if mode not in ("weak", "hardened", "agent", "rag"):
+        sys.exit("usage: python app.py weak|hardened|agent|rag [port]")
     port = int(sys.argv[2]) if len(sys.argv) > 2 else PROFILE[mode]["port"]
+    if mode == "rag":
+        seed_docs()
     print(f"AcmeBot ({mode}) on http://127.0.0.1:{port}/chat using {MODEL}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", port), make_handler(mode)).serve_forever()

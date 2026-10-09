@@ -20,6 +20,8 @@ export interface Target {
   response_field: string | null;
   extra_body: Record<string, unknown> | null;
   history_mode: "client" | "server" | null;
+  ingest_path: string | null;
+  ingest_field: string | null;
   status: string;
   created_at: string;
 }

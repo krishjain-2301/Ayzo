@@ -269,6 +269,28 @@ def extract_tool_calls(res: httpx.Response) -> list[str]:
     return names
 
 
+async def plant_document(ingest: dict, timeout: float = 30.0) -> dict:
+    """
+    POST one document to the app's ingestion endpoint so the RAG Ingestion
+    category can then ask a question that should retrieve it. `ingest` carries
+    the loopback url, the JSON field the document goes in, request headers, and
+    the document text. Only loopback HTTP is allowed.
+
+    Returns {"success": True} or {"success": False, "error": ...}.
+    """
+    url = assert_loopback_url(ingest["url"])
+    field = (ingest.get("field") or "text").strip() or "text"
+    body = {field: ingest["document"], **(ingest.get("extra_body") or {})}
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            res = await client.post(url, json=body, headers=ingest.get("headers") or {})
+    except httpx.RequestError as exc:
+        return {"success": False, "error": str(exc) or type(exc).__name__}
+    if not (200 <= res.status_code < 300):
+        return {"success": False, "error": f"HTTP {res.status_code}: {res.text[:200]}"}
+    return {"success": True}
+
+
 async def discover_chat_endpoint(
     base_url: str,
     extra_paths: Optional[list[str]] = None,

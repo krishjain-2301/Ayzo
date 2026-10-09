@@ -27,6 +27,7 @@ from app.services.eval_engine import eval_engine
 from app.services.http_target import discover_chat_endpoint
 from app.services.rule_attacks import generate_rule_tests
 from app.services.access_attacks import generate_access_tests
+from app.services.ingestion_attacks import generate_ingestion_tests
 from app.services.tool_attacks import generate_tool_tests
 from app.services.process_target import (
     boot_target,
@@ -256,6 +257,17 @@ async def run_campaign_async(campaign_id: str) -> None:
                     )
                     return
                 extra_tests += generate_access_tests(others)
+            if "rag_ingestion" in (campaign.attack_categories or []):
+                if not target.ingest_path:
+                    await fail(
+                        "The RAG Ingestion category needs the target's document ingestion endpoint, "
+                        "and this target has none. Set an ingestion endpoint on the target or untick that category."
+                    )
+                    return
+                ingest_url = f"http://127.0.0.1:{target.target_port}{target.ingest_path}"
+                extra_tests += generate_ingestion_tests(
+                    ingest_url, target.ingest_field or "text", decrypt_map(target.request_headers)
+                )
 
             db_lock = asyncio.Lock()
 

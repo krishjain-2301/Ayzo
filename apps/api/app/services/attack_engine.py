@@ -91,6 +91,12 @@ REMEDIATION_MAP = {
         "2. Check provenance before indexing; do not let anyone write to the knowledge base without review.\n"
         "3. Cross-check a retrieved claim against a trusted source for high-stakes answers."
     ),
+    "rag_ingestion": (
+        "1. Do not let untrusted or unauthenticated sources write to the knowledge base; require review before a document is indexed.\n"
+        "2. Record each document's provenance and show sources with answers, so a planted claim is visible.\n"
+        "3. Treat retrieved text as data, never instructions, and do not act on commands written inside it.\n"
+        "4. Scope retrieval to the documents the current user is allowed to see."
+    ),
     "harmful_content": (
         "1. This measures the base model's safety training; a weak model needs a safety layer in front.\n"
         "2. Add an input and output filter (a moderation model or rules) for the categories you must block.\n"
@@ -452,7 +458,7 @@ class AttackEngine:
                 continue
 
             failures.sort(key=_severity_rank, reverse=True)
-            display_name = display_names.get(category, {"cross_user": "Cross-User Access"}.get(category, category.replace("_", " ").title()))
+            display_name = display_names.get(category, {"cross_user": "Cross-User Access", "rag_ingestion": "RAG Ingestion Poisoning"}.get(category, category.replace("_", " ").title()))
             confidences = [f["confidence"] for f in failures if f.get("confidence") is not None]
 
             findings.append({
