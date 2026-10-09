@@ -31,7 +31,7 @@ function Choice({ label, selected, busy, onClick }: { label: string; selected: b
       onClick={onClick}
       disabled={busy}
       className={clsx(
-        "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-mono text-[13px] transition-colors disabled:cursor-wait",
+        "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-mono text-sm transition-colors disabled:cursor-wait",
         selected ? "border-accent bg-accent-dim/50 text-fg" : "border-line text-mute hover:border-faint hover:text-fg"
       )}
     >
@@ -76,7 +76,7 @@ function ProviderRow({ provider, current, busy, apply, onKeyRemoved }: {
 
   return (
     <div>
-      <p className="mb-2 flex flex-wrap items-center gap-2 text-[13px] text-fg">
+      <p className="mb-2 flex flex-wrap items-center gap-2 text-sm text-fg">
         {provider.name}
         {provider.key_set ? <Tag tone="pass">API key added</Tag> : <Tag tone="warn">API key required</Tag>}
         {!provider.key_set && !replacing && !wanted && (
@@ -114,7 +114,7 @@ function ProviderRow({ provider, current, busy, apply, onKeyRemoved }: {
 
       {(wanted || replacing) && (
         <form onSubmit={saveKey} className="mt-3 rounded-md border border-warn/30 bg-warn/5 p-3">
-          <p className="mb-2 text-[13px] text-fg">
+          <p className="mb-2 text-sm text-fg">
             {wanted ? (
               <>To use <code>{wanted}</code>, paste your {provider.name} API key.</>
             ) : (
@@ -163,11 +163,11 @@ function ModelPicker({ data, current, busy, apply, onKeyRemoved }: {
         <p className="mb-3 text-xs uppercase tracking-wider text-faint">Runs on this computer · free, no API key</p>
         <div className="space-y-4">
           <div>
-            <p className="mb-2 text-[13px] text-fg">Ollama</p>
+            <p className="mb-2 text-sm text-fg">Ollama</p>
             {!ollama.running ? (
-              <p className="text-[13px] text-mute">Ollama is not running. Start it, or install it from ollama.com, then press Refresh.</p>
+              <p className="text-sm text-mute">Ollama is not running. Start it, or install it from ollama.com, then press Refresh.</p>
             ) : ollama.models.length === 0 ? (
-              <p className="text-[13px] text-mute">
+              <p className="text-sm text-mute">
                 No models installed. In a terminal run <code className="text-fg">ollama pull gemma3:4b</code> or{" "}
                 <code className="text-fg">ollama pull qwen3:4b</code>, then press Refresh.
               </p>
@@ -180,7 +180,7 @@ function ModelPicker({ data, current, busy, apply, onKeyRemoved }: {
             )}
           </div>
           <div>
-            <p className="mb-2 text-[13px] text-fg">
+            <p className="mb-2 text-sm text-fg">
               Claude Code <span className="text-mute">· uses the Claude Code sign-in on this computer</span>
             </p>
             {claude_cli.installed ? (
@@ -190,7 +190,7 @@ function ModelPicker({ data, current, busy, apply, onKeyRemoved }: {
                 ))}
               </div>
             ) : (
-              <p className="text-[13px] text-mute">Claude Code is not installed on this computer.</p>
+              <p className="text-sm text-mute">Claude Code is not installed on this computer.</p>
             )}
           </div>
         </div>
@@ -211,7 +211,7 @@ function ModelPicker({ data, current, busy, apply, onKeyRemoved }: {
 function StatusLine({ status }: { status: Status }) {
   if (!status) return null;
   return (
-    <p className={clsx("flex items-start gap-2 text-[13px]", status.tone === "pass" && "text-pass", status.tone === "fail" && "text-fail", status.tone === "busy" && "text-mute")}>
+    <p className={clsx("flex items-start gap-2 text-sm", status.tone === "pass" && "text-pass", status.tone === "fail" && "text-fail", status.tone === "busy" && "text-mute")}>
       {status.tone === "busy" && <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" />}
       <span className="min-w-0 break-words">{status.text}</span>
     </p>
@@ -281,8 +281,8 @@ function Models({ initial, onRefresh }: { initial: ModelsOverview; onRefresh: ()
         <div className="space-y-5 p-5">
           <div className="rounded-md border border-line bg-ink px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-faint">In use now</p>
-            <p className="mt-1 font-mono text-[15px] text-fg">{data.eval_model}</p>
-            {data.eval_model_missing_key && <p className="mt-1 text-[13px] text-warn">This model needs an API key that has not been added. Scans will stop before attacking.</p>}
+            <p className="mt-1 font-mono text-base text-fg">{data.eval_model}</p>
+            {data.eval_model_missing_key && <p className="mt-1 text-sm text-warn">This model needs an API key that has not been added. Scans will stop before attacking.</p>}
             <div className="mt-2"><StatusLine status={judgeStatus} /></div>
           </div>
           <ModelPicker data={data} current={data.eval_model} busy={busy !== ""} apply={applyJudge} onKeyRemoved={removeKey} />
@@ -297,14 +297,14 @@ function Models({ initial, onRefresh }: { initial: ModelsOverview; onRefresh: ()
         <div className="space-y-5 p-5">
           <div className="rounded-md border border-line bg-ink px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-faint">In use now</p>
-            <p className="mt-1 font-mono text-[15px] text-fg">
+            <p className="mt-1 font-mono text-base text-fg">
               {data.effective_mutator_model}
-              {sameAttacker && <span className="ml-2 font-sans text-[13px] text-mute">same as the judge</span>}
+              {sameAttacker && <span className="ml-2 font-sans text-sm text-mute">same as the judge</span>}
             </p>
             <div className="mt-2"><StatusLine status={attackerStatus} /></div>
           </div>
           <label className="flex cursor-pointer items-center gap-3 text-sm text-fg">
-            <input type="checkbox" checked={sameAttacker} disabled={busy !== ""} onChange={(e) => followJudge(e.target.checked)} className="h-4 w-4 accent-[#5cc8ff]" />
+            <input type="checkbox" checked={sameAttacker} disabled={busy !== ""} onChange={(e) => followJudge(e.target.checked)} className="h-4 w-4 accent-[#4c8dff]" />
             Always use the same model as the judge
           </label>
           {!sameAttacker && (
@@ -347,7 +347,7 @@ export default function SettingsPage() {
                     ["Build fails above risk score", "CICD_FAIL_RISK_THRESHOLD", limits.data.cicd_fail_risk_threshold],
                   ] as [string, string, string | number][]
                 ).map(([label, env, value]) => (
-                  <div key={env} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-[13px]">
+                  <div key={env} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
                     <dt className="text-fg">{label} <code className="ml-2 text-faint">{env}</code></dt>
                     <dd className="font-mono text-fg">{value}</dd>
                   </div>

@@ -108,7 +108,7 @@ function NewScan() {
           title="2 · Attacks"
           hint="Up to 20 attacks are sent per category, most severe first."
           right={
-            <div className="flex gap-3 text-[13px]">
+            <div className="flex gap-3 text-sm">
               <button type="button" className="text-mute hover:text-fg" onClick={() => setPicked((categories.data ?? []).map((c) => c.id))}>All</button>
               <button type="button" className="text-mute hover:text-fg" onClick={() => setPicked([])}>None</button>
             </div>
@@ -168,7 +168,7 @@ function NewScan() {
 
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" variant="primary" busy={busy} disabled={!targetId || chosen.length === 0}>Start scan</Button>
-        <span className="text-[13px] text-mute">
+        <span className="text-sm text-mute">
           {chosen.length === 0
             ? "Pick at least one category."
             : `About ${attackCount} attacks across ${chosen.length} categor${chosen.length === 1 ? "y" : "ies"}. Judge: ${models.data?.eval_model ?? "…"}`}

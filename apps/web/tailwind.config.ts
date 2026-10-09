@@ -10,20 +10,20 @@ const config: Config = {
       },
       colors: {
         // Surfaces, darkest to lightest
-        ink: "#0a0b0d",
-        panel: "#111317",
-        raised: "#181b21",
-        line: "#242830",
+        ink: "#0b0d11",
+        panel: "#12151b",
+        raised: "#191d25",
+        line: "#222834",
         // Text
-        fg: "#e7e9ee",
-        mute: "#8a92a0",
-        faint: "#5b6270",
+        fg: "#eceef2",
+        mute: "#9aa3b2",
+        faint: "#636c7c",
         // One accent for actions and selection
-        accent: { DEFAULT: "#5cc8ff", dim: "#17384a", ink: "#04121c" },
-        // Verdicts
-        fail: "#ff6464",
-        pass: "#3ddc97",
-        warn: "#f5b83d",
+        accent: { DEFAULT: "#4c8dff", dim: "#16233d", ink: "#ffffff" },
+        // Status. Always shown with a label, never colour alone.
+        fail: "#f2555a",
+        pass: "#2fbf8f",
+        warn: "#f0b429",
       },
     },
   },

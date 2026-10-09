@@ -1,17 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { del } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
-import { isLive, riskColor, riskLevel, timeAgo } from "@/lib/format";
-import type { ScanSummary } from "@/lib/types";
-import { Button, Card, Empty, Input, Loading, Notice, PageHeader, StatusDot, VerdictBar } from "@/components/ui";
+import { isLive, timeAgo } from "@/lib/format";
+import type { ScanStatus, ScanSummary } from "@/lib/types";
+import { Button, Card, Empty, Input, Loading, Notice, PageHeader, StatusDot, TD, TH, VerdictBar } from "@/components/ui";
+import { RiskChip } from "@/components/charts";
+
+const FILTERS: { id: "all" | ScanStatus; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "completed", label: "Completed" },
+  { id: "running", label: "Running" },
+  { id: "failed", label: "No result" },
+];
 
 export default function ScansPage() {
+  const router = useRouter();
   const { data, error, loading, reload } = useApi<ScanSummary[]>("/campaigns", 4000);
   const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<"all" | ScanStatus>("all");
 
   const remove = async (scan: ScanSummary) => {
     if (!confirm(`Delete the scan "${scan.name}" and its results?`)) return;
@@ -24,19 +35,15 @@ export default function ScansPage() {
   };
 
   const q = query.trim().toLowerCase();
-  const scans = (data ?? []).filter((s) => !q || s.name.toLowerCase().includes(q) || s.target_name.toLowerCase().includes(q));
+  const scans = (data ?? []).filter(
+    (s) =>
+      (status === "all" || s.status === status || (status === "running" && s.status === "pending")) &&
+      (!q || s.name.toLowerCase().includes(q) || s.target_name.toLowerCase().includes(q))
+  );
 
   return (
     <>
-      <PageHeader
-        title="Scans"
-        subtitle="Every scan you have run. Open one to see which attacks worked and why."
-        actions={
-          <Link href="/scans/new">
-            <Button variant="primary">New scan</Button>
-          </Link>
-        }
-      />
+      <PageHeader title="Scans" subtitle="Every scan you have run. Open one to see which attacks worked and why." />
       {error && <div className="mb-4"><Notice tone="fail">{error}</Notice></div>}
       {loading ? (
         <Loading />
@@ -45,39 +52,59 @@ export default function ScansPage() {
           A scan sends a set of attacks to one target and records what happened.
         </Empty>
       ) : (
-        <>
-          <div className="mb-4 max-w-xs">
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter by scan or target name" />
-          </div>
-          <Card>
-            <div className="grid grid-cols-[1fr_7rem_11rem_5rem_2.5rem] items-center gap-4 border-b border-line px-5 py-2.5 text-xs uppercase tracking-wider text-faint">
-              <span>Scan</span>
-              <span>Status</span>
-              <span>Attacks that worked</span>
-              <span className="text-right">Risk</span>
-              <span />
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+            <div className="flex gap-1.5">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setStatus(f.id)}
+                  className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${status === f.id ? "bg-accent-dim text-fg" : "text-mute hover:bg-raised hover:text-fg"}`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
-            {scans.length === 0 && <p className="px-5 py-8 text-sm text-mute">Nothing matches &ldquo;{query}&rdquo;.</p>}
-            <ul className="divide-y divide-line">
+            <div className="relative w-64">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+              <Input className="!pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search scans or targets" />
+            </div>
+          </div>
+
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-line">
+                <th className={TH}>Scan</th>
+                <th className={TH}>Target</th>
+                <th className={TH}>Status</th>
+                <th className={`${TH} w-56`}>Attacks that worked</th>
+                <th className={`${TH} text-right`}>Risk</th>
+                <th className={TH}>Level</th>
+                <th className={TH}>When</th>
+                <th className={TH} />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {scans.length === 0 && (
+                <tr><td colSpan={8} className="px-5 py-10 text-center text-sm text-mute">No scans match.</td></tr>
+              )}
               {scans.map((s) => {
                 const noVerdict = s.error_tests + s.inconclusive_tests;
                 return (
-                  <li key={s.id} className="grid grid-cols-[1fr_7rem_11rem_5rem_2.5rem] items-center gap-4 px-5 py-3.5 hover:bg-raised/40">
-                    <Link href={`/scans/${s.id}`} className="min-w-0">
-                      <p className="truncate text-sm font-medium text-fg hover:text-accent">{s.name}</p>
-                      <p className="truncate text-xs text-mute">
-                        {s.target_name} · {timeAgo(s.created_at)}
-                      </p>
-                      {s.status_detail && <p className="mt-1 line-clamp-1 text-xs text-warn">{s.status_detail}</p>}
-                    </Link>
-                    <StatusDot status={s.status} />
-                    <div>
+                  <tr key={s.id} className="cursor-pointer hover:bg-raised/50" onClick={() => router.push(`/scans/${s.id}`)}>
+                    <td className={`${TD} max-w-[20rem]`}>
+                      <p className="truncate font-medium text-fg">{s.name}</p>
+                      {s.status_detail && <p className="mt-0.5 line-clamp-1 text-xs text-mute">{s.status_detail}</p>}
+                    </td>
+                    <td className={`${TD} text-mute`}>{s.target_name}</td>
+                    <td className={TD}><StatusDot status={s.status} /></td>
+                    <td className={TD}>
                       {isLive(s.status) ? (
                         <>
                           <div className="h-2 overflow-hidden rounded-full bg-raised">
                             <div className="h-full bg-accent transition-all" style={{ width: `${s.progress_percent}%` }} />
                           </div>
-                          <p className="mt-1 text-xs text-mute">{Math.round(s.progress_percent)}% · {s.failed_tests} worked so far</p>
+                          <p className="tabular mt-1.5 text-xs text-mute">{Math.round(s.progress_percent)}% sent · {s.failed_tests} worked so far</p>
                         </>
                       ) : (
                         <>
@@ -89,26 +116,34 @@ export default function ScansPage() {
                               pass: Math.max(0, s.total_tests - s.failed_tests - noVerdict),
                             }}
                           />
-                          <p className="mt-1 text-xs text-mute">
-                            {s.failed_tests} of {s.total_tests}
-                            {noVerdict > 0 && <span className="text-warn"> · {noVerdict} without a verdict</span>}
+                          <p className="tabular mt-1.5 text-xs text-mute">
+                            <span className="font-medium text-fg">{s.failed_tests}</span> of {s.total_tests}
+                            {noVerdict > 0 && ` · ${noVerdict} without a verdict`}
                           </p>
                         </>
                       )}
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-mono text-lg leading-none ${riskColor(s.risk_score)}`}>{s.risk_score ?? "—"}</p>
-                      <p className="mt-1 text-[11px] text-mute">{riskLevel(s.risk_score)}</p>
-                    </div>
-                    <button onClick={() => remove(s)} className="justify-self-end text-faint hover:text-fail" aria-label={`Delete ${s.name}`}>
-                      <Trash2 size={15} />
-                    </button>
-                  </li>
+                    </td>
+                    <td className={`${TD} tabular text-right text-base font-semibold text-fg`}>{s.risk_score ?? "—"}</td>
+                    <td className={TD}>{s.risk_score !== null ? <RiskChip score={s.risk_score} /> : <span className="text-xs text-faint">—</span>}</td>
+                    <td className={`${TD} whitespace-nowrap text-mute`}>{timeAgo(s.created_at)}</td>
+                    <td className={`${TD} text-right`}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          remove(s);
+                        }}
+                        className="rounded p-1.5 text-faint hover:bg-raised hover:text-fail"
+                        aria-label={`Delete ${s.name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  </tr>
                 );
               })}
-            </ul>
-          </Card>
-        </>
+            </tbody>
+          </table>
+        </Card>
       )}
     </>
   );

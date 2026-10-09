@@ -6,8 +6,10 @@ import { useState } from "react";
 import { ArrowLeft, Play, PlugZap, ScanSearch, Trash2 } from "lucide-react";
 import { del, patch, post } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
-import type { Suggestions, Target } from "@/lib/types";
-import { Button, Card, CardHeader, Field, Input, Loading, Mono, Notice, PageHeader, Select, Tag, Textarea } from "@/components/ui";
+import type { ScanSummary, Suggestions, Target } from "@/lib/types";
+import { timeAgo } from "@/lib/format";
+import { Button, Card, CardHeader, Field, Input, Loading, Mono, Notice, PageHeader, Select, StatusDot, Tabs, Tag, Textarea } from "@/components/ui";
+import { RiskChip } from "@/components/charts";
 
 const lines = (text: string) => text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -97,7 +99,7 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
 
         <div className="flex items-center gap-3">
           <Button variant="primary" onClick={save} busy={busy}>Save profile</Button>
-          {note && <span className={`text-[13px] ${note.ok ? "text-pass" : "text-fail"}`}>{note.text}</span>}
+          {note && <span className={`text-sm ${note.ok ? "text-pass" : "text-fail"}`}>{note.text}</span>}
         </div>
       </div>
     </Card>
@@ -109,12 +111,12 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
 function Row({ label, values }: { label: string; values: (string | number)[] }) {
   return (
     <div className="flex gap-4 py-2">
-      <dt className="w-36 shrink-0 text-[13px] text-mute">{label}</dt>
+      <dt className="w-36 shrink-0 text-sm text-mute">{label}</dt>
       <dd className="flex min-w-0 flex-wrap gap-1.5">
         {values.length ? (
           values.map((v) => <code key={String(v)} className="rounded bg-raised px-1.5 py-0.5 text-xs">{v}</code>)
         ) : (
-          <span className="text-[13px] text-faint">nothing found</span>
+          <span className="text-sm text-faint">nothing found</span>
         )}
       </dd>
     </div>
@@ -163,12 +165,12 @@ function AnalyzeCard({ target, onSaved }: { target: Target; onSaved: () => void 
                 <Row label="Secrets in prompt" values={found.canaries} />
                 <Row label="Tools" values={found.tools} />
                 <div className="flex gap-4 py-2">
-                  <dt className="w-36 shrink-0 text-[13px] text-mute">System prompt</dt>
+                  <dt className="w-36 shrink-0 text-sm text-mute">System prompt</dt>
                   <dd className="min-w-0 flex-1 space-y-2">
-                    {found.system_prompts.length === 0 && <span className="text-[13px] text-faint">nothing found</span>}
+                    {found.system_prompts.length === 0 && <span className="text-sm text-faint">nothing found</span>}
                     {found.system_prompts.map((p) => (
                       <div key={p.file + p.text.length} className="rounded-md border border-line bg-ink p-3">
-                        <p className="mb-1 font-mono text-[11px] text-faint">{p.file}</p>
+                        <p className="mb-1 font-mono text-xs text-faint">{p.file}</p>
                         <Mono className="max-h-28 overflow-y-auto text-mute">{p.text}</Mono>
                       </div>
                     ))}
@@ -273,7 +275,7 @@ function ConnectionCard({ target, onSaved }: { target: Target; onSaved: (t: Targ
         </div>
 
         <div>
-          <p className="mb-1.5 text-[13px] font-medium text-fg">Request header</p>
+          <p className="mb-1.5 text-sm font-medium text-fg">Request header</p>
           {headers.length > 0 && (
             <div className="mb-2 flex flex-wrap items-center gap-2">
               {headers.map(([name, value]) => (
@@ -293,7 +295,7 @@ function ConnectionCard({ target, onSaved }: { target: Target; onSaved: (t: Targ
 
         <div className="flex items-center gap-3">
           <Button variant="primary" onClick={() => save()} busy={busy}>Save connection</Button>
-          {note && <span className={`text-[13px] ${note.ok ? "text-pass" : "text-fail"}`}>{note.text}</span>}
+          {note && <span className={`text-sm ${note.ok ? "text-pass" : "text-fail"}`}>{note.text}</span>}
         </div>
       </div>
     </Card>
@@ -310,6 +312,8 @@ export default function TargetPage() {
   const [test, setTest] = useState<{ success: boolean; message: string; output: string | null } | null>(null);
   const [testing, setTesting] = useState(false);
   const [version, setVersion] = useState(0);
+  const [tab, setTab] = useState<"protect" | "connect" | "read">("protect");
+  const scans = useApi<ScanSummary[]>("/campaigns");
 
   if (loading) return <Loading />;
   if (error || !target) return <Notice tone="fail">{error || "Target not found."}</Notice>;
@@ -346,12 +350,7 @@ export default function TargetPage() {
       <PageHeader
         back={<Link href="/targets" className="inline-flex items-center gap-1.5 text-mute hover:text-fg"><ArrowLeft size={14} /> Targets</Link>}
         title={target.name}
-        subtitle={
-          <span className="font-mono text-[13px]">
-            {target.start_command} · port {target.target_port}
-            <span className="block truncate text-faint">{target.project_path}</span>
-          </span>
-        }
+        subtitle={target.description || "An app on this computer that AYZO can attack."}
         actions={
           <>
             <Button onClick={runTest} busy={testing}><PlugZap size={15} /> Test connection</Button>
@@ -361,20 +360,87 @@ export default function TargetPage() {
         }
       />
 
-      <div className="space-y-6">
-        {isNew && !test && (
-          <Notice>Target added. Fill in what you can below, then press <b>Test connection</b> to check AYZO can reach the app.</Notice>
-        )}
-        {test && (
-          <Notice tone={test.success ? "pass" : "fail"}>
-            {test.success ? "Connected. " : "Not connected. "}
-            {test.message}
-            {test.output && <Mono className="mt-2 opacity-80">{test.output}</Mono>}
-          </Notice>
-        )}
-        <ProfileCard key={`p${version}`} target={target} onSaved={setData} />
-        <AnalyzeCard target={target} onSaved={refreshed} />
-        <ConnectionCard key={`c${version}`} target={target} onSaved={setData} />
+      <div className="grid gap-5 xl:grid-cols-3">
+        <div className="min-w-0 space-y-5 xl:col-span-2">
+          {isNew && !test && (
+            <Notice>Target added. Fill in what you can below, then press <b>Test connection</b> to check AYZO can reach the app.</Notice>
+          )}
+          {test && (
+            <Notice tone={test.success ? "pass" : "fail"}>
+              {test.success ? "Connected. " : "Not connected. "}
+              {test.message}
+              {test.output && <Mono className="mt-2 opacity-80">{test.output}</Mono>}
+            </Notice>
+          )}
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { id: "protect", label: "What it must protect" },
+              { id: "connect", label: "How to talk to it" },
+              { id: "read", label: "Read the project" },
+            ]}
+          />
+          {tab === "protect" && <ProfileCard key={`p${version}`} target={target} onSaved={setData} />}
+          {tab === "connect" && <ConnectionCard key={`c${version}`} target={target} onSaved={setData} />}
+          {tab === "read" && <AnalyzeCard target={target} onSaved={refreshed} />}
+        </div>
+
+        <aside className="space-y-5">
+          <Card>
+            <CardHeader title="About this target" />
+            <dl className="divide-y divide-line px-5 text-[13px]">
+              {(
+                [
+                  ["Start command", <code key="c">{target.start_command}</code>],
+                  ["Port", <code key="p">{target.target_port}</code>],
+                  ["Chat route", target.chat_path ? <code key="r">{target.chat_path}</code> : "auto-detected"],
+                  ["Protected values", target.canaries?.length ?? 0],
+                  ["Business rules", target.rules?.length ?? 0],
+                  ["System prompt", target.system_prompt ? "provided" : "not provided"],
+                ] as [string, React.ReactNode][]
+              ).map(([label, value]) => (
+                <div key={label} className="flex items-baseline justify-between gap-4 py-2.5">
+                  <dt className="text-mute">{label}</dt>
+                  <dd className="truncate text-right text-fg">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="break-all border-t border-line px-5 py-3 font-mono text-xs text-faint">{target.project_path}</p>
+          </Card>
+
+          <Card>
+            <CardHeader title="Scans of this target" />
+            {(() => {
+              const mine = (scans.data ?? []).filter((x) => x.target_name === target.name).slice(0, 6);
+              if (!mine.length) return <p className="px-5 py-6 text-[13px] text-mute">Not scanned yet.</p>;
+              return (
+                <ul className="divide-y divide-line">
+                  {mine.map((x) => (
+                    <li key={x.id}>
+                      <Link href={`/scans/${x.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-raised/50">
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-medium text-fg">{x.name}</span>
+                          <span className="block text-xs text-mute">{timeAgo(x.created_at)}</span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-3">
+                          {x.risk_score !== null ? (
+                            <>
+                              <RiskChip score={x.risk_score} />
+                              <span className="tabular w-10 text-right text-sm font-semibold text-fg">{x.risk_score}</span>
+                            </>
+                          ) : (
+                            <StatusDot status={x.status} />
+                          )}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
+          </Card>
+        </aside>
       </div>
     </>
   );

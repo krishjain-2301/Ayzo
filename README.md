@@ -55,7 +55,7 @@ Every test ends in one of four states:
 
 | Page | What it is for |
 |------|----------------|
-| Overview | Latest and highest scores, scans that produced no result, recent scans |
+| Overview | Headline numbers, risk score over time, the latest scan's breakdown, where attacks got through, every target's last score |
 | Targets | The apps you can attack. Each target's page holds its profile, reads the project folder for suggestions, and sets how to talk to the app |
 | Scans | Every scan. A scan's page shows live progress, the verdict breakdown, what changed since the previous scan, findings, and every attack with the exact prompt and reply |
 | New scan | Pick a target, attack categories, and whether to retry attacks that missed |
@@ -71,7 +71,7 @@ Findings are labelled by how they were decided: **Confirmed** (a string match, c
 
 | Layer | Choice |
 |-------|--------|
-| Dashboard | Next.js 16, React 19, TypeScript, Tailwind CSS, IBM Plex |
+| Dashboard | Next.js 16, React 19, TypeScript, Tailwind CSS, Geist |
 | API | FastAPI, Python 3.12, SQLAlchemy 2 (async), SQLite via `aiosqlite` |
 | Judge | LiteLLM — Groq, OpenAI, Gemini, or Ollama |
 | Jobs | `asyncio` subprocesses and FastAPI `BackgroundTasks` |

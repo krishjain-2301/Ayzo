@@ -137,7 +137,7 @@ export default function LibraryPage() {
                 <h2 className="text-lg font-semibold text-fg">{category.name}</h2>
                 {category.owasp_id && <Tag>{category.owasp_id}</Tag>}
               </div>
-              <p className="mt-1 text-[13px] leading-relaxed text-mute">{category.description}</p>
+              <p className="mt-1 text-sm leading-relaxed text-mute">{category.description}</p>
             </div>
           )}
 
@@ -171,7 +171,7 @@ export default function LibraryPage() {
                       <SeverityTag severity={p.severity} />
                     </summary>
                     <div className="space-y-3 bg-ink/60 px-5 pb-5 pt-1">
-                      {p.description && <p className="text-[13px] text-mute">{p.description}</p>}
+                      {p.description && <p className="text-sm text-mute">{p.description}</p>}
                       <Mono className="rounded-md border border-line bg-ink p-3 text-fg">{p.original_prompt}</Mono>
                       <p className="text-xs text-mute">
                         {p.marker

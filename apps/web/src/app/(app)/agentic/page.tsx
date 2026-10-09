@@ -125,10 +125,10 @@ export default function AgenticPage() {
                     return (
                       <div key={i} className={clsx("flex", attacker ? "justify-start" : "justify-end")}>
                         <div className={clsx("max-w-[80%] rounded-lg border px-4 py-3", attacker ? "border-line bg-raised" : "border-accent/30 bg-accent-dim/30")}>
-                          <p className="mb-1 text-[11px] uppercase tracking-wider text-faint">
+                          <p className="mb-1 text-xs uppercase tracking-wider text-faint">
                             {attacker ? "Attacker" : "Your app"} · turn {m.turn}
                           </p>
-                          <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg">{m.message}</p>
+                          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-fg">{m.message}</p>
                         </div>
                       </div>
                     );

@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Check, Minus, Plus } from "lucide-react";
 import { apiFetch, post } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
-import type { Target } from "@/lib/types";
-import { Button, Empty, Field, Input, Loading, Modal, Notice, PageHeader, Tag } from "@/components/ui";
+import type { ScanSummary, Target } from "@/lib/types";
+import { Button, Card, Empty, Field, Input, Loading, Modal, Notice, PageHeader, TD, TH } from "@/components/ui";
+import { RiskChip } from "@/components/charts";
 
 function AddTarget({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -55,13 +55,13 @@ function AddTarget({ onClose }: { onClose: () => void }) {
           <Input required value={form.name} onChange={set("name")} placeholder="Support bot" autoFocus />
         </Field>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-ink p-1">
           {(["path", "upload"] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMode(m)}
-              className={`rounded-md border px-3 py-2 text-[13px] ${mode === m ? "border-accent/60 bg-accent-dim/40 text-fg" : "border-line text-mute hover:text-fg"}`}
+              className={`rounded-md px-3 py-2 text-[13px] font-medium transition-colors ${mode === m ? "bg-raised text-fg" : "text-mute hover:text-fg"}`}
             >
               {m === "path" ? "Folder on this computer" : "Upload a folder"}
             </button>
@@ -99,14 +99,24 @@ function AddTarget({ onClose }: { onClose: () => void }) {
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit" variant="primary" busy={busy}>Add target</Button>
         </div>
-        <p className="text-xs text-mute">Next you can tell AYZO what this app must protect. That is what makes results trustworthy.</p>
       </form>
     </Modal>
   );
 }
 
+/** A tick or a dash: whether a part of the profile has been filled in. */
+function Has({ on, label }: { on: boolean; label: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs ${on ? "text-fg" : "text-faint"}`} title={on ? `${label}: set` : `${label}: not set`}>
+      {on ? <Check size={13} className="text-pass" /> : <Minus size={13} />} {label}
+    </span>
+  );
+}
+
 export default function TargetsPage() {
+  const router = useRouter();
   const { data, error, loading, reload } = useApi<Target[]>("/targets");
+  const scans = useApi<ScanSummary[]>("/campaigns");
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -125,6 +135,7 @@ export default function TargetsPage() {
   };
 
   const hasPractice = data?.some((t) => t.name.startsWith("Practice bot"));
+  const lastScore = (name: string) => (scans.data ?? []).find((s) => s.target_name === name && s.status === "completed");
 
   return (
     <>
@@ -148,30 +159,45 @@ export default function TargetsPage() {
           A target is an app on this computer: a folder, how to start it, and the port it listens on.
         </Empty>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {data.map((t) => {
-            const secrets = t.canaries?.length ?? 0;
-            const rules = t.rules?.length ?? 0;
-            const described = Boolean(secrets || t.system_prompt || t.expected_behavior || rules);
-            return (
-              <Link key={t.id} href={`/targets/${t.id}`} className="group rounded-lg border border-line bg-panel p-5 transition-colors hover:border-faint">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="truncate text-[15px] font-semibold text-fg group-hover:text-accent">{t.name}</h3>
-                  <span className="shrink-0 font-mono text-xs text-mute">:{t.target_port}</span>
-                </div>
-                <p className="mt-1 truncate font-mono text-xs text-mute">{t.start_command}</p>
-                {t.description && <p className="mt-3 line-clamp-2 text-[13px] text-mute">{t.description}</p>}
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  {secrets > 0 && <Tag tone="accent">{secrets} protected value{secrets === 1 ? "" : "s"}</Tag>}
-                  {rules > 0 && <Tag tone="accent">{rules} rule{rules === 1 ? "" : "s"}</Tag>}
-                  {t.system_prompt && <Tag tone="accent">system prompt</Tag>}
-                  {t.chat_path ? <Tag>{t.chat_path}</Tag> : <Tag>route auto-detected</Tag>}
-                  {!described && <Tag tone="warn">no profile yet</Tag>}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <Card>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-line">
+                <th className={TH}>Target</th>
+                <th className={TH}>How it starts</th>
+                <th className={`${TH} text-right`}>Port</th>
+                <th className={TH}>What AYZO knows</th>
+                <th className={`${TH} text-right`}>Last score</th>
+                <th className={TH}>Level</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {data.map((t) => {
+                const last = lastScore(t.name);
+                return (
+                  <tr key={t.id} className="cursor-pointer hover:bg-raised/50" onClick={() => router.push(`/targets/${t.id}`)}>
+                    <td className={`${TD} max-w-[18rem]`}>
+                      <p className="truncate font-medium text-fg">{t.name}</p>
+                      {t.description && <p className="mt-0.5 line-clamp-1 text-xs text-mute">{t.description}</p>}
+                    </td>
+                    <td className={`${TD} font-mono text-[13px] text-mute`}>{t.start_command}</td>
+                    <td className={`${TD} tabular text-right font-mono text-[13px] text-mute`}>{t.target_port}</td>
+                    <td className={TD}>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        <Has on={Boolean(t.canaries?.length)} label="Secrets" />
+                        <Has on={Boolean(t.system_prompt)} label="Prompt" />
+                        <Has on={Boolean(t.rules?.length)} label="Rules" />
+                        <Has on={Boolean(t.chat_path)} label="Route" />
+                      </div>
+                    </td>
+                    <td className={`${TD} tabular text-right text-base font-semibold text-fg`}>{last?.risk_score ?? "—"}</td>
+                    <td className={TD}>{last ? <RiskChip score={last.risk_score} /> : <span className="text-xs text-faint">not scanned</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
       )}
     </>
   );
