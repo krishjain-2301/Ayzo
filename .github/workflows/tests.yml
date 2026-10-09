@@ -31,9 +31,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      # The pnpm version comes from "packageManager" in package.json.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
