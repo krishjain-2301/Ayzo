@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, Minus } from "lucide-react";
 import { post } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
 import { isLive, timeAgo } from "@/lib/format";
-import type { Report, ScanSummary, Target } from "@/lib/types";
-import { Button, Card, CardHeader, Empty, Loading, Notice, PageHeader, Stat, StatusDot, TD, TH, VerdictBar } from "@/components/ui";
+import type { ModelsOverview, Report, ScanSummary, Target } from "@/lib/types";
+import { Button, Card, CardHeader, Loading, Notice, PageHeader, Stat, StatusDot, TD, TH, VerdictBar } from "@/components/ui";
 import { BarList, RiskChip, ScoreRing, TrendChart, riskTone } from "@/components/charts";
 
 function Delta({ now, before }: { now: number | null; before: number | null | undefined }) {
@@ -30,6 +30,7 @@ export default function OverviewPage() {
   const scans = useApi<ScanSummary[]>("/campaigns", 5000);
   const targets = useApi<Target[]>("/targets");
   const seeded = useRef(false);
+  const models = useApi<ModelsOverview>("/system/models");
 
   const all = scans.data ?? [];
   const completed = all.filter((s) => s.status === "completed" && s.risk_score !== null);
@@ -75,13 +76,35 @@ export default function OverviewPage() {
     .map((c) => ({ label: c.display_name, value: c.failures, total: c.total_tests }))
     .sort((a, b) => b.value - a.value);
 
-  if (all.length === 0) {
+  // Until the first scan completes, the page is a short checklist instead of empty charts.
+  if (completed.length === 0) {
+    const judgeReady = Boolean(models.data && !models.data.eval_model_missing_key);
+    const described = (targets.data ?? []).some((t) => t.canaries?.length || t.system_prompt || t.expected_behavior);
+    const steps: { done: boolean; title: string; text: string; href: string; action: string }[] = [
+      { done: judgeReady, title: "Choose a judge model", text: `The model that decides whether an attack worked. Now: ${models.data?.eval_model ?? "…"}.`, href: "/settings", action: "Open Settings" },
+      { done: (targets.data?.length ?? 0) > 0, title: "Have a target", text: "An app on this computer. A built-in vulnerable chatbot is already registered so you can try straight away.", href: "/targets", action: "See targets" },
+      { done: described, title: "Say what the target must protect", text: "Add a secret it must never reveal. Leaks are then confirmed by string match instead of a model's opinion.", href: "/targets", action: "Add protected values" },
+      { done: all.length > 0, title: "Run a scan", text: all.length ? "A scan is under way or finished without a result. Open Scans to see it." : "Pick the target, keep the suggested categories, and start.", href: all.length ? "/scans" : "/scans/new", action: all.length ? "Open Scans" : "New scan" },
+    ];
     return (
       <>
-        <PageHeader title="Overview" subtitle="AYZO attacks your LLM app's chat endpoint and reports which attacks worked." />
-        <Empty title="No scans yet" action={<Link href="/scans/new"><Button variant="primary">Run your first scan</Button></Link>}>
-          A built-in vulnerable chatbot is already registered as a target, so you can try a scan without setting anything up.
-        </Empty>
+        <PageHeader title="Welcome to AYZO" subtitle="AYZO attacks your LLM app's chat endpoint and reports which attacks worked. Four steps to the first result." />
+        <Card>
+          <ol className="divide-y divide-line">
+            {steps.map((step, i) => (
+              <li key={step.title} className="flex flex-wrap items-center gap-4 p-5">
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${step.done ? "border-pass/50 bg-pass/10 text-pass" : "border-line text-mute"}`}>
+                  {step.done ? <Check size={15} aria-label="Done" /> : i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-fg">{step.title}</p>
+                  <p className="text-[13px] text-mute">{step.text}</p>
+                </div>
+                <Link href={step.href}><Button variant={step.done ? "secondary" : "primary"} size="sm">{step.action}</Button></Link>
+              </li>
+            ))}
+          </ol>
+        </Card>
       </>
     );
   }
@@ -177,7 +200,7 @@ export default function OverviewPage() {
             hint="Most recent completed scan of each app."
             right={<Link href="/targets" className="flex items-center gap-1 text-[13px] text-mute hover:text-fg">Manage <ArrowRight size={13} /></Link>}
           />
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-line">
                 <th className={TH}>Target</th>
@@ -199,7 +222,7 @@ export default function OverviewPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </Card>
       </div>
 
@@ -209,7 +232,7 @@ export default function OverviewPage() {
           title="Recent scans"
           right={<Link href="/scans" className="flex items-center gap-1 text-[13px] text-mute hover:text-fg">All scans <ArrowRight size={13} /></Link>}
         />
-        <table className="w-full">
+        <div className="overflow-x-auto"><table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-line">
               <th className={TH}>Scan</th>
@@ -234,7 +257,7 @@ export default function OverviewPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </Card>
     </>
   );

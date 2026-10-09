@@ -60,6 +60,8 @@ export function methodLabel(method: string | null | undefined): { text: string; 
       return { text: "Confirmed: system prompt in reply", certain: true };
     case "marker":
       return { text: "Confirmed: hidden instruction obeyed", certain: true };
+    case "tool_call":
+      return { text: "Confirmed: forbidden tool called", certain: true };
     case "regex":
       return { text: "Matched your pattern", certain: true };
     case "echo":

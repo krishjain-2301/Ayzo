@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
-import { ArrowLeft, ChevronRight, Printer, RotateCw, Square, Trash2 } from "lucide-react";
-import { del, post } from "@/lib/api";
+import { ArrowLeft, ChevronRight, FileJson, Printer, RotateCw, Square, Trash2 } from "lucide-react";
+import { API_BASE_URL, del, post } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
 import { VERDICT_BAR, VERDICT_LABEL, duration, isLive, methodLabel, prettyCategory } from "@/lib/format";
 import type { ChangedAttack, Comparison, Report, ResultRow, Scan, Target, Verdict } from "@/lib/types";
@@ -25,7 +25,8 @@ function ResultItem({ row }: { row: ResultRow }) {
           <span className="block truncate font-medium text-fg">{row.attack_name || row.prompt_sent.slice(0, 70)}</span>
           <span className="block truncate text-xs text-mute">{prettyCategory(row.attack_category)}</span>
         </span>
-        {row.mutation_generation > 0 && <Tag>retry {row.mutation_generation}</Tag>}
+        {row.mutation_generation > 0 && <Tag>{row.attack_name?.includes("[adaptive") ? "adaptive" : "rewrite"} {row.mutation_generation}</Tag>}
+        {(row.trials ?? 1) > 1 && <Tag tone={row.worked_trials ? "fail" : "mute"}>{row.worked_trials ?? 0} of {row.trials} tries</Tag>}
         {row.result === "fail" && <MethodTag method={row.method} />}
         <SeverityTag severity={row.severity} />
         <span className="w-32 shrink-0"><VerdictText verdict={row.result} /></span>
@@ -44,6 +45,7 @@ function ResultItem({ row }: { row: ResultRow }) {
         <p className="text-[13px] leading-relaxed text-mute lg:col-span-2">
           <span className="font-medium text-fg">{methodLabel(row.method).text}.</span> {row.eval_reasoning}
           {row.method === "judge" && row.confidence !== null && <span className="text-faint"> Judge confidence {Math.round(row.confidence * 100)}%.</span>}
+          {row.tool_calls && row.tool_calls.length > 0 && <span className="mt-1 block">Tools the app called: <code>{row.tool_calls.join(", ")}</code></span>}
         </p>
       </div>
     </details>
@@ -173,7 +175,10 @@ export default function ScanPage() {
           ) : (
             <>
               <Link href={`/scans/new?target=${s.target_id}`}><Button><RotateCw size={14} /> Scan again</Button></Link>
-              <Button onClick={() => window.print()}><Printer size={14} /> Print</Button>
+              <a href={`${API_BASE_URL}/campaigns/${s.id}/manifest`} target="_blank" rel="noreferrer" title="Settings and every message sent, as JSON">
+                <Button><FileJson size={14} /> Run record</Button>
+              </a>
+              <Button onClick={() => window.print()}><Printer size={14} /> Print report</Button>
               <Button variant="ghost" onClick={remove} aria-label="Delete scan"><Trash2 size={15} /></Button>
             </>
           )
@@ -233,6 +238,13 @@ export default function ScanPage() {
                   <Fact label={<span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-warn" />No verdict</span>}>{counts.inconclusive}</Fact>
                   <Fact label={<span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-faint" />Target error</span>}>{counts.error}</Fact>
                   <Fact label="Clear verdicts">{coverage}%</Fact>
+                  {report.data?.attack_success_rate !== null && report.data?.attack_success_rate !== undefined && (
+                    <Fact label={<span title="Share of judged attacks that worked. The range is a 95% interval: with few attacks it is wide.">Attack success rate</span>}>
+                      {report.data.attack_success_rate}%
+                      <span className="ml-2 text-xs font-normal text-mute">likely {report.data.asr_low}–{report.data.asr_high}%</span>
+                    </Fact>
+                  )}
+                  {(s.trials ?? 1) > 1 && <Fact label="Tries per attack">{s.trials}</Fact>}
                   {s.completed_at && <Fact label="Duration">{duration(s.started_at, s.completed_at)}</Fact>}
                 </dl>
               </div>
@@ -268,8 +280,9 @@ export default function ScanPage() {
               />
             </div>
 
-            {activeTab === "findings" &&
-              (findings.length === 0 ? (
+            <div className={activeTab === "findings" ? "" : "print-only"}>
+              <h2 className="print-only px-5 pt-5 text-lg font-semibold">Findings</h2>
+              {findings.length === 0 ? (
                 <p className="px-5 py-10 text-center text-sm text-mute">
                   {finished ? "No findings: no category had an attack that worked." : "Findings are written when the scan finishes."}
                 </p>
@@ -283,6 +296,12 @@ export default function ScanPage() {
                           <h3 className="text-[15px] font-semibold text-fg">{f.title}</h3>
                         </div>
                         <p className="mt-2 text-[13px] leading-relaxed text-mute">{f.description}</p>
+                        {f.taxonomy && (
+                          <p className="mt-2 flex flex-wrap gap-1.5">
+                            <Tag>OWASP {f.taxonomy.owasp.id} {f.taxonomy.owasp.name}</Tag>
+                            {f.taxonomy.atlas && <Tag>ATLAS {f.taxonomy.atlas.id}</Tag>}
+                          </p>
+                        )}
                         <ul className="mt-3 space-y-1">
                           {f.evidence.slice(0, 5).map((e, i) => (
                             <li key={i} className="flex items-center gap-2 text-[13px] text-fg">
@@ -302,10 +321,11 @@ export default function ScanPage() {
                     </div>
                   ))}
                 </div>
-              ))}
+              )}
+            </div>
 
-            {activeTab === "attacks" && (
-              <>
+            <div className={activeTab === "attacks" ? "" : "print-only"}>
+              <h2 className="print-only px-5 pt-5 text-lg font-semibold">Every attack</h2>
                 <div className="no-print flex flex-wrap gap-1.5 border-b border-line px-5 py-3">
                   {(["all", ...ORDER] as const).map((v) => (
                     <button
@@ -327,8 +347,7 @@ export default function ScanPage() {
                 ) : (
                   shown.map((row, i) => <ResultItem key={`${row.attack_name}-${row.mutation_generation}-${i}`} row={row} />)
                 )}
-              </>
-            )}
+            </div>
 
             {activeTab === "changes" && comparison.data?.baseline_id && (
               <div className="p-5">

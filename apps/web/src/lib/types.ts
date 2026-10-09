@@ -13,6 +13,7 @@ export interface Target {
   system_prompt: string | null;
   expected_behavior: string | null;
   rules: string[] | null;
+  forbidden_tools: string[] | null;
   request_headers: Record<string, string> | null;
   request_field: string | null;
   response_field: string | null;
@@ -45,6 +46,8 @@ export interface Scan {
   status: ScanStatus;
   attack_categories: string[];
   mutation_depth: number;
+  trials: number | null;
+  run_config: Record<string, unknown> | null;
   total_tests: number;
   completed_tests: number;
   passed_tests: number;
@@ -68,6 +71,11 @@ export interface Evidence {
   generation?: number;
 }
 
+export interface Taxonomy {
+  owasp: { id: string; name: string };
+  atlas: { id: string; name: string } | null;
+}
+
 export interface Finding {
   id: string;
   category: string;
@@ -80,6 +88,7 @@ export interface Finding {
   failure_rate: number;
   remediation: string | null;
   evidence: Evidence[];
+  taxonomy?: Taxonomy | null;
 }
 
 export interface CategoryScore {
@@ -106,6 +115,10 @@ export interface Report {
   total_errors: number;
   total_inconclusive: number;
   coverage: number;
+  attack_success_rate: number | null;
+  asr_low: number | null;
+  asr_high: number | null;
+  trials: number;
   category_scores: CategoryScore[];
   findings: Finding[];
   campaign_started_at: string | null;
@@ -123,6 +136,10 @@ export interface ResultRow {
   model_response: string | null;
   eval_reasoning: string | null;
   mutation_generation: number;
+  trials?: number;
+  worked_trials?: number | null;
+  tool_calls?: string[];
+  taxonomy?: Taxonomy | null;
 }
 
 export interface ChangedAttack {

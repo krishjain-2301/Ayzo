@@ -13,7 +13,7 @@ export function riskTone(score: number | null | undefined): "fail" | "warn" | "p
 }
 
 const TONE_BG = { fail: "bg-fail", warn: "bg-warn", pass: "bg-pass", mute: "bg-faint" };
-const TONE_STROKE = { fail: "#f2555a", warn: "#f0b429", pass: "#2fbf8f", mute: "#636c7c" };
+const TONE_STROKE = { fail: "rgb(var(--fail))", warn: "rgb(var(--warn))", pass: "rgb(var(--pass))", mute: "rgb(var(--faint))" };
 
 /** A dot plus a word: the risk level, readable without colour. */
 export function RiskChip({ score, className }: { score: number | null | undefined; className?: string }) {
@@ -34,7 +34,7 @@ export function ScoreRing({ score, size = 132 }: { score: number | null | undefi
   return (
     <div className="relative" style={{ width: size, height: size }} role="img" aria-label={`Risk score ${score ?? "not available"} out of 100`}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#222834" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--line))" strokeWidth={stroke} />
         {score !== null && score !== undefined && (
           <circle
             cx={size / 2}
@@ -111,8 +111,8 @@ export function TrendChart({ points, height = 200, onSelect }: { points: TrendPo
             <div key={t} className="absolute inset-x-0 border-t border-line" style={{ top: `${100 - t}%` }} />
           ))}
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible">
-            <path d={area} fill="#4c8dff" opacity={0.1} />
-            <path d={line} fill="none" stroke="#4c8dff" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+            <path d={area} fill="rgb(var(--accent))" opacity={0.1} />
+            <path d={line} fill="none" stroke="rgb(var(--accent))" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           </svg>
           {/* markers are HTML so they stay round whatever the chart's width */}
           {points.map((p, i) => (

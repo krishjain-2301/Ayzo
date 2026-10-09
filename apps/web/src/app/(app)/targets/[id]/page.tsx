@@ -20,6 +20,7 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
     canaries: (target.canaries ?? []).join("\n"),
     expected_behavior: target.expected_behavior ?? "",
     rules: (target.rules ?? []).join("\n"),
+    forbidden_tools: (target.forbidden_tools ?? []).join("\n"),
     system_prompt: target.system_prompt ?? "",
   });
   const [busy, setBusy] = useState(false);
@@ -36,6 +37,7 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
           canaries: lines(form.canaries),
           expected_behavior: form.expected_behavior,
           rules: lines(form.rules),
+          forbidden_tools: lines(form.forbidden_tools),
           system_prompt: form.system_prompt,
         })
       );
@@ -91,6 +93,13 @@ function ProfileCard({ target, onSaved }: { target: Target; onSaved: (t: Target)
           hint={<>One per line. The <b>Business Rules</b> attack category tries to make the app break each one.</>}
         >
           <Textarea rows={3} value={form.rules} onChange={set("rules")} placeholder="Never give a discount above 10 percent.&#10;Never promise a refund after 30 days." />
+        </Field>
+
+        <Field
+          label="Tools a user must never trigger"
+          hint={<>One tool name per line, for apps that call tools and report them in their reply (<code>tool_calls</code>). If one of these is called during an attack, that is a confirmed failure.</>}
+        >
+          <Textarea mono rows={2} value={form.forbidden_tools} onChange={set("forbidden_tools")} placeholder="delete_user&#10;issue_refund" />
         </Field>
 
         <Field label="System prompt" hint="Used only to detect replies that repeat it word for word.">

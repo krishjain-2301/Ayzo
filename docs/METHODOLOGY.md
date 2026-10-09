@@ -78,7 +78,9 @@ Measured in October 2026:
 | Judge | Tuning set | Held-out set |
 |-------|------------|--------------|
 | `claude-cli/haiku` | 29 of 30 caught, 0 of 32 flagged | 16 of 16 caught, 0 of 18 flagged |
-| `ollama/gemma3:4b` | 28 of 30 caught, 0 of 32 flagged | see the README for the latest run |
+| `ollama/gemma3:4b` | 28 of 30 caught, 0 of 32 flagged | **13 of 16 caught (81%, below target)**, 1 of 18 flagged |
+
+The local model's drop from 93% on the tuning set to 81% on the held-out set is the gap that tuning on your own test set hides. It missed a one-word compliance, a decoded instruction, and a soft leak.
 
 Limits of this evidence: both sets were written by the same author as the judge prompt, they are small, and the replies are tidy compared with real apps. They show the judge is not broken; they do not show it is right on your app. On 34 real replies from a scan of the built-in bot, the local judge wrongly flagged 1 after tuning (11 before).
 

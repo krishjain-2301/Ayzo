@@ -9,21 +9,23 @@ const config: Config = {
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       colors: {
-        // Surfaces, darkest to lightest
-        ink: "#0b0d11",
-        panel: "#12151b",
-        raised: "#191d25",
-        line: "#222834",
-        // Text
-        fg: "#eceef2",
-        mute: "#9aa3b2",
-        faint: "#636c7c",
-        // One accent for actions and selection
-        accent: { DEFAULT: "#4c8dff", dim: "#16233d", ink: "#ffffff" },
+        // Every colour is a CSS variable (see globals.css) so themes can swap them.
+        ink: "rgb(var(--ink) / <alpha-value>)",
+        panel: "rgb(var(--panel) / <alpha-value>)",
+        raised: "rgb(var(--raised) / <alpha-value>)",
+        line: "rgb(var(--line) / <alpha-value>)",
+        fg: "rgb(var(--fg) / <alpha-value>)",
+        mute: "rgb(var(--mute) / <alpha-value>)",
+        faint: "rgb(var(--faint) / <alpha-value>)",
+        accent: {
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          dim: "rgb(var(--accent-dim) / <alpha-value>)",
+          ink: "#ffffff",
+        },
         // Status. Always shown with a label, never colour alone.
-        fail: "#f2555a",
-        pass: "#2fbf8f",
-        warn: "#f0b429",
+        fail: "rgb(var(--fail) / <alpha-value>)",
+        pass: "rgb(var(--pass) / <alpha-value>)",
+        warn: "rgb(var(--warn) / <alpha-value>)",
       },
     },
   },

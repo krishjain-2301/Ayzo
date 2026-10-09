@@ -304,7 +304,7 @@ function Models({ initial, onRefresh }: { initial: ModelsOverview; onRefresh: ()
             <div className="mt-2"><StatusLine status={attackerStatus} /></div>
           </div>
           <label className="flex cursor-pointer items-center gap-3 text-sm text-fg">
-            <input type="checkbox" checked={sameAttacker} disabled={busy !== ""} onChange={(e) => followJudge(e.target.checked)} className="h-4 w-4 accent-[#4c8dff]" />
+            <input type="checkbox" checked={sameAttacker} disabled={busy !== ""} onChange={(e) => followJudge(e.target.checked)} className="h-4 w-4 accent-[rgb(var(--accent))]" />
             Always use the same model as the judge
           </label>
           {!sameAttacker && (

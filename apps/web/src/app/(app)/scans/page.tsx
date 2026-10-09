@@ -71,7 +71,7 @@ export default function ScansPage() {
             </div>
           </div>
 
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-line">
                 <th className={TH}>Scan</th>
@@ -93,7 +93,7 @@ export default function ScansPage() {
                 return (
                   <tr key={s.id} className="cursor-pointer hover:bg-raised/50" onClick={() => router.push(`/scans/${s.id}`)}>
                     <td className={`${TD} max-w-[20rem]`}>
-                      <p className="truncate font-medium text-fg">{s.name}</p>
+                      <Link href={`/scans/${s.id}`} onClick={(e) => e.stopPropagation()} className="block truncate font-medium text-fg hover:text-accent">{s.name}</Link>
                       {s.status_detail && <p className="mt-0.5 line-clamp-1 text-xs text-mute">{s.status_detail}</p>}
                     </td>
                     <td className={`${TD} text-mute`}>{s.target_name}</td>
@@ -142,7 +142,7 @@ export default function ScansPage() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </Card>
       )}
     </>

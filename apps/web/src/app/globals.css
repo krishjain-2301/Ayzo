@@ -3,8 +3,36 @@
 @tailwind utilities;
 
 @layer base {
-  html {
+  :root {
     color-scheme: dark;
+    --ink: 11 13 17;
+    --panel: 18 21 27;
+    --raised: 25 29 37;
+    --line: 34 40 52;
+    --fg: 236 238 242;
+    --mute: 154 163 178;
+    --faint: 99 108 124;
+    --accent: 76 141 255;
+    --accent-dim: 22 35 61;
+    --fail: 242 85 90;
+    --pass: 47 191 143;
+    --warn: 240 180 41;
+  }
+  /* Light theme: same roles, values chosen for contrast on white. */
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --ink: 246 247 249;
+    --panel: 255 255 255;
+    --raised: 240 242 246;
+    --line: 221 225 232;
+    --fg: 22 26 34;
+    --mute: 82 92 110;
+    --faint: 124 134 152;
+    --accent: 37 99 235;
+    --accent-dim: 224 234 255;
+    --fail: 200 40 48;
+    --pass: 15 128 92;
+    --warn: 176 112 0;
   }
   body {
     @apply bg-ink text-fg antialiased;
@@ -17,7 +45,7 @@
     @apply bg-accent/30;
   }
   :focus-visible {
-    @apply outline-none ring-2 ring-accent/60 ring-offset-0;
+    @apply outline-none ring-2 ring-accent/70 ring-offset-0;
   }
   code {
     @apply font-mono text-[0.92em];
@@ -32,25 +60,52 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #222834;
+  background: rgb(var(--line));
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #323a49;
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
+/* A scan prints as a report: light, no chrome, everything expanded. */
 @media print {
-  body {
-    background: #fff;
-    color: #111;
+  :root,
+  :root[data-theme="light"] {
+    --ink: 255 255 255;
+    --panel: 255 255 255;
+    --raised: 244 245 248;
+    --line: 205 210 220;
+    --fg: 17 20 26;
+    --mute: 70 78 94;
+    --faint: 110 118 134;
+    --accent: 37 99 235;
+    --accent-dim: 232 238 252;
+    --fail: 190 30 40;
+    --pass: 12 115 82;
+    --warn: 160 100 0;
   }
   .no-print {
     display: none !important;
   }
-  * {
-    background: transparent !important;
-    color: #111 !important;
-    border-color: #ccc !important;
-    box-shadow: none !important;
+  .print-only {
+    display: block !important;
   }
+  section,
+  tr,
+  details {
+    break-inside: avoid;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
+.print-only {
+  display: none;
 }

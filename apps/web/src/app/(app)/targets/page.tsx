@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Minus, Plus } from "lucide-react";
@@ -160,7 +161,7 @@ export default function TargetsPage() {
         </Empty>
       ) : (
         <Card>
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-line">
                 <th className={TH}>Target</th>
@@ -177,7 +178,7 @@ export default function TargetsPage() {
                 return (
                   <tr key={t.id} className="cursor-pointer hover:bg-raised/50" onClick={() => router.push(`/targets/${t.id}`)}>
                     <td className={`${TD} max-w-[18rem]`}>
-                      <p className="truncate font-medium text-fg">{t.name}</p>
+                      <Link href={`/targets/${t.id}`} onClick={(e) => e.stopPropagation()} className="block truncate font-medium text-fg hover:text-accent">{t.name}</Link>
                       {t.description && <p className="mt-0.5 line-clamp-1 text-xs text-mute">{t.description}</p>}
                     </td>
                     <td className={`${TD} font-mono text-[13px] text-mute`}>{t.start_command}</td>
@@ -196,7 +197,7 @@ export default function TargetsPage() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </Card>
       )}
     </>
