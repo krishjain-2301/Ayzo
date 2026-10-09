@@ -22,3 +22,48 @@ jobs:
       # The suite needs no model: judges are mocked and targets are tiny local servers.
       - name: Test
         run: pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install
+        run: |
+          pip install -e "apps/api[dev]"
+          cd apps/web && pnpm install --no-frozen-lockfile
+
+      - name: Type-check, lint, build
+        working-directory: apps/web
+        run: |
+          npx tsc --noEmit -p .
+          npx eslint src e2e
+          npx next build
+
+      - name: Start AYZO
+        run: |
+          (cd apps/api && nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &)
+          (cd apps/web && nohup npx next start --port 3000 > "$RUNNER_TEMP/web.log" 2>&1 &)
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8000/health && curl -sf -o /dev/null http://localhost:3000/dashboard && break; sleep 1; done
+
+      # Clicks through the real dashboard against the real API. The one test
+      # that needs a judge model skips itself here, because the runner has none.
+      - name: Browser tests
+        working-directory: apps/web
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+      - name: Logs on failure
+        if: failure()
+        run: tail -n 60 "$RUNNER_TEMP/api.log" "$RUNNER_TEMP/web.log"

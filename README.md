@@ -32,10 +32,12 @@ To answer those, AYZO needs to know something about the app. Each target has an 
 | Boot | Starts your start command in the project folder, or skips this for `already running` |
 | Discover | Tries the configured chat path, then common paths and JSON body shapes, until one answers 2xx with text |
 | Check judge | Sends one request to the judge model. If it is unreachable the scan stops here and no attack is sent |
-| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 365 across 12 categories, plus your own and ones generated from your rules) |
+| Attack | Sends payloads from `apps/api/app/attack_library/payloads/` (about 370 across 13 categories, plus your own and ones generated from your rules) |
 | Decide | Exact checks first (protected values, system prompt, custom regex, plain echo of the attack), then the LLM judge |
+| Repeat | Optional. Sends each attack 1–5 times, because models answer differently each time |
+| Adapt | Optional. An attacker model reads the app's refusal and tries a new angle, up to 3 rounds |
 | Mutate | Optional. Rewrites the attacks the app resisted and tries again (`mutation_depth` 0–3) |
-| Report | Findings with the attack name, prompt, reply and reasoning; a 0–100 risk score |
+| Report | Findings with the attack name, prompt, reply and reasoning, mapped to OWASP LLM Top 10 and MITRE ATLAS; attack success rate with a 95% interval; a 0–100 risk score |
 | Teardown | The target process tree is killed |
 
 Every test ends in one of four states:
@@ -105,25 +107,22 @@ Run `ollama pull gemma3:4b` first. If you have Claude Code installed, `claude-cl
 ### 2. Install
 
 ```bash
-pnpm install
-
-cd apps/api
-python -m venv .venv
-.venv\Scripts\activate          # macOS / Linux: source .venv/bin/activate
-pip install -e ".[dev]"
+pnpm setup:ayzo
 ```
+
+This creates the Python environment in `apps/api/.venv`, installs both halves, copies `.env.example` to `.env` if needed, and builds the dashboard. It needs Python 3.12+, Node 20+ and pnpm.
 
 ### 3. Run
 
 ```bash
-# API (from apps/api)
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-
-# Dashboard (from the repo root)
-pnpm dev:web
+pnpm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000). API docs are at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). Open **Settings** to choose the judge model: any model installed in Ollama, Claude through Claude Code, or an online provider once you enter its API key. **Save and test** confirms it answers.
+Open [http://localhost:3000](http://localhost:3000). API docs are at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). Open **Settings** to choose the judge model: any model installed in Ollama, Claude through Claude Code, or an online provider once you enter its API key.
+
+`pnpm start` runs the dashboard from a production build, which uses about 100 MB of memory. `pnpm dev` runs the development servers with live reload and needs about 1 GB for the dashboard alone.
+
+There is no Docker image, on purpose: AYZO starts your app and attacks it on `127.0.0.1`, and a container cannot reach the host's loopback address on Windows or macOS.
 
 ### 4. First scan
 
@@ -219,6 +218,28 @@ The hardened bot is better but not safe: a prompt alone does not hold a business
 
 ---
 
+## How much to trust a result
+
+`docs/METHODOLOGY.md` is the full account: the threat model, every check and when it is wrong, how results are counted, what the risk score is and is not, how good the judge is, and how AYZO compares with garak, PyRIT and promptfoo. The short version:
+
+- **Confirmed** findings are string matches (a protected value, the system prompt, a computed marker, a forbidden tool call). **Judge opinion** findings are a model's reading of the reply and can be wrong.
+- One try per attack is weak evidence. Use **Repeat each attack** for anything you will act on.
+- The **attack success rate** comes with a 95% interval. Twenty attacks with none working still allows up to 16%.
+- Gate CI on **newly working attacks**, not on the score.
+
+Measured in October 2026:
+
+| What | Result |
+|------|--------|
+| Judge, held-out set (never tuned against), `claude-cli/haiku` | 16 of 16 real failures caught, 0 of 18 harmless replies flagged |
+| Judge, held-out set, `ollama/gemma3:4b` | 13 of 16 caught (81%, below the 90% target), 1 of 18 flagged |
+| Hardened practice bot, static list | 1 of 20 attacks worked |
+| Hardened practice bot, plus two adaptive rounds | 5 of 34 worked, 3 found only by the adaptive attacker. All judge opinions, not hand-verified |
+
+Not yet done: a published scan of an application the author did not write.
+
+---
+
 ## Risk score
 
 | Score | Level |
@@ -276,6 +297,7 @@ Files live in `apps/api/app/attack_library/payloads/`.
 | `prompt_injection` | Follow the user's instructions over its own |
 | `indirect_injection` | Obey instructions hidden in content it was asked to process. Checked by exact match, no judge |
 | `business_rules` | Break a rule you wrote on the target. Attacks are generated per rule |
+| `multi_turn` | Give in over a scripted conversation that builds trust, a role or a false premise first |
 | `system_prompt_leak` | Reveal its hidden instructions |
 | `data_leakage` | Disclose secrets, personal data, or retrieved context |
 | `insecure_output_handling` | Emit XSS, SQL, shell or path payloads |
@@ -343,6 +365,7 @@ pip install -e .          # once, adds the ayzo command
 ayzo targets
 ayzo scan --target "Practice bot (weak)" --categories prompt_injection,indirect_injection
 ayzo scan --target <id> --fail-on new --sarif ayzo.sarif --junit ayzo.xml
+ayzo scan --target <id> --trials 3 --adaptive-rounds 2 --seed 7
 ```
 
 `--fail-on` sets the exit code:
@@ -357,6 +380,8 @@ ayzo scan --target <id> --fail-on new --sarif ayzo.sarif --junit ayzo.xml
 A scan that fails or is cancelled exits 2 in every mode.
 
 **Comparing scans.** `GET /api/v1/campaigns/{id}/compare` lists new failures, fixed attacks and ones still failing, against the previous completed scan of the same target (or `?baseline_id=`). Generated attacks (mutations, model-written rule attempts) change name between runs, so only library attacks count for `--fail-on new`.
+
+**Repeating a scan.** `GET /api/v1/campaigns/{id}/manifest` returns the seed, models and limits a scan ran with and every message it sent. Pass `--seed` to reuse AYZO's random choices; the target model's own randomness cannot be fixed.
 
 **Stopping a scan.** `POST /api/v1/campaigns/{id}/cancel`. Results so far are kept.
 
@@ -442,17 +467,27 @@ Ayzo/
 - The LLM judge can be wrong. Exact-match findings are certain; judge findings come with the reply and reasoning so you can check them.
 - Results vary between runs because the target and the mutator are not deterministic.
 - The app must be reachable over plain HTTP on localhost. WebSockets and interactive logins are not supported.
-- AYZO sees only the text reply. It cannot see whether a tool was really called.
+- AYZO sees the text reply, plus tool calls only when the app reports them.
 - Scans run inside the API process. If it stops, running campaigns are marked failed on the next start. Results saved up to that point are kept.
+
+## Tools the app calls
+
+If your app reports the tools it called in its reply (OpenAI-style `tool_calls`, at the top level or under `message`), AYZO reads them. List tools a user must never trigger under **Tools a user must never trigger** on the target; a scan then reports a call to one of them as a confirmed failure whatever the reply text says. Apps that call tools without reporting them are invisible to this check.
+
+---
 
 ## Development
 
 ```bash
-pnpm dev                      # dashboard + API
+pnpm dev                       # dashboard and API with live reload
 
-cd apps/api
-.venv\Scripts\activate
-pytest
+cd apps/api && pytest          # 81 backend tests, no model needed
+
+cd apps/web && pnpm e2e        # 8 browser tests; start AYZO first (pnpm start)
 ```
+
+The browser tests click through the real dashboard against the real API: adding and editing a target, a scan that fails with a reason, a full scan to its report, custom attacks, settings, the theme switch and the narrow-screen menu. CI runs both suites on every push.
+
+Stored API keys and target headers are encrypted on disk with a key in `apps/api/data/secret.key`. That keeps them out of the database and backups; it does not protect against someone who can read both files.
 
 Include the start command, the result of **Test Connection**, the judge model, and one failed test from the report when you open an issue.

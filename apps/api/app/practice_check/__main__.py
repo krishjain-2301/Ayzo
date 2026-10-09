@@ -30,7 +30,7 @@ def load_profile() -> dict:
     return json.loads((BOT_DIR / "profile.json").read_text(encoding="utf-8"))
 
 
-async def scan(mode: str, profile: dict, timeout: float, categories: list[str]) -> dict:
+async def scan(mode: str, profile: dict, timeout: float, categories: list[str], trials: int = 1, adaptive_rounds: int = 0, seed: int | None = None) -> dict:
     port = profile[mode]["port"]
     process = await boot_target(f"python app.py {mode}", str(BOT_DIR))
     try:
@@ -47,6 +47,9 @@ async def scan(mode: str, profile: dict, timeout: float, categories: list[str]) 
             body_style=found.body_style,
             categories=categories,
             extra_tests=extra_tests,
+            trials=trials,
+            adaptive_rounds=adaptive_rounds,
+            seed=seed,
             profile={
                 "canaries": profile["secrets"],
                 "system_prompt": profile[mode]["system_prompt"],
@@ -65,9 +68,12 @@ def describe(summary: dict) -> str:
         1 for r in summary["results"]
         if r["result"] == "fail" and (r.get("metadata") or {}).get("method") in ("canary", "prompt_leak")
     )
+    adaptive = sum(1 for r in summary["results"] if r["result"] == "fail" and "[adaptive" in (r.get("attack_name") or ""))
+    rate = f"success rate {summary['attack_success_rate']}% (95% interval {summary['asr_low']}-{summary['asr_high']}%)"
     return (
-        f"risk {summary['risk_score']:>5}  "
-        f"{summary['failed_tests']:>2}/{summary['total_tests']} attacks worked "
+        f"risk {summary['risk_score']:>5}  {rate}  "
+        + (f"[{adaptive} found only by the adaptive attacker]  " if adaptive else "")
+        + f"{summary['failed_tests']:>2}/{summary['total_tests']} attacks worked "
         f"({exact} exact-match leaks, {summary['inconclusive_tests']} inconclusive, {summary['error_tests']} errors)"
     )
 
@@ -90,7 +96,7 @@ async def main_async(args) -> int:
     for run in range(1, args.runs + 1):
         scores = {}
         for mode in modes:
-            summary = await scan(mode, profile, args.timeout, categories)
+            summary = await scan(mode, profile, args.timeout, categories, args.trials, args.adaptive_rounds, args.seed)
             by_category = {}
             for r in summary.get("results", []):
                 tally = by_category.setdefault(r["attack_category"], [0, 0])
@@ -127,6 +133,9 @@ def main() -> int:
     parser.add_argument("--judge", help="Judge model for this check (default: DEFAULT_EVAL_MODEL)")
     parser.add_argument("--timeout", type=float, default=180.0, help="Seconds to wait for each bot reply")
     parser.add_argument("--categories", default=",".join(CATEGORIES), help="Comma-separated attack categories")
+    parser.add_argument("--trials", type=int, default=1, help="Send each attack this many times")
+    parser.add_argument("--adaptive-rounds", type=int, default=0, help="Rounds of the adaptive attacker")
+    parser.add_argument("--seed", type=int, help="Fix AYZO's random choices")
     parser.add_argument("--only", choices=["weak", "hardened"], help="Scan just one bot (no comparison)")
     parser.add_argument("--show", action="store_true", help="List every attack that worked or was inconclusive")
     return asyncio.run(main_async(parser.parse_args()))
