@@ -86,6 +86,11 @@ REMEDIATION_MAP = {
         "2. Never pass model output to a shell, eval, or SQL string; use parameters.\n"
         "3. Restrict markdown rendering (no raw HTML, no remote images)."
     ),
+    "rag_poisoning": (
+        "1. Do not trust retrieved text as fact: show sources and let the user judge.\n"
+        "2. Check provenance before indexing; do not let anyone write to the knowledge base without review.\n"
+        "3. Cross-check a retrieved claim against a trusted source for high-stakes answers."
+    ),
     "harmful_content": (
         "1. This measures the base model's safety training; a weak model needs a safety layer in front.\n"
         "2. Add an input and output filter (a moderation model or rules) for the categories you must block.\n"

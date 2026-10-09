@@ -13,6 +13,7 @@ licence, and what was taken.
 | `insecure_output_handling` (subcategory `xss`) | PayloadsAllTheThings | MIT | ~22 XSS payloads hidden in content to summarise. Confirmed when the active script comes back unescaped. |
 | `prompt_injection` (subcategory `ifixai_*`) | [ifixai-ai/iFixAi](https://github.com/ifixai-ai/iFixAi) | Apache-2.0 | 40 prompt-injection payloads across 8 tactics (override, role-play, fake system tags, encoding, authority, policy misdirection, social). |
 | `agent_misuse` (subcategory `injecagent`) | [uiuc-kang-lab/InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) | MIT | 30 cases: a benign user request plus a tool result that carries a hidden attacker instruction (e.g. "email my data to …"). |
+| `rag_poisoning` | [sleeepeer/PoisonedRAG](https://github.com/sleeepeer/PoisonedRAG) | MIT | 54 cases (nq, hotpotqa): five poisoned passages assert a false answer, then the question is asked. Confirmed by the planted false answer appearing in the reply. |
 
 Each payload file names its source and commit in a comment at the top.
 
@@ -62,5 +63,8 @@ These were reviewed but left out:
   real-toxicity-prompts beyond its Apache core): no clear right to
   redistribute, so nothing was copied in. They can still be used by reference
   the same way HarmBench is, if you clone them yourself.
-- **PoisonedRAG** (MIT): needs a document-store feature AYZO does not have
-  yet. Planned, not done.
+- **Multi-turn repos you listed** (Micdejc/llm_multiturn_attacks, amazon-science/MultiTurnAgentAttack): no permissive licence, so nothing was copied in. AYZO's own `multi_turn` category covers this ground; more could be added by reference.
+
+### A note on RAG poisoning
+
+`rag_poisoning` plants the poisoned passages **inline** in the prompt as retrieved context, so it works against any chat target. A higher-fidelity test would plant documents through the app's own ingestion endpoint and let its retriever surface them; that needs an ingestion feature AYZO does not have yet.

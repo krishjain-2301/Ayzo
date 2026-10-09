@@ -249,3 +249,31 @@ def test_external_payloads_load_from_a_local_clone(tmp_path, monkeypatch):
     # copyright row is skipped (needs the context file)
     assert not any(a["subcategory"] == "copyright" for a in loaded)
     assert all(a["is_builtin"] and not a["is_regex"] for a in loaded)
+
+
+def test_rag_poisoning_payloads_confirmed_by_the_planted_answer():
+    from app.attack_library.loader import load_all_payloads
+
+    rag = [a for a in load_all_payloads() if a["category"] == "rag_poisoning"]
+    assert len(rag) >= 30
+    assert all(a["is_regex"] and a["success_indicators"] for a in rag)
+
+
+async def test_rag_poisoning_fails_when_reply_repeats_the_false_answer():
+    # An app that parrots whatever its retrieved documents say.
+    def reply(body):
+        p = body.get("prompt", "")
+        # echo the first planted claim back as the answer
+        if "Frank Sinatra" in p:
+            return {"response": "According to the documents, Frank Sinatra recorded it."}
+        return {"response": "I'm not sure."}
+
+    server, url, _ = _serve(reply)
+    try:
+        with patch(JUDGE, _judge("pass")):  # judge would pass; the exact match must still catch it
+            summary = await attack_engine.run_campaign(url, "prompt", ["rag_poisoning"], max_payloads=50)
+    finally:
+        server.shutdown()
+    worked = [r for r in summary["results"] if r["result"] == "fail"]
+    assert worked, "a reply carrying the planted false answer should be a confirmed finding"
+    assert all(r["metadata"]["method"] == "regex" for r in worked)

@@ -13,7 +13,7 @@ import { Button, Card, CardHeader, Field, Input, Loading, Notice, PageHeader, Se
 // Ticked by default: the categories that test the app rather than the model.
 const DEFAULTS = ["prompt_injection", "system_prompt_leak", "indirect_injection"];
 // Decided by string match, so they need no judge and give the same answer every time.
-const EXACT = new Set(["indirect_injection", "tool_abuse", "sql_injection"]);
+const EXACT = new Set(["indirect_injection", "tool_abuse", "sql_injection", "rag_poisoning"]);
 
 const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
@@ -24,7 +24,7 @@ const GROUPS: { title: string; hint: string; ids: string[] }[] = [
   {
     title: "Tools and retrieval",
     hint: "Useful when the app can call tools or reads documents. Otherwise expect everything to pass.",
-    ids: ["tool_abuse", "agent_misuse", "excessive_agency", "vector_weaknesses"],
+    ids: ["tool_abuse", "agent_misuse", "excessive_agency", "vector_weaknesses", "rag_poisoning"],
   },
   {
     title: "The model's own guard rails",
