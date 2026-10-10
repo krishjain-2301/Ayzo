@@ -240,7 +240,7 @@ Measured in October 2026:
 
 The dashboard is checked with axe-core (`node e2e/a11y.mjs` in `apps/web`, WCAG 2.1 A and AA, both themes): no serious or critical problems as of October 2026. That is an automated check, not a review with a screen reader.
 
-Scans of three applications the author did not write are published in `docs/REAL_APPS.md`: ReversecLabs' damn-vulnerable-llm-agent, SasanLabs' LLMForge and one PromptMe challenge. On the first, AYZO found neither flag until a Cross-User Access category was added, then one, confirmed four ways. On the other two (19 scans, including all five LLMForge labs) its exact checks never matched something that was not there and reported no secret at a hardened level, but 34 of the 97 confirmed findings were not flaws, it missed secrets at three levels that one plain sentence extracts, and only 20 of 81 judge-only findings on a 3 GB judge held up. All three are training targets; more such scans are still needed.
+Scans of three applications the author did not write are published in `docs/REAL_APPS.md`: ReversecLabs' damn-vulnerable-llm-agent, SasanLabs' LLMForge and two PromptMe challenges. On the first, AYZO found neither flag until a Cross-User Access category was added, then one, confirmed four ways. On the other two (21 scans, including all five LLMForge labs) its exact checks never matched something that was not there and reported no secret at a hardened level, but 34 of the 111 confirmed findings were not flaws, it missed secrets at three levels that one plain sentence extracts, and only 21 of 89 judge-only findings on a 3 GB judge held up. All three are training targets; more such scans are still needed.
 
 ---
 

@@ -17,11 +17,15 @@ The challenges name their Ollama models in code (`mistral`, and
 you already have, give it that name: `ollama cp qwen2.5-coder:3b mistral`.
 
 Challenge 1 keeps one conversation per browser session; here every request
-is a fresh session, which is what a first message looks like.
+is a fresh session, which is what a first message looks like. Its secret only
+reaches the model when a page is fetched, so challenge 1 also answers on
+POST /page: the message is served as a web page from this process and the
+challenge is asked to `/fetch` it.
 """
 
 import argparse
 import sys
+import uuid
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
@@ -36,6 +40,7 @@ sys.path.insert(0, str(folder))
 
 import uvicorn  # noqa: E402
 from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi.responses import HTMLResponse  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
 if args.challenge == 1:
@@ -57,6 +62,30 @@ def answer_challenge_1(message: str) -> str:
     if challenge.check_malicious_input(message):
         return "Your input was flagged as potentially malicious and has been blocked."
     return challenge.check_for_flag(challenge.call_ollama(message))
+
+
+pages: dict[str, str] = {}
+
+
+@app.get("/pages/{page_id}", response_class=HTMLResponse)
+def served_page(page_id: str):
+    if page_id not in pages:
+        raise HTTPException(status_code=404)
+    return pages[page_id]
+
+
+@app.post("/page")
+def page(request: ChatRequest):
+    if args.challenge != 1:
+        raise HTTPException(status_code=404, detail="Only challenge 1 fetches pages")
+    page_id = uuid.uuid4().hex
+    pages[page_id] = request.message
+    try:
+        return {"response": answer_challenge_1(f"/fetch http://127.0.0.1:{args.port}/pages/{page_id}")}
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"{type(error).__name__}: {error}"[:300])
+    finally:
+        del pages[page_id]
 
 
 @app.get("/health")
