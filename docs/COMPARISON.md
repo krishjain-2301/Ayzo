@@ -101,7 +101,7 @@ It does not show:
 - Anything about other targets. One bot, one model, one run each. The numbers
   will move on a rerun.
 - How the tools compare on an app nobody here wrote. AYZO alone was run on
-  one such app; see [REAL_APPS.md](REAL_APPS.md).
+  three such apps; see [REAL_APPS.md](REAL_APPS.md).
 
 ## Reproduce
 
